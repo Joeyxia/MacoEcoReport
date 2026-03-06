@@ -39,8 +39,9 @@ body {
   max-width: 1160px;
   margin: 0 auto;
   padding: 1.25rem 1rem;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.8rem;
   align-items: center;
 }
 
@@ -55,6 +56,8 @@ body {
 nav {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .nav-link {
@@ -69,6 +72,10 @@ nav {
 .nav-link:hover {
   color: var(--brand-deep);
   background: rgba(10, 122, 104, 0.12);
+}
+
+.lang-toggle {
+  min-width: 72px;
 }
 
 .page {
@@ -278,7 +285,8 @@ input[type="file"] {
 }
 
 .driver-card,
-.glossary-card {
+.glossary-card,
+.dimension-card {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.8rem;
@@ -286,15 +294,32 @@ input[type="file"] {
 }
 
 .driver-card h3,
-.glossary-card h3 {
+.glossary-card h3,
+.dimension-card h3 {
   font-size: 0.98rem;
 }
 
 .driver-card p,
-.glossary-card p {
+.glossary-card p,
+.dimension-card p {
   margin: 0.35rem 0 0;
   color: var(--ink-soft);
   line-height: 1.4;
+}
+
+.dim-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.dim-chip {
+  font-size: 0.76rem;
+  border: 1px solid rgba(18, 36, 40, 0.16);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 0.22rem 0.5rem;
 }
 
 .cta-row {
@@ -386,6 +411,13 @@ input[type="file"] {
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 0.8rem;
+  align-items: center;
+}
+
+.check-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
 }
 
 .report-editor {
@@ -400,7 +432,35 @@ input[type="file"] {
   resize: vertical;
 }
 
+.report-links {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.report-link {
+  color: var(--brand-deep);
+  text-decoration: none;
+  border: 1px solid rgba(5, 89, 75, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.4rem 0.55rem;
+  font-size: 0.9rem;
+}
+
+.report-link:hover {
+  background: rgba(10, 122, 104, 0.12);
+}
+
 @media (max-width: 920px) {
+  .site-header {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  nav {
+    justify-content: flex-start;
+  }
+
   .hero,
   .hero.compact,
   .two-col,

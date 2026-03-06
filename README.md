@@ -1,40 +1,51 @@
 # Macro Economic Report Website
 
-Static website for your macro monitoring model with three pages:
+A static bilingual website for your macro monitoring model, ready for GitHub Pages.
 
-- `index.html`: dashboard (main page)
-- `daily-report.html`: editable auto-drafted daily report
-- `glossary.html`: glossary of key macro model terms
-- `model.xlsx`: default workbook auto-loaded on dashboard startup
+## What is implemented
+
+1. Browser database (`IndexedDB`) stores:
+- Parsed model data from Excel (`current model`)
+- Daily reports (date-indexed)
+- Online data check history
+
+2. Online data check before final report:
+- In `Daily Report`, click **Generate Final Report**
+- If "Run online data check" is enabled, the app fetches latest data for detectable FRED series and updates Inputs snapshot before generating final report text
+
+3. English / Chinese switch:
+- Language toggle button in header on all pages
+
+4. Main page shows all 14 dimensions:
+- Dedicated card section sourced from `Dimensions` sheet
+
+5. Daily report archive links:
+- Each saved report date is shown as a link in `Daily Report Archive`
+
+6. Detailed indicators support:
+- Daily report page shows full detailed `Scores` table
+- Separate `indicators.html` page shows all indicator information from `Indicators` sheet
+
+7. GitHub Pages deployment:
+- Workflow at `.github/workflows/deploy-pages.yml`
+- Push to `main` triggers deployment
+
+## Pages
+
+- `index.html`: dashboard
+- `daily-report.html`: report editor + online check + archive links + detailed scores
+- `indicators.html`: full indicators table
+- `glossary.html`: glossary terms
+
+## Data file
+
+- Default workbook: `model.xlsx`
+- You can upload another `.xlsx` from the dashboard to replace current model data.
 
 ## Run locally
-
-From this folder:
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Then open [http://localhost:8080](http://localhost:8080).
-
-## Connect your Excel model
-
-1. Open the dashboard page (it auto-loads `model.xlsx` by default).
-2. Click **Load Model (.xlsx)**.
-3. Select your workbook file (`宏观监控模型_14维.xlsx` or updated versions).
-4. The dashboard will parse model sheets and refresh.
-
-The parsed model snapshot is stored in browser `localStorage` and reused by the Daily Report page.
-
-## Data shown on dashboard
-
-- Summary: total score, regime status, active alerts, top contributors, and macro drivers.
-- Core model tables: `Dimensions`, `Indicators`, `Inputs`, `Scores`, `Alerts`.
-- Full workbook explorer: all worksheets, all rows, all columns with tab switch.
-
-## Daily report workflow
-
-1. Go to `daily-report.html`.
-2. Click **Regenerate Draft** to produce today's report from current model data.
-3. Edit text as needed.
-4. Click **Save** (stored in browser) or **Download .txt**.
+Open: `http://localhost:8080`

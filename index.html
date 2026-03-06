@@ -19,90 +19,97 @@
     <header class="site-header">
       <a class="brand" href="index.html">Macro Risk Monitor</a>
       <nav>
-        <a class="nav-link active" href="index.html">Dashboard</a>
-        <a class="nav-link" href="daily-report.html">Daily Report</a>
-        <a class="nav-link" href="glossary.html">Glossary</a>
+        <a class="nav-link active" href="index.html" data-i18n="nav_dashboard">Dashboard</a>
+        <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
+        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
+        <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
       </nav>
+      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
     </header>
 
     <main class="page page-dashboard">
       <section class="panel hero">
         <div>
-          <p class="eyebrow">Global Macro Crisis Radar</p>
-          <h1>Institutional 14-Dimension Monitoring Dashboard</h1>
-          <p class="subtle">
-            Upload your model workbook to refresh total score, dimension contribution,
-            and warning signals.
+          <p class="eyebrow" data-i18n="dashboard_eyebrow">Global Macro Crisis Radar</p>
+          <h1 data-i18n="dashboard_title">Institutional 14-Dimension Monitoring Dashboard</h1>
+          <p class="subtle" data-i18n="dashboard_subtitle">
+            Upload your model workbook to refresh total score, dimension contribution, and warning signals.
           </p>
           <div class="upload-wrap">
-            <label for="xlsx-input" class="btn">Load Model (.xlsx)</label>
+            <label for="xlsx-input" class="btn" data-i18n="load_model">Load Model (.xlsx)</label>
             <input id="xlsx-input" type="file" accept=".xlsx" />
-            <span id="file-status" class="subtle">Using built-in sample data</span>
+            <span id="file-status" class="subtle" data-i18n="using_sample_data">Using built-in sample data</span>
           </div>
         </div>
         <div class="score-card">
-          <p class="score-label">Macro Composite Score</p>
+          <p class="score-label" data-i18n="macro_composite_score">Macro Composite Score</p>
           <div class="score-value" id="total-score">--</div>
           <p class="score-meta">
-            As of <span id="as-of">--</span> · <strong id="macro-status">--</strong>
+            <span data-i18n="as_of">As of</span> <span id="as-of">--</span> · <strong id="macro-status">--</strong>
           </p>
         </div>
       </section>
 
       <section class="grid two-col">
         <article class="panel">
-          <h2>Triggered Alerts</h2>
+          <h2 data-i18n="triggered_alerts">Triggered Alerts</h2>
           <ul id="alert-list" class="alerts"></ul>
         </article>
 
         <article class="panel">
-          <h2>Top Dimension Contributors</h2>
+          <h2 data-i18n="top_dimension_contributors">Top Dimension Contributors</h2>
           <div id="dimension-bars" class="bars"></div>
         </article>
       </section>
 
       <section class="panel">
-        <h2>Primary Drivers</h2>
+        <h2 data-i18n="primary_drivers">Primary Drivers</h2>
         <div class="grid three-col" id="drivers"></div>
       </section>
 
       <section class="panel">
         <div class="section-head">
-          <h2>Model Core Tables</h2>
-          <p class="subtle">Complete structured data from your 14-dimension model.</p>
+          <h2 data-i18n="dimensions_14_detail">All 14 Dimensions Detail (from Dimensions Sheet)</h2>
+          <p class="subtle" data-i18n="dimensions_14_detail_desc">This section shows complete dimension definitions, tiers, weights, and update frequencies.</p>
+        </div>
+        <div id="dimension-cards" class="grid three-col"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2 data-i18n="model_core_tables">Model Core Tables</h2>
+          <p class="subtle" data-i18n="model_core_tables_desc">Complete structured data from your 14-dimension model.</p>
         </div>
         <div class="grid two-col">
           <article>
-            <h3>Dimensions</h3>
+            <h3 data-i18n="dimensions">Dimensions</h3>
             <div id="dimensions-table" class="table-wrap"></div>
           </article>
           <article>
-            <h3>Inputs (Latest)</h3>
+            <h3 data-i18n="inputs_latest">Inputs (Latest)</h3>
             <div id="inputs-table" class="table-wrap"></div>
           </article>
         </div>
         <div class="grid two-col table-group-gap">
           <article>
-            <h3>Indicators</h3>
+            <h3 data-i18n="indicators">Indicators</h3>
             <div id="indicators-table" class="table-wrap tall"></div>
           </article>
           <article>
-            <h3>Scores</h3>
+            <h3 data-i18n="scores">Scores</h3>
             <div id="scores-table" class="table-wrap tall"></div>
           </article>
         </div>
         <article class="table-block">
-          <h3>Alerts</h3>
+          <h3 data-i18n="alerts">Alerts</h3>
           <div id="alerts-table" class="table-wrap"></div>
         </article>
       </section>
 
       <section class="panel">
         <div class="section-head">
-          <h2>Workbook Data Explorer</h2>
-          <p class="subtle">
-            Full raw content from every worksheet in the Excel file (all rows and columns).
-          </p>
+          <h2 data-i18n="workbook_explorer">Workbook Data Explorer</h2>
+          <p class="subtle" data-i18n="workbook_explorer_desc">Full raw content from every worksheet in the Excel file (all rows and columns).</p>
         </div>
         <div id="sheet-tabs" class="sheet-tabs"></div>
         <div id="sheet-table" class="table-wrap explorer"></div>
@@ -110,10 +117,10 @@
 
       <section class="panel cta-row">
         <div>
-          <h3>Need Today’s Note?</h3>
-          <p class="subtle">Generate and edit a daily narrative from the current model snapshot.</p>
+          <h3 data-i18n="need_today_note">Need Today's Note?</h3>
+          <p class="subtle" data-i18n="need_today_note_desc">Generate and edit a daily narrative from the current model snapshot.</p>
         </div>
-        <a class="btn" href="daily-report.html">Open Daily Report</a>
+        <a class="btn" href="daily-report.html" data-i18n="open_daily_report">Open Daily Report</a>
       </section>
     </main>
   </body>

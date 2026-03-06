@@ -1,81 +1,282 @@
+const DB_NAME = "macro-monitor-db";
+const DB_VERSION = 1;
 const STORAGE_KEY = "macro-monitor-model";
-const REPORT_PREFIX = "macro-monitor-report-";
+const LANG_KEY = "macro-monitor-lang";
 const DEFAULT_MODEL_FILE = "./model.xlsx";
+
+const i18n = {
+  en: {
+    nav_dashboard: "Dashboard",
+    nav_daily_report: "Daily Report",
+    nav_indicators: "Indicators",
+    nav_glossary: "Glossary",
+    dashboard_eyebrow: "Global Macro Crisis Radar",
+    dashboard_title: "Institutional 14-Dimension Monitoring Dashboard",
+    dashboard_subtitle: "Upload your model workbook to refresh total score, dimension contribution, and warning signals.",
+    load_model: "Load Model (.xlsx)",
+    using_sample_data: "Using built-in sample data",
+    macro_composite_score: "Macro Composite Score",
+    as_of: "As of",
+    triggered_alerts: "Triggered Alerts",
+    top_dimension_contributors: "Top Dimension Contributors",
+    primary_drivers: "Primary Drivers",
+    dimensions_14_detail: "All 14 Dimensions Detail (from Dimensions Sheet)",
+    dimensions_14_detail_desc: "This section shows complete dimension definitions, tiers, weights, and update frequencies.",
+    model_core_tables: "Model Core Tables",
+    model_core_tables_desc: "Complete structured data from your 14-dimension model.",
+    dimensions: "Dimensions",
+    inputs_latest: "Inputs (Latest)",
+    indicators: "Indicators",
+    scores: "Scores",
+    alerts: "Alerts",
+    workbook_explorer: "Workbook Data Explorer",
+    workbook_explorer_desc: "Full raw content from every worksheet in the Excel file (all rows and columns).",
+    need_today_note: "Need Today's Note?",
+    need_today_note_desc: "Generate and edit a daily narrative from the current model snapshot.",
+    open_daily_report: "Open Daily Report",
+    daily_note: "Daily Intelligence Note",
+    daily_report_title: "Macro Monitoring Daily Report",
+    daily_report_desc: "Auto-drafted from the latest dashboard snapshot. Edit as needed, then save.",
+    snapshot: "Snapshot",
+    regenerate_draft: "Regenerate Draft",
+    generate_final_report: "Generate Final Report",
+    save: "Save",
+    download_txt: "Download .txt",
+    run_online_check: "Run online data check before final report",
+    daily_report_archive: "Daily Report Archive",
+    daily_report_archive_desc: "Each saved day has a direct link.",
+    online_check_results: "Online Data Check Results",
+    detailed_indicator_scores: "Detailed Indicators Score",
+    reference: "Reference",
+    glossary_title: "Macro Terms Used in This System",
+    glossary_desc: "Aligned to your 14-dimension monitoring framework and alert thresholds.",
+    indicators_eyebrow: "Indicator Library",
+    indicators_page_title: "All Indicators Information (from Indicators Sheet)",
+    indicators_page_desc: "Full indicator definitions, scoring settings, data source links, and update frequencies.",
+    all_indicators_info: "All Indicators Information"
+  },
+  zh: {
+    nav_dashboard: "仪表盘",
+    nav_daily_report: "每日报告",
+    nav_indicators: "指标库",
+    nav_glossary: "术语表",
+    dashboard_eyebrow: "全球宏观危机雷达",
+    dashboard_title: "14维机构级宏观监控仪表盘",
+    dashboard_subtitle: "上传模型工作簿后，可刷新总分、维度贡献和预警信号。",
+    load_model: "加载模型（.xlsx）",
+    using_sample_data: "使用内置样例数据",
+    macro_composite_score: "宏观综合评分",
+    as_of: "更新日",
+    triggered_alerts: "触发预警",
+    top_dimension_contributors: "维度贡献 Top",
+    primary_drivers: "核心驱动",
+    dimensions_14_detail: "14个维度信息（来自 Dimensions 表）",
+    dimensions_14_detail_desc: "展示维度定义、层级、权重和更新频率。",
+    model_core_tables: "模型核心数据表",
+    model_core_tables_desc: "完整展示你的14维模型结构化数据。",
+    dimensions: "维度",
+    inputs_latest: "Inputs（最新）",
+    indicators: "指标",
+    scores: "评分",
+    alerts: "预警",
+    workbook_explorer: "工作簿全量浏览",
+    workbook_explorer_desc: "展示 Excel 每个工作表的全部行列原始数据。",
+    need_today_note: "需要今日简报？",
+    need_today_note_desc: "基于当前模型快照自动生成并编辑每日报告。",
+    open_daily_report: "打开每日报告",
+    daily_note: "每日情报",
+    daily_report_title: "宏观监控每日报告",
+    daily_report_desc: "根据最新仪表盘自动起草，可编辑后保存。",
+    snapshot: "快照",
+    regenerate_draft: "重新生成草稿",
+    generate_final_report: "生成最终报告",
+    save: "保存",
+    download_txt: "下载 .txt",
+    run_online_check: "生成最终报告前执行在线数据校验",
+    daily_report_archive: "每日报告归档",
+    daily_report_archive_desc: "每一天报告都生成可访问链接。",
+    online_check_results: "在线数据校验结果",
+    detailed_indicator_scores: "指标详细评分",
+    reference: "参考",
+    glossary_title: "系统术语说明",
+    glossary_desc: "与14维监控框架和预警阈值保持一致。",
+    indicators_eyebrow: "指标信息库",
+    indicators_page_title: "全部指标信息（来自 Indicators 表）",
+    indicators_page_desc: "完整展示指标定义、评分参数、数据源和更新频率。",
+    all_indicators_info: "全部指标信息"
+  }
+};
 
 const sampleModel = {
   asOf: "2026-03-01",
   totalScore: 58.4,
   status: "Neutral Fragile",
-  alerts: [
-    { id: "A01", level: "YELLOW", condition: "HY OAS > 600bps", triggered: false },
-    { id: "A02", level: "RED", condition: "VIX > 30", triggered: false },
-    { id: "A03", level: "YELLOW", condition: "10Y-3M < -50bps", triggered: true }
-  ],
+  alerts: [{ id: "A03", level: "YELLOW", condition: "10Y-3M < -50bps", triggered: true }],
   dimensions: [
     { name: "Monetary Policy & Liquidity", score: 46.2, contribution: 5.5 },
     { name: "Growth & Forward Signals", score: 57.8, contribution: 6.4 },
-    { name: "Inflation & Price Pressure", score: 61.3, contribution: 6.1 },
-    { name: "Labor & Households", score: 59.4, contribution: 5.9 },
-    { name: "Financial Conditions", score: 52.8, contribution: 4.8 },
-    { name: "External / Dollar Conditions", score: 54.6, contribution: 3.8 }
+    { name: "Inflation & Price Pressure", score: 61.3, contribution: 6.1 }
   ],
   drivers: [
-    { title: "Primary Support", text: "Core inflation has moderated toward the target zone, easing policy pressure." },
-    { title: "Primary Drag", text: "Inverted term structure and tight liquidity keep recession risk elevated." },
-    { title: "Risk Trigger", text: "A sharp jump in volatility (VIX/MOVE) would likely move the model into defense mode." }
+    { title: "Primary Support", text: "Core inflation has moderated toward the target zone." },
+    { title: "Primary Drag", text: "Yield curve inversion and liquidity tightness still cap risk appetite." },
+    { title: "Risk Trigger", text: "A volatility spike can quickly shift the regime to defense." }
   ],
-  tables: {
-    dimensions: [],
-    indicators: [],
-    inputs: [],
-    scores: [],
-    alerts: []
-  },
-  workbook: {
-    sheetNames: [],
-    sheets: []
-  }
+  tables: { dimensions: [], indicators: [], inputs: [], scores: [], alerts: [] },
+  workbook: { sheets: [] },
+  onlineCheck: []
 };
 
 const glossaryTerms = [
-  { term: "Macro Composite Score", desc: "Weighted 0-100 aggregate score across the 14 dimensions." },
-  { term: "Alert Trigger", desc: "Threshold-based risk event (e.g., VIX>30) used for tactical warning." },
-  { term: "HigherBetter", desc: "Scoring mode where higher values improve the indicator score." },
-  { term: "LowerBetter", desc: "Scoring mode where lower values improve the indicator score." },
-  { term: "TargetBand", desc: "Scoring mode where a defined value range receives the highest score." },
-  { term: "DimScore", desc: "Weighted average score of indicators inside one dimension." },
-  { term: "WeightedContribution", desc: "Dimension contribution to total score after applying dimension weight." },
-  { term: "Net Liquidity Proxy", desc: "Commonly modeled as Fed assets minus TGA minus RRP." },
-  { term: "HY OAS", desc: "US high-yield option-adjusted spread, a stress gauge for credit risk." },
-  { term: "MOVE Index", desc: "US Treasury volatility index, often used as a rates stress proxy." },
-  { term: "DXY", desc: "US dollar index; strong moves can tighten global financial conditions." },
-  { term: "FCI", desc: "Financial Conditions Index measuring overall ease/tightness of financing." },
-  { term: "Defensive Zone", desc: "Model state generally associated with score band 30-45." },
-  { term: "Crisis Zone", desc: "Model state generally associated with score band 0-30." },
-  { term: "Theme Panel", desc: "Low-weight monitoring block for AI/Crypto cycle signals." }
+  {
+    en: { term: "Macro Composite Score", desc: "Weighted 0-100 aggregate score across the 14 dimensions." },
+    zh: { term: "宏观综合评分", desc: "14个维度加权后的0-100综合分。" }
+  },
+  {
+    en: { term: "Alert Trigger", desc: "Threshold-based risk event (for example VIX > 30)." },
+    zh: { term: "预警触发", desc: "基于阈值触发的风险事件（例如 VIX > 30）。" }
+  },
+  {
+    en: { term: "TargetBand", desc: "Scoring mode where a defined value range receives highest score." },
+    zh: { term: "TargetBand", desc: "目标区间评分：数值落在区间内得分最高。" }
+  },
+  {
+    en: { term: "WeightedContribution", desc: "Dimension contribution after dimension weight is applied." },
+    zh: { term: "加权贡献", desc: "维度分乘以维度权重后的总分贡献。" }
+  },
+  {
+    en: { term: "HY OAS", desc: "US high-yield option-adjusted spread, a credit stress gauge." },
+    zh: { term: "HY OAS", desc: "美国高收益债 OAS，反映信用压力。" }
+  },
+  {
+    en: { term: "Net Liquidity Proxy", desc: "Common proxy: Fed assets - TGA - RRP." },
+    zh: { term: "净流动性代理", desc: "常用口径：美联储资产 - TGA - RRP。" }
+  }
 ];
 
-function loadModel() {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) return sampleModel;
+function getLang() {
+  const stored = localStorage.getItem(LANG_KEY);
+  return stored === "zh" ? "zh" : "en";
+}
+
+function setLang(lang) {
+  localStorage.setItem(LANG_KEY, lang);
+  document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+}
+
+function t(key) {
+  const lang = getLang();
+  return i18n[lang]?.[key] || i18n.en[key] || key;
+}
+
+function applyI18n() {
+  document.querySelectorAll("[data-i18n]").forEach((node) => {
+    const key = node.getAttribute("data-i18n");
+    const value = t(key);
+    if (value) node.textContent = value;
+  });
+
+  const toggle = document.getElementById("lang-toggle");
+  if (toggle) toggle.textContent = getLang() === "zh" ? "EN" : "中文";
+}
+
+function setupLangToggle(onChange) {
+  const btn = document.getElementById("lang-toggle");
+  if (!btn) return;
+
+  btn.addEventListener("click", () => {
+    const next = getLang() === "zh" ? "en" : "zh";
+    setLang(next);
+    applyI18n();
+    if (onChange) onChange();
+  });
+}
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains("model")) db.createObjectStore("model", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("reports")) db.createObjectStore("reports", { keyPath: "date" });
+      if (!db.objectStoreNames.contains("checks")) db.createObjectStore("checks", { keyPath: "id" });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function dbPut(store, value) {
+  const db = await openDB();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).put(value);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+async function dbGet(store, key) {
+  const db = await openDB();
+  const result = await new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+  return result;
+}
+
+async function dbGetAll(store) {
+  const db = await openDB();
+  const result = await new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+  return result;
+}
+
+function loadModelFallback() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return sampleModel;
   try {
-    const parsed = JSON.parse(stored);
-    return { ...sampleModel, ...parsed };
+    return { ...sampleModel, ...JSON.parse(raw) };
   } catch {
     return sampleModel;
   }
 }
 
-function saveModel(model) {
+function saveModelFallback(model) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(model));
 }
 
-function inferStatus(score) {
-  if (score >= 75) return "Expansion Overheating";
-  if (score >= 60) return "Moderate Expansion";
-  if (score >= 45) return "Neutral Fragile";
-  if (score >= 30) return "Defensive";
-  return "Recession/Crisis";
+async function loadCurrentModel() {
+  const fromDb = await dbGet("model", "current");
+  if (fromDb?.payload) return fromDb.payload;
+  return loadModelFallback();
+}
+
+async function saveCurrentModel(model) {
+  saveModelFallback(model);
+  await dbPut("model", { id: "current", payload: model, updatedAt: new Date().toISOString() });
+}
+
+async function saveReport(date, text, meta) {
+  await dbPut("reports", { date, text, meta, updatedAt: new Date().toISOString() });
+}
+
+async function loadReport(date) {
+  return dbGet("reports", date);
+}
+
+async function listReports() {
+  const reports = await dbGetAll("reports");
+  return reports.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 function asText(v) {
@@ -84,262 +285,15 @@ function asText(v) {
 
 function asNumber(v) {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  const parsed = Number(String(v).replace(/,/g, "").trim());
+  const parsed = Number(String(v).replace(/,/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function pickKey(row, candidates) {
-  const entries = Object.keys(row || {});
-  for (const key of entries) {
-    const lowered = key.toLowerCase();
-    if (candidates.some((c) => lowered.includes(c))) {
-      return key;
-    }
-  }
-  return null;
-}
-
-function findSheet(workbook, candidates) {
-  const names = workbook.SheetNames || [];
-  const map = names.map((n) => ({ raw: n, normalized: n.toLowerCase() }));
-  for (const c of candidates) {
-    const match = map.find((n) => n.normalized.includes(c));
-    if (match) return match.raw;
-  }
-  return null;
-}
-
-function objectRowsToColumns(rows) {
-  const keys = new Set();
-  rows.forEach((row) => Object.keys(row || {}).forEach((k) => keys.add(k)));
-  return [...keys];
-}
-
-function cleanSheetRows(rows) {
-  if (!rows || !rows.length) return [];
-
-  const normalized = rows.map((row) => row.map((cell) => asText(cell)));
-  const nonEmptyRows = normalized.filter((row) => row.some((cell) => cell !== ""));
-  if (!nonEmptyRows.length) return [];
-
-  let maxCol = 0;
-  nonEmptyRows.forEach((row) => {
-    for (let i = row.length - 1; i >= 0; i -= 1) {
-      if (row[i] !== "") {
-        maxCol = Math.max(maxCol, i + 1);
-        break;
-      }
-    }
-  });
-
-  return nonEmptyRows.map((row) => row.slice(0, maxCol));
-}
-
-function parseWorkbook(arrayBuffer) {
-  const workbook = XLSX.read(arrayBuffer, { type: "array" });
-
-  const dimensionsSheetName = findSheet(workbook, ["dimensions", "维度"]);
-  const indicatorsSheetName = findSheet(workbook, ["indicators", "指标"]);
-  const inputsSheetName = findSheet(workbook, ["inputs", "输入"]);
-  const scoresSheetName = findSheet(workbook, ["scores", "分数"]);
-  const alertsSheetName = findSheet(workbook, ["alerts", "预警"]);
-
-  const dimensionsRows = dimensionsSheetName
-    ? XLSX.utils.sheet_to_json(workbook.Sheets[dimensionsSheetName], { defval: "" })
-    : [];
-  const indicatorsRows = indicatorsSheetName
-    ? XLSX.utils.sheet_to_json(workbook.Sheets[indicatorsSheetName], { defval: "" })
-    : [];
-  const inputsRows = inputsSheetName
-    ? XLSX.utils.sheet_to_json(workbook.Sheets[inputsSheetName], { defval: "" })
-    : [];
-  const scoresRows = scoresSheetName
-    ? XLSX.utils.sheet_to_json(workbook.Sheets[scoresSheetName], { defval: "" })
-    : [];
-  const alertsRows = alertsSheetName
-    ? XLSX.utils.sheet_to_json(workbook.Sheets[alertsSheetName], { defval: "" })
-    : [];
-
-  const workbookSheets = (workbook.SheetNames || []).map((name) => {
-    const aoa = XLSX.utils.sheet_to_json(workbook.Sheets[name], {
-      header: 1,
-      defval: "",
-      raw: false,
-      blankrows: false
-    });
-    return { name, rows: cleanSheetRows(aoa) };
-  });
-
-  let asOf = "";
-  for (const row of inputsRows) {
-    const asOfKey = pickKey(row, ["asof", "更新", "date"]);
-    const val = asText(row[asOfKey]);
-    const rowValues = Object.values(row).map(asText);
-    const dateLike = val || rowValues.find((x) => /^\d{4}-\d{2}-\d{2}$/.test(x));
-    if (dateLike && /^\d{4}-\d{2}-\d{2}$/.test(dateLike)) {
-      asOf = dateLike;
-      break;
-    }
-  }
-
-  const scoreCandidates = [];
-  for (const row of scoresRows) {
-    const nameKey = pickKey(row, ["dimensionname", "dimension", "维度名称", "维度"]);
-    const scoreKey = pickKey(row, ["dimscore", "score", "维度分"]);
-    const contributionKey = pickKey(row, ["weightedcontribution", "contribution", "贡献"]);
-    if (!nameKey || !scoreKey) continue;
-
-    const name = asText(row[nameKey]);
-    const score = asNumber(row[scoreKey]);
-    if (!name || score === null) continue;
-    const contribution = asNumber(row[contributionKey]) ?? 0;
-    scoreCandidates.push({ name, score, contribution });
-  }
-
-  const dimensions = scoreCandidates
-    .filter((x) => x.name.toLowerCase() !== "total" && x.name !== "TOTAL")
-    .slice(0, 14);
-
-  const totalRow = scoreCandidates.find((x) => x.name.toLowerCase() === "total") || null;
-  const totalScore = totalRow ? totalRow.score : average(dimensions.map((x) => x.score));
-
-  const alerts = [];
-  for (const row of alertsRows) {
-    const idKey = pickKey(row, ["alertid", "id"]);
-    const levelKey = pickKey(row, ["level", "等级"]);
-    const conditionKey = pickKey(row, ["condition", "条件"]);
-    const trigKey = pickKey(row, ["triggered", "触发"]);
-
-    const id = asText(row[idKey]);
-    const level = asText(row[levelKey]).toUpperCase();
-    const condition = asText(row[conditionKey]);
-    const trigRaw = asText(row[trigKey]).toLowerCase();
-    if (!id || !condition) continue;
-
-    const triggered = ["yes", "y", "true", "1", "触发"].includes(trigRaw);
-    alerts.push({ id, level: level || "YELLOW", condition, triggered });
-  }
-
-  const alertCount = alerts.filter((a) => a.triggered).length;
-  const drivers = buildDrivers(totalScore, alertCount, dimensions);
-
-  return {
-    asOf: asOf || new Date().toISOString().slice(0, 10),
-    totalScore: round(totalScore, 1),
-    status: inferStatus(totalScore),
-    alerts,
-    dimensions: dimensions.length ? dimensions : sampleModel.dimensions,
-    drivers,
-    tables: {
-      dimensions: dimensionsRows,
-      indicators: indicatorsRows,
-      inputs: inputsRows,
-      scores: scoresRows,
-      alerts: alertsRows
-    },
-    workbook: {
-      sheetNames: workbook.SheetNames || [],
-      sheets: workbookSheets
-    }
-  };
-}
-
-function buildDrivers(totalScore, alertCount, dimensions) {
-  const sorted = [...dimensions].sort((a, b) => b.score - a.score);
-  const best = sorted[0];
-  const worst = sorted[sorted.length - 1];
-
-  return [
-    {
-      title: "Primary Support",
-      text: best
-        ? `${best.name} is the strongest block (${round(best.score, 1)}), helping stabilize the composite.`
-        : "Leading dimensions are providing moderate support."
-    },
-    {
-      title: "Primary Drag",
-      text: worst
-        ? `${worst.name} remains the key drag (${round(worst.score, 1)}), keeping downside risks alive.`
-        : "Weak dimensions still cap upside for the overall score."
-    },
-    {
-      title: "Risk Trigger",
-      text:
-        alertCount > 0
-          ? `${alertCount} alert(s) are currently triggered. Focus on risk control until signals normalize.`
-          : totalScore >= 60
-            ? "No active alert. Tactical risk appetite can stay neutral-to-positive."
-            : "No active alert, but the score remains soft. Keep positioning balanced."
-    }
-  ];
-}
-
-function average(arr) {
-  if (!arr.length) return sampleModel.totalScore;
-  return arr.reduce((sum, n) => sum + n, 0) / arr.length;
-}
-
-function round(v, d = 0) {
-  const x = Number(v);
-  if (!Number.isFinite(x)) return 0;
+function round(v, d = 1) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
   const p = 10 ** d;
-  return Math.round(x * p) / p;
-}
-
-function renderObjectTable(targetId, rows) {
-  const root = document.getElementById(targetId);
-  if (!root) return;
-
-  const dataRows = Array.isArray(rows) ? rows : [];
-  const columns = objectRowsToColumns(dataRows);
-
-  if (!dataRows.length || !columns.length) {
-    root.innerHTML = '<p class="table-empty">No data found.</p>';
-    return;
-  }
-
-  const thead = `<thead><tr>${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead>`;
-  const tbody = `<tbody>${dataRows
-    .map(
-      (row) =>
-        `<tr>${columns
-          .map((c) => `<td>${escapeHtml(asText(row[c]))}</td>`)
-          .join("")}</tr>`
-    )
-    .join("")}</tbody>`;
-
-  root.innerHTML = `<table class="data-table">${thead}${tbody}</table>`;
-}
-
-function renderSheetTable(targetId, rows) {
-  const root = document.getElementById(targetId);
-  if (!root) return;
-
-  if (!rows || !rows.length) {
-    root.innerHTML = '<p class="table-empty">No rows in this sheet.</p>';
-    return;
-  }
-
-  const maxCols = rows.reduce((max, row) => Math.max(max, row.length), 0);
-  const headerRow = rows[0] || [];
-  const useFirstRowHeader = headerRow.some((c) => asText(c) !== "");
-
-  const headers = Array.from({ length: maxCols }, (_, i) => {
-    const cell = useFirstRowHeader ? asText(headerRow[i]) : "";
-    return cell || `Col ${i + 1}`;
-  });
-
-  const bodyRows = useFirstRowHeader ? rows.slice(1) : rows;
-
-  const thead = `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
-  const tbody = `<tbody>${bodyRows
-    .map(
-      (row) =>
-        `<tr>${Array.from({ length: maxCols }, (_, i) => `<td>${escapeHtml(asText(row[i]))}</td>`).join("")}</tr>`
-    )
-    .join("")}</tbody>`;
-
-  root.innerHTML = `<table class="data-table">${thead}${tbody}</table>`;
+  return Math.round(n * p) / p;
 }
 
 function escapeHtml(input) {
@@ -351,87 +305,247 @@ function escapeHtml(input) {
     .replaceAll("'", "&#39;");
 }
 
-function renderDashboard(model) {
-  const totalScore = document.getElementById("total-score");
-  const asOf = document.getElementById("as-of");
-  const macroStatus = document.getElementById("macro-status");
-  const alertList = document.getElementById("alert-list");
-  const bars = document.getElementById("dimension-bars");
-  const drivers = document.getElementById("drivers");
-
-  if (!totalScore) return;
-
-  totalScore.textContent = round(model.totalScore, 1).toFixed(1);
-  asOf.textContent = model.asOf;
-  macroStatus.textContent = model.status;
-
-  const activeAlerts = (model.alerts || []).filter((a) => a.triggered);
-  alertList.innerHTML = "";
-  if (!activeAlerts.length) {
-    const li = document.createElement("li");
-    li.className = "alert-item none";
-    li.textContent = "No active alerts. Conditions are currently stable by configured thresholds.";
-    alertList.appendChild(li);
-  } else {
-    activeAlerts.forEach((a) => {
-      const li = document.createElement("li");
-      li.className = `alert-item ${a.level.toLowerCase()}`;
-      li.innerHTML = `<strong>${escapeHtml(a.id)} (${escapeHtml(a.level)})</strong><br>${escapeHtml(a.condition)}`;
-      alertList.appendChild(li);
-    });
+function findSheet(workbook, candidates) {
+  const names = workbook.SheetNames || [];
+  const normalized = names.map((name) => ({ name, lower: name.toLowerCase() }));
+  for (const c of candidates) {
+    const hit = normalized.find((item) => item.lower.includes(c));
+    if (hit) return hit.name;
   }
-
-  bars.innerHTML = "";
-  [...(model.dimensions || [])]
-    .sort((a, b) => (b.contribution || 0) - (a.contribution || 0))
-    .slice(0, 8)
-    .forEach((d) => {
-      const row = document.createElement("div");
-      row.className = "bar-row";
-      const width = Math.max(0, Math.min(100, Number(d.score) || 0));
-      row.innerHTML = `
-        <div class="bar-top"><span>${escapeHtml(d.name)}</span><span>${round(d.score, 1)}</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
-      `;
-      bars.appendChild(row);
-    });
-
-  drivers.innerHTML = "";
-  (model.drivers || []).forEach((d) => {
-    const card = document.createElement("article");
-    card.className = "driver-card";
-    card.innerHTML = `<h3>${escapeHtml(d.title)}</h3><p>${escapeHtml(d.text)}</p>`;
-    drivers.appendChild(card);
-  });
-
-  renderObjectTable("dimensions-table", model.tables?.dimensions || []);
-  renderObjectTable("inputs-table", model.tables?.inputs || []);
-  renderObjectTable("indicators-table", model.tables?.indicators || []);
-  renderObjectTable("scores-table", model.tables?.scores || []);
-  renderObjectTable("alerts-table", model.tables?.alerts || []);
-  renderWorkbookExplorer(model.workbook);
+  return null;
 }
 
-function renderWorkbookExplorer(workbookData) {
-  const tabsRoot = document.getElementById("sheet-tabs");
-  const tableRoot = document.getElementById("sheet-table");
-  if (!tabsRoot || !tableRoot) return;
+function keyByIncludes(row, includes) {
+  const keys = Object.keys(row || {});
+  for (const key of keys) {
+    const lower = key.toLowerCase();
+    if (includes.some((s) => lower.includes(s))) return key;
+  }
+  return null;
+}
 
-  const sheets = workbookData?.sheets || [];
-  tabsRoot.innerHTML = "";
-  if (!sheets.length) {
-    tableRoot.innerHTML = '<p class="table-empty">Upload or auto-load a workbook to explore all sheets.</p>';
+function cleanSheetRows(rows) {
+  const cleaned = (rows || []).map((row) => row.map((cell) => asText(cell)));
+  const nonEmpty = cleaned.filter((row) => row.some((cell) => cell !== ""));
+  if (!nonEmpty.length) return [];
+  const maxCols = nonEmpty.reduce((acc, row) => {
+    let right = 0;
+    for (let i = row.length - 1; i >= 0; i -= 1) {
+      if (row[i] !== "") {
+        right = i + 1;
+        break;
+      }
+    }
+    return Math.max(acc, right);
+  }, 0);
+  return nonEmpty.map((row) => row.slice(0, maxCols));
+}
+
+function inferStatus(score) {
+  if (score >= 75) return getLang() === "zh" ? "扩张偏热" : "Expansion Overheating";
+  if (score >= 60) return getLang() === "zh" ? "温和扩张" : "Moderate Expansion";
+  if (score >= 45) return getLang() === "zh" ? "中性偏脆弱" : "Neutral Fragile";
+  if (score >= 30) return getLang() === "zh" ? "防御区" : "Defensive";
+  return getLang() === "zh" ? "衰退/危机" : "Recession/Crisis";
+}
+
+function parseWorkbook(arrayBuffer) {
+  const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+  const sheetNames = {
+    dimensions: findSheet(workbook, ["dimensions", "维度"]),
+    indicators: findSheet(workbook, ["indicators", "指标"]),
+    inputs: findSheet(workbook, ["inputs", "输入"]),
+    scores: findSheet(workbook, ["scores", "分数"]),
+    alerts: findSheet(workbook, ["alerts", "预警"])
+  };
+
+  const tables = {
+    dimensions: sheetNames.dimensions ? XLSX.utils.sheet_to_json(workbook.Sheets[sheetNames.dimensions], { defval: "" }) : [],
+    indicators: sheetNames.indicators ? XLSX.utils.sheet_to_json(workbook.Sheets[sheetNames.indicators], { defval: "" }) : [],
+    inputs: sheetNames.inputs ? XLSX.utils.sheet_to_json(workbook.Sheets[sheetNames.inputs], { defval: "" }) : [],
+    scores: sheetNames.scores ? XLSX.utils.sheet_to_json(workbook.Sheets[sheetNames.scores], { defval: "" }) : [],
+    alerts: sheetNames.alerts ? XLSX.utils.sheet_to_json(workbook.Sheets[sheetNames.alerts], { defval: "" }) : []
+  };
+
+  const workbookSheets = (workbook.SheetNames || []).map((name) => {
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: "", raw: false, blankrows: false });
+    return { name, rows: cleanSheetRows(rows) };
+  });
+
+  let asOf = "";
+  tables.inputs.forEach((row) => {
+    if (asOf) return;
+    const values = Object.values(row).map(asText);
+    const dateLike = values.find((v) => /^\d{4}-\d{2}-\d{2}$/.test(v));
+    if (dateLike) asOf = dateLike;
+  });
+
+  const scoreRows = [];
+  tables.scores.forEach((row) => {
+    const nameKey = keyByIncludes(row, ["dimensionname", "dimension", "维度名称", "维度"]);
+    const scoreKey = keyByIncludes(row, ["dimscore", "score", "维度分"]);
+    const contribKey = keyByIncludes(row, ["weightedcontribution", "contribution", "贡献"]);
+    if (!nameKey || !scoreKey) return;
+
+    const name = asText(row[nameKey]);
+    const score = asNumber(row[scoreKey]);
+    if (!name || score === null) return;
+    scoreRows.push({ name, score, contribution: asNumber(row[contribKey]) ?? 0 });
+  });
+
+  const totalRow = scoreRows.find((r) => r.name.toLowerCase() === "total");
+  const dimensions = scoreRows.filter((r) => r.name.toLowerCase() !== "total").slice(0, 14);
+  const totalScore = totalRow ? totalRow.score : average(dimensions.map((d) => d.score));
+
+  const alerts = [];
+  tables.alerts.forEach((row) => {
+    const idKey = keyByIncludes(row, ["alertid", "id"]);
+    const levelKey = keyByIncludes(row, ["level", "等级"]);
+    const condKey = keyByIncludes(row, ["condition", "条件"]);
+    const triggerKey = keyByIncludes(row, ["triggered", "触发"]);
+
+    const id = asText(row[idKey]);
+    const level = asText(row[levelKey]).toUpperCase() || "YELLOW";
+    const condition = asText(row[condKey]);
+    const triggerRaw = asText(row[triggerKey]).toLowerCase();
+    if (!id || !condition) return;
+
+    const triggered = ["yes", "y", "true", "1", "触发"].includes(triggerRaw);
+    alerts.push({ id, level, condition, triggered });
+  });
+
+  const activeAlerts = alerts.filter((a) => a.triggered).length;
+  const drivers = buildDrivers(dimensions, activeAlerts, totalScore);
+
+  return {
+    asOf: asOf || new Date().toISOString().slice(0, 10),
+    totalScore: round(totalScore, 1),
+    status: inferStatus(totalScore),
+    alerts,
+    dimensions,
+    drivers,
+    tables,
+    workbook: { sheets: workbookSheets },
+    onlineCheck: []
+  };
+}
+
+function average(values) {
+  if (!values.length) return sampleModel.totalScore;
+  return values.reduce((acc, v) => acc + v, 0) / values.length;
+}
+
+function buildDrivers(dimensions, activeAlerts, totalScore) {
+  const ranked = [...dimensions].sort((a, b) => b.score - a.score);
+  const best = ranked[0];
+  const worst = ranked[ranked.length - 1];
+  const zh = getLang() === "zh";
+
+  return [
+    {
+      title: zh ? "主要支撑" : "Primary Support",
+      text: best
+        ? zh
+          ? `${best.name} 是当前最强维度（${round(best.score)}），对总分形成支撑。`
+          : `${best.name} is the strongest block (${round(best.score)}), supporting the composite.`
+        : zh
+          ? "领先维度对总分形成中性支撑。"
+          : "Leading dimensions are providing neutral support."
+    },
+    {
+      title: zh ? "主要拖累" : "Primary Drag",
+      text: worst
+        ? zh
+          ? `${worst.name} 是当前主要拖累项（${round(worst.score)}）。`
+          : `${worst.name} remains the key drag (${round(worst.score)}).`
+        : zh
+          ? "弱势维度仍限制风险偏好。"
+          : "Weaker dimensions still cap risk appetite."
+    },
+    {
+      title: zh ? "风险触发" : "Risk Trigger",
+      text: activeAlerts > 0
+        ? zh
+          ? `当前有 ${activeAlerts} 条预警触发，建议保持风控优先。`
+          : `${activeAlerts} alert(s) are triggered. Keep risk controls tight.`
+        : totalScore >= 60
+          ? zh
+            ? "当前无预警触发，策略可维持中性偏积极。"
+            : "No active alerts; tactical stance can remain neutral-positive."
+          : zh
+            ? "当前无预警触发，但总分仍偏弱，建议均衡配置。"
+            : "No active alerts, but score remains soft; keep positioning balanced."
+    }
+  ];
+}
+
+function objectRowsToColumns(rows) {
+  const cols = new Set();
+  (rows || []).forEach((row) => Object.keys(row || {}).forEach((k) => cols.add(k)));
+  return [...cols];
+}
+
+function renderObjectTable(targetId, rows) {
+  const root = document.getElementById(targetId);
+  if (!root) return;
+
+  const dataRows = Array.isArray(rows) ? rows : [];
+  const columns = objectRowsToColumns(dataRows);
+  if (!dataRows.length || !columns.length) {
+    root.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "暂无数据。" : "No data found."}</p>`;
     return;
   }
 
-  let activeIndex = 0;
+  const head = `<thead><tr>${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead>`;
+  const body = `<tbody>${dataRows
+    .map((row) => `<tr>${columns.map((c) => `<td>${escapeHtml(row[c])}</td>`).join("")}</tr>`)
+    .join("")}</tbody>`;
+  root.innerHTML = `<table class="data-table">${head}${body}</table>`;
+}
 
+function renderSheetTable(targetId, rows) {
+  const root = document.getElementById(targetId);
+  if (!root) return;
+
+  if (!rows || !rows.length) {
+    root.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "该工作表无数据。" : "No rows in this sheet."}</p>`;
+    return;
+  }
+
+  const maxCols = rows.reduce((m, row) => Math.max(m, row.length), 0);
+  const first = rows[0] || [];
+  const hasHeader = first.some((c) => asText(c));
+  const headers = Array.from({ length: maxCols }, (_, i) => asText(first[i]) || `Col ${i + 1}`);
+  const bodyRows = hasHeader ? rows.slice(1) : rows;
+
+  const head = `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
+  const body = `<tbody>${bodyRows
+    .map(
+      (row) =>
+        `<tr>${Array.from({ length: maxCols }, (_, i) => `<td>${escapeHtml(row[i])}</td>`).join("")}</tr>`
+    )
+    .join("")}</tbody>`;
+
+  root.innerHTML = `<table class="data-table">${head}${body}</table>`;
+}
+
+function renderWorkbookExplorer(workbook) {
+  const tabs = document.getElementById("sheet-tabs");
+  const table = document.getElementById("sheet-table");
+  if (!tabs || !table) return;
+
+  const sheets = workbook?.sheets || [];
+  tabs.innerHTML = "";
+  if (!sheets.length) {
+    table.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "请加载模型文件。" : "Load model file to view all sheets."}</p>`;
+    return;
+  }
+
+  let active = 0;
   const renderActive = () => {
-    const selected = sheets[activeIndex];
-    renderSheetTable("sheet-table", selected?.rows || []);
-    [...tabsRoot.querySelectorAll(".sheet-tab")].forEach((btn, idx) => {
-      btn.classList.toggle("active", idx === activeIndex);
-    });
+    renderSheetTable("sheet-table", sheets[active]?.rows || []);
+    tabs.querySelectorAll(".sheet-tab").forEach((button, idx) => button.classList.toggle("active", idx === active));
   };
 
   sheets.forEach((sheet, idx) => {
@@ -440,93 +554,370 @@ function renderWorkbookExplorer(workbookData) {
     btn.className = "sheet-tab";
     btn.textContent = `${sheet.name} (${sheet.rows.length})`;
     btn.addEventListener("click", () => {
-      activeIndex = idx;
+      active = idx;
       renderActive();
     });
-    tabsRoot.appendChild(btn);
+    tabs.appendChild(btn);
   });
 
   renderActive();
 }
 
-function dailyReportKey(dateStr) {
-  return `${REPORT_PREFIX}${dateStr}`;
+function renderDimensionCards(rows) {
+  const root = document.getElementById("dimension-cards");
+  if (!root) return;
+
+  const list = (rows || []).slice(0, 14);
+  if (!list.length) {
+    root.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "Dimensions 表暂无数据。" : "No Dimensions data found."}</p>`;
+    return;
+  }
+
+  const zh = getLang() === "zh";
+  root.innerHTML = "";
+  list.forEach((row) => {
+    const id = findValue(row, ["dimensionid", "维度id", "id"]);
+    const name = findValue(row, ["dimensionname", "维度名称", "维度"]);
+    const tier = findValue(row, ["tier", "层级"]);
+    const weight = findValue(row, ["weight", "%", "权重"]);
+    const definition = findValue(row, ["definition", "说明", "定义"]) || "";
+    const update = findValue(row, ["typical update", "frequency", "更新"]);
+
+    const card = document.createElement("article");
+    card.className = "dimension-card";
+    card.innerHTML = `
+      <h3>${escapeHtml(id)} ${escapeHtml(name)}</h3>
+      <div class="dim-row">
+        <span class="dim-chip">${zh ? "层级" : "Tier"}: ${escapeHtml(tier)}</span>
+        <span class="dim-chip">${zh ? "权重" : "Weight"}: ${escapeHtml(weight)}</span>
+        <span class="dim-chip">${zh ? "更新频率" : "Update"}: ${escapeHtml(update)}</span>
+      </div>
+      <p>${escapeHtml(definition)}</p>
+    `;
+    root.appendChild(card);
+  });
 }
 
-function generateDailyText(model, reportDate) {
+function findValue(row, patterns) {
+  const key = Object.keys(row || {}).find((k) => patterns.some((p) => k.toLowerCase().includes(p)));
+  return key ? asText(row[key]) : "";
+}
+
+function renderDashboard(model) {
+  const score = document.getElementById("total-score");
+  const asOf = document.getElementById("as-of");
+  const status = document.getElementById("macro-status");
+  const alertList = document.getElementById("alert-list");
+  const bars = document.getElementById("dimension-bars");
+  const drivers = document.getElementById("drivers");
+  if (!score) return;
+
+  score.textContent = round(model.totalScore, 1).toFixed(1);
+  asOf.textContent = model.asOf;
+  status.textContent = model.status;
+
+  const active = (model.alerts || []).filter((a) => a.triggered);
+  alertList.innerHTML = "";
+  if (!active.length) {
+    const li = document.createElement("li");
+    li.className = "alert-item none";
+    li.textContent = getLang() === "zh" ? "当前无触发预警。" : "No active alerts.";
+    alertList.appendChild(li);
+  } else {
+    active.forEach((alert) => {
+      const li = document.createElement("li");
+      li.className = `alert-item ${alert.level.toLowerCase()}`;
+      li.innerHTML = `<strong>${escapeHtml(alert.id)} (${escapeHtml(alert.level)})</strong><br>${escapeHtml(alert.condition)}`;
+      alertList.appendChild(li);
+    });
+  }
+
+  bars.innerHTML = "";
+  [...(model.dimensions || [])]
+    .sort((a, b) => (b.contribution || 0) - (a.contribution || 0))
+    .forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "bar-row";
+      const width = Math.max(0, Math.min(100, Number(item.score) || 0));
+      row.innerHTML = `
+        <div class="bar-top"><span>${escapeHtml(item.name)}</span><span>${round(item.score, 1)}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+      `;
+      bars.appendChild(row);
+    });
+
+  drivers.innerHTML = "";
+  (model.drivers || []).forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "driver-card";
+    card.innerHTML = `<h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.text)}</p>`;
+    drivers.appendChild(card);
+  });
+
+  renderDimensionCards(model.tables?.dimensions || []);
+  renderObjectTable("dimensions-table", model.tables?.dimensions || []);
+  renderObjectTable("inputs-table", model.tables?.inputs || []);
+  renderObjectTable("indicators-table", model.tables?.indicators || []);
+  renderObjectTable("scores-table", model.tables?.scores || []);
+  renderObjectTable("alerts-table", model.tables?.alerts || []);
+  renderWorkbookExplorer(model.workbook || {});
+}
+
+function getReportDateFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const d = params.get("date");
+  return /^\d{4}-\d{2}-\d{2}$/.test(asText(d)) ? d : new Date().toISOString().slice(0, 10);
+}
+
+function updateUrlDate(date) {
+  const params = new URLSearchParams(window.location.search);
+  params.set("date", date);
+  const query = params.toString();
+  const next = `${window.location.pathname}${query ? `?${query}` : ""}`;
+  history.replaceState({}, "", next);
+}
+
+function generateDailyText(model, date, onlineSummary) {
   const top = [...(model.dimensions || [])].sort((a, b) => b.score - a.score).slice(0, 3);
   const bottom = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 3);
-  const activeAlerts = (model.alerts || []).filter((a) => a.triggered);
+  const active = (model.alerts || []).filter((a) => a.triggered);
+  const zh = getLang() === "zh";
 
-  return [
-    `Macro Monitoring Daily Report`,
-    `Date: ${reportDate}`,
-    `Model As-Of: ${model.asOf}`,
-    `Composite Score: ${round(model.totalScore, 1)} (${model.status})`,
-    ``,
-    `Executive Summary`,
-    `- The system remains in ${model.status.toLowerCase()} regime with a total score of ${round(model.totalScore, 1)}.`,
-    `- ${activeAlerts.length} alert(s) are triggered under current threshold settings.`,
-    `- Tactical focus: ${activeAlerts.length > 1 ? "risk mitigation and hedging discipline" : "selective risk with strict monitoring"}.`,
-    ``,
-    `Top Supporting Dimensions`,
-    ...top.map((x) => `- ${x.name}: ${round(x.score, 1)}`),
-    ``,
-    `Top Dragging Dimensions`,
-    ...bottom.map((x) => `- ${x.name}: ${round(x.score, 1)}`),
-    ``,
-    `Alert Watchlist`,
-    ...(activeAlerts.length
-      ? activeAlerts.map((a) => `- ${a.id} (${a.level}): ${a.condition}`)
-      : ["- No active alerts today."]),
-    ``,
-    `Action Framework`,
-    `- Strategic: Use the total score trend (5-day / 20-day) to calibrate macro stance.`,
-    `- Tactical: Treat RED alerts as immediate de-risk signals and YELLOW alerts as caution signals.`,
-    `- Data: Refresh Inputs sheet daily; verify source timestamps before publishing.`,
-    ``
-  ].join("\n");
+  const lines = [
+    zh ? "宏观监控每日报告" : "Macro Monitoring Daily Report",
+    `${zh ? "报告日期" : "Date"}: ${date}`,
+    `${zh ? "模型更新日" : "Model As-Of"}: ${model.asOf}`,
+    `${zh ? "综合得分" : "Composite Score"}: ${round(model.totalScore, 1)} (${model.status})`,
+    "",
+    zh ? "执行摘要" : "Executive Summary",
+    zh
+      ? `- 当前模型处于“${model.status}”状态，总分 ${round(model.totalScore, 1)}。`
+      : `- Current regime: ${model.status} with total score ${round(model.totalScore, 1)}.`,
+    zh
+      ? `- 当前触发预警 ${active.length} 条。`
+      : `- ${active.length} alert(s) are currently triggered.`
+  ];
+
+  if (onlineSummary) {
+    lines.push(
+      zh
+        ? `- 在线数据校验：检查 ${onlineSummary.checked} 项，更新 ${onlineSummary.updated} 项，失败 ${onlineSummary.failed} 项。`
+        : `- Online data check: checked ${onlineSummary.checked}, updated ${onlineSummary.updated}, failed ${onlineSummary.failed}.`
+    );
+  }
+
+  lines.push("", zh ? "主要支撑维度" : "Top Supporting Dimensions");
+  top.forEach((item) => lines.push(`- ${item.name}: ${round(item.score, 1)}`));
+
+  lines.push("", zh ? "主要拖累维度" : "Top Dragging Dimensions");
+  bottom.forEach((item) => lines.push(`- ${item.name}: ${round(item.score, 1)}`));
+
+  lines.push("", zh ? "预警清单" : "Alert Watchlist");
+  if (!active.length) {
+    lines.push(zh ? "- 今日无触发预警。" : "- No active alerts today.");
+  } else {
+    active.forEach((a) => lines.push(`- ${a.id} (${a.level}): ${a.condition}`));
+  }
+
+  lines.push("", zh ? "详细指标分数请见页面下方表格。" : "See the detailed indicator score table below on this page.");
+  return lines.join("\n");
 }
 
-function renderDailyReport(model) {
-  const today = new Date().toISOString().slice(0, 10);
+function extractSingleSeriesCode(raw) {
+  const text = asText(raw);
+  if (!text) return "";
+  const match = text.match(/\b[A-Z][A-Z0-9_]{1,20}\b/);
+  return match ? match[0] : "";
+}
+
+async function fetchFredLatestValue(seriesCode) {
+  const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(seriesCode)}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const csv = await response.text();
+  const lines = csv.split(/\r?\n/).slice(1).filter(Boolean);
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const [date, value] = lines[i].split(",");
+    if (value && value !== ".") return { date, value: Number(value) };
+  }
+  throw new Error("No valid value");
+}
+
+function findInputRowByCode(inputs, code) {
+  const codeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
+  if (!codeKey) return null;
+  return inputs.find((row) => asText(row[codeKey]) === code) || null;
+}
+
+async function runOnlineDataCheck(model) {
+  const indicators = model.tables?.indicators || [];
+  const inputs = model.tables?.inputs || [];
+  const results = [];
+
+  const sourceKey = indicators.length ? keyByIncludes(indicators[0], ["sourceurl", "source", "数据源"]) : null;
+  const seriesKey = indicators.length ? keyByIncludes(indicators[0], ["series/code", "series", "code", "建议系列"]) : null;
+  const indCodeKey = indicators.length ? keyByIncludes(indicators[0], ["indicatorcode", "code"]) : null;
+  const valueKey = inputs.length ? keyByIncludes(inputs[0], ["latestvalue", "value", "值"]) : null;
+  const valueDateKey = inputs.length ? keyByIncludes(inputs[0], ["valuedate", "date", "日期"]) : null;
+
+  let checked = 0;
+  let updated = 0;
+  let failed = 0;
+
+  for (const row of indicators.slice(0, 60)) {
+    const source = asText(row[sourceKey]).toLowerCase();
+    const code = extractSingleSeriesCode(row[seriesKey]);
+    const indicatorCode = asText(row[indCodeKey]) || code;
+    if (!code) continue;
+
+    const shouldCheck = source.includes("fred") || /^([A-Z]{2,}|[A-Z0-9_]+)$/.test(code);
+    if (!shouldCheck) continue;
+
+    checked += 1;
+    try {
+      const latest = await fetchFredLatestValue(code);
+      const inputRow = findInputRowByCode(inputs, indicatorCode) || findInputRowByCode(inputs, code);
+      let changed = false;
+
+      if (inputRow && valueKey) {
+        const oldValue = asNumber(inputRow[valueKey]);
+        if (oldValue === null || Math.abs(oldValue - latest.value) > 1e-9) {
+          inputRow[valueKey] = round(latest.value, 4);
+          changed = true;
+        }
+      }
+      if (inputRow && valueDateKey) inputRow[valueDateKey] = latest.date;
+      if (changed) updated += 1;
+
+      results.push({ indicator: indicatorCode, source: "FRED", series: code, status: changed ? "UPDATED" : "UNCHANGED", latestDate: latest.date, latestValue: latest.value });
+    } catch (err) {
+      failed += 1;
+      results.push({ indicator: indicatorCode, source: "FRED", series: code, status: "FAILED", latestDate: "", latestValue: "", error: asText(err.message) });
+    }
+  }
+
+  const checkedAt = new Date().toISOString();
+  await dbPut("checks", { id: checkedAt, checkedAt, results });
+
+  return {
+    checked,
+    updated,
+    failed,
+    checkedAt,
+    results,
+    model: {
+      ...model,
+      tables: {
+        ...model.tables,
+        inputs
+      },
+      onlineCheck: results
+    }
+  };
+}
+
+function renderReportLinks(reports) {
+  const root = document.getElementById("report-links");
+  if (!root) return;
+
+  if (!reports.length) {
+    root.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "暂无已保存报告。" : "No saved reports yet."}</p>`;
+    return;
+  }
+
+  root.innerHTML = "";
+  reports.forEach((report) => {
+    const link = document.createElement("a");
+    link.className = "report-link";
+    link.href = `daily-report.html?date=${report.date}`;
+    const score = report.meta?.score ? ` | Score ${report.meta.score}` : "";
+    link.textContent = `${report.date}${score}`;
+    root.appendChild(link);
+  });
+}
+
+function renderOnlineCheckTable(rows) {
+  const mapped = (rows || []).map((row) => ({
+    Indicator: row.indicator,
+    Source: row.source,
+    Series: row.series,
+    Status: row.status,
+    LatestDate: row.latestDate,
+    LatestValue: row.latestValue,
+    Error: row.error || ""
+  }));
+  renderObjectTable("online-check-table", mapped);
+}
+
+async function renderDailyReport(model) {
+  const date = getReportDateFromUrl();
+  updateUrlDate(date);
+
   const scoreEl = document.getElementById("report-score");
   const dateEl = document.getElementById("report-date");
   const statusEl = document.getElementById("report-status");
   const editor = document.getElementById("report-editor");
   const saveStatus = document.getElementById("save-status");
   const regenBtn = document.getElementById("generate-report");
+  const finalBtn = document.getElementById("finalize-report");
   const saveBtn = document.getElementById("save-report");
-  const dlBtn = document.getElementById("download-report");
+  const downloadBtn = document.getElementById("download-report");
+  const runCheckBox = document.getElementById("run-online-check");
 
   if (!editor) return;
 
   scoreEl.textContent = round(model.totalScore, 1).toFixed(1);
-  dateEl.textContent = today;
+  dateEl.textContent = date;
   statusEl.textContent = model.status;
 
-  const existing = localStorage.getItem(dailyReportKey(today));
-  editor.value = existing || generateDailyText(model, today);
+  const existing = await loadReport(date);
+  const initial = existing?.text || generateDailyText(model, date, null);
+  editor.value = initial;
+
+  renderObjectTable("daily-scores-table", model.tables?.scores || []);
+  renderOnlineCheckTable(model.onlineCheck || []);
+  renderReportLinks(await listReports());
 
   regenBtn?.addEventListener("click", () => {
-    editor.value = generateDailyText(model, today);
-    saveStatus.textContent = "Draft regenerated.";
+    editor.value = generateDailyText(model, date, null);
+    saveStatus.textContent = getLang() === "zh" ? "草稿已重新生成。" : "Draft regenerated.";
   });
 
-  saveBtn?.addEventListener("click", () => {
-    localStorage.setItem(dailyReportKey(today), editor.value);
-    saveStatus.textContent = `Saved at ${new Date().toLocaleTimeString()}`;
+  finalBtn?.addEventListener("click", async () => {
+    let targetModel = model;
+    let summary = null;
+
+    if (runCheckBox?.checked) {
+      saveStatus.textContent = getLang() === "zh" ? "正在执行在线数据校验..." : "Running online data check...";
+      const checked = await runOnlineDataCheck(targetModel);
+      targetModel = checked.model;
+      summary = { checked: checked.checked, updated: checked.updated, failed: checked.failed };
+      await saveCurrentModel(targetModel);
+      renderOnlineCheckTable(checked.results);
+      renderObjectTable("daily-scores-table", targetModel.tables?.scores || []);
+    }
+
+    editor.value = generateDailyText(targetModel, date, summary);
+    await saveReport(date, editor.value, { score: round(targetModel.totalScore, 1), status: targetModel.status });
+    renderReportLinks(await listReports());
+    saveStatus.textContent = getLang() === "zh" ? "最终报告已生成并保存。" : "Final report generated and saved.";
   });
 
-  dlBtn?.addEventListener("click", () => {
+  saveBtn?.addEventListener("click", async () => {
+    await saveReport(date, editor.value, { score: round(model.totalScore, 1), status: model.status });
+    renderReportLinks(await listReports());
+    saveStatus.textContent = getLang() === "zh" ? "已保存。" : "Saved.";
+  });
+
+  downloadBtn?.addEventListener("click", () => {
     const blob = new Blob([editor.value], { type: "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `macro-daily-report-${today}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(a.href);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `macro-daily-report-${date}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(link.href);
   });
 }
 
@@ -534,79 +925,100 @@ function renderGlossary() {
   const root = document.getElementById("glossary-grid");
   if (!root) return;
 
+  const lang = getLang();
+  root.innerHTML = "";
   glossaryTerms.forEach((item) => {
     const card = document.createElement("article");
     card.className = "glossary-card";
-    card.innerHTML = `<h3>${escapeHtml(item.term)}</h3><p>${escapeHtml(item.desc)}</p>`;
+    card.innerHTML = `<h3>${escapeHtml(item[lang].term)}</h3><p>${escapeHtml(item[lang].desc)}</p>`;
     root.appendChild(card);
   });
 }
 
+function renderIndicatorsPage(model) {
+  renderObjectTable("indicators-page-table", model.tables?.indicators || []);
+}
+
 async function loadDefaultWorkbook() {
   const response = await fetch(DEFAULT_MODEL_FILE, { cache: "no-cache" });
-  if (!response.ok) {
-    throw new Error(`Cannot load ${DEFAULT_MODEL_FILE}`);
-  }
+  if (!response.ok) throw new Error(`Unable to fetch ${DEFAULT_MODEL_FILE}`);
   return response.arrayBuffer();
 }
 
-function setupUpload(onModelLoaded) {
+function setupUpload(onLoaded) {
   const input = document.getElementById("xlsx-input");
-  const fileStatus = document.getElementById("file-status");
+  const status = document.getElementById("file-status");
   if (!input) return;
 
-  input.addEventListener("change", async (e) => {
-    const [file] = e.target.files || [];
+  input.addEventListener("change", async (event) => {
+    const [file] = event.target.files || [];
     if (!file) return;
 
     try {
-      const buf = await file.arrayBuffer();
-      const model = parseWorkbook(buf);
-      saveModel(model);
-      fileStatus.textContent = `Loaded: ${file.name}`;
-      onModelLoaded(model);
-    } catch (err) {
-      console.error(err);
-      fileStatus.textContent = "Failed to parse file. Keep existing data or try another .xlsx file.";
+      const buffer = await file.arrayBuffer();
+      const model = parseWorkbook(buffer);
+      await saveCurrentModel(model);
+      if (status) status.textContent = `Loaded: ${file.name}`;
+      onLoaded(model);
+    } catch {
+      if (status) status.textContent = getLang() === "zh" ? "文件解析失败，请重试。" : "Failed to parse file.";
     }
   });
 }
 
 async function initDashboard() {
-  const fileStatus = document.getElementById("file-status");
-  let model = loadModel();
+  const status = document.getElementById("file-status");
+  let model = await loadCurrentModel();
   renderDashboard(model);
 
   try {
-    const buf = await loadDefaultWorkbook();
-    model = parseWorkbook(buf);
-    saveModel(model);
+    const buffer = await loadDefaultWorkbook();
+    model = parseWorkbook(buffer);
+    await saveCurrentModel(model);
     renderDashboard(model);
-    if (fileStatus) fileStatus.textContent = "Auto-loaded: model.xlsx";
-  } catch (err) {
-    if (fileStatus) fileStatus.textContent = "Using saved/sample data. Upload workbook to refresh.";
+    if (status) status.textContent = "Auto-loaded: model.xlsx";
+  } catch {
+    if (status) status.textContent = getLang() === "zh" ? "使用本地缓存/样例数据。" : "Using saved/sample data.";
   }
 
-  setupUpload((nextModel) => {
-    renderDashboard(nextModel);
+  setupUpload((next) => {
+    renderDashboard(next);
   });
 }
 
-function init() {
+async function ensureModelData(model) {
+  const hasData = (model?.tables?.dimensions || []).length || (model?.tables?.indicators || []).length;
+  if (hasData) return model;
+
+  try {
+    const buffer = await loadDefaultWorkbook();
+    const parsed = parseWorkbook(buffer);
+    await saveCurrentModel(parsed);
+    return parsed;
+  } catch {
+    return model;
+  }
+}
+
+async function init() {
+  setLang(getLang());
+  applyI18n();
+
   const page = document.body.dataset.page;
-  const model = loadModel();
+  const model = await ensureModelData(await loadCurrentModel());
 
-  if (page === "dashboard") {
-    initDashboard();
-  }
+  setupLangToggle(async () => {
+    const currentModel = await loadCurrentModel();
+    if (page === "dashboard") renderDashboard(currentModel);
+    if (page === "daily-report") renderDailyReport(currentModel);
+    if (page === "indicators") renderIndicatorsPage(currentModel);
+    if (page === "glossary") renderGlossary();
+  });
 
-  if (page === "daily-report") {
-    renderDailyReport(model);
-  }
-
-  if (page === "glossary") {
-    renderGlossary();
-  }
+  if (page === "dashboard") await initDashboard();
+  if (page === "daily-report") await renderDailyReport(model);
+  if (page === "indicators") renderIndicatorsPage(model);
+  if (page === "glossary") renderGlossary();
 }
 
 document.addEventListener("DOMContentLoaded", init);
