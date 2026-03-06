@@ -1,0 +1,2142 @@
+{
+  "asOf": "2026-03-07",
+  "totalScore": 68.32,
+  "status": "温和扩张",
+  "alerts": [
+    {
+      "id": "A01",
+      "level": "RED",
+      "condition": "VIX > 30",
+      "triggered": false
+    },
+    {
+      "id": "A02",
+      "level": "RED",
+      "condition": "MOVE > 140",
+      "triggered": false
+    },
+    {
+      "id": "A03",
+      "level": "YELLOW",
+      "condition": "HY OAS > 600bps",
+      "triggered": false
+    },
+    {
+      "id": "A04",
+      "level": "YELLOW",
+      "condition": "10Y-3M < -50bps",
+      "triggered": false
+    },
+    {
+      "id": "A05",
+      "level": "YELLOW",
+      "condition": "失业率 > 6%",
+      "triggered": false
+    },
+    {
+      "id": "A06",
+      "level": "YELLOW",
+      "condition": "核心PCE > 3.5%",
+      "triggered": false
+    },
+    {
+      "id": "A07",
+      "level": "YELLOW",
+      "condition": "WTI > 100",
+      "triggered": false
+    }
+  ],
+  "dimensions": [
+    {
+      "name": "货币政策与流动性",
+      "score": 48.94,
+      "contribution": 5.8725,
+      "id": "D01"
+    },
+    {
+      "name": "增长与前瞻",
+      "score": 66.41,
+      "contribution": 7.3051,
+      "id": "D02"
+    },
+    {
+      "name": "通胀与价格压力",
+      "score": 87.51,
+      "contribution": 8.751,
+      "id": "D03"
+    },
+    {
+      "name": "就业与居民部门",
+      "score": 83.94,
+      "contribution": 8.3938,
+      "id": "D04"
+    },
+    {
+      "name": "企业盈利与信用",
+      "score": 57.63,
+      "contribution": 4.6107,
+      "id": "D05"
+    },
+    {
+      "name": "房地产与利率敏感部门",
+      "score": 43.33,
+      "contribution": 2.5995,
+      "id": "D06"
+    },
+    {
+      "name": "风险偏好与跨资产波动",
+      "score": 81.07,
+      "contribution": 4.8645,
+      "id": "D07"
+    },
+    {
+      "name": "外部部门与美元条件",
+      "score": 55.9,
+      "contribution": 3.913,
+      "id": "D08"
+    },
+    {
+      "name": "财政政策与债务约束",
+      "score": 48.54,
+      "contribution": 3.8835,
+      "id": "D09"
+    },
+    {
+      "name": "金融条件与信用传导",
+      "score": 91.31,
+      "contribution": 5.4784,
+      "id": "D10"
+    },
+    {
+      "name": "大宗商品与能源/地缘风险",
+      "score": 93.82,
+      "contribution": 4.6912,
+      "id": "D11"
+    },
+    {
+      "name": "信心与不确定性",
+      "score": 61.95,
+      "contribution": 3.7167,
+      "id": "D12"
+    },
+    {
+      "name": "AI资本开支周期（主题）",
+      "score": 92.86,
+      "contribution": 3.7143,
+      "id": "D13"
+    },
+    {
+      "name": "加密与稳定币流动性（主题）",
+      "score": 52.57,
+      "contribution": 0.5257,
+      "id": "D14"
+    }
+  ],
+  "drivers": [
+    {
+      "title": "Primary Support",
+      "text": "大宗商品与能源/地缘风险 is the strongest block (93.82)."
+    },
+    {
+      "title": "Primary Drag",
+      "text": "房地产与利率敏感部门 is the key drag (43.33)."
+    },
+    {
+      "title": "Risk Trigger",
+      "text": "0 alert(s) currently triggered."
+    }
+  ],
+  "keyWatch": [
+    {
+      "label": "YC_10Y3M",
+      "value": 38.0
+    },
+    {
+      "label": "VIX",
+      "value": 23.75
+    },
+    {
+      "label": "HY_OAS",
+      "value": 300.0
+    },
+    {
+      "label": "CORE_CPI_YOY",
+      "value": 2.9493
+    },
+    {
+      "label": "UNRATE",
+      "value": 4.4
+    },
+    {
+      "label": "WTI",
+      "value": 71.13
+    },
+    {
+      "label": "BTC",
+      "value": 67959.0
+    }
+  ],
+  "latestReportSummary": "Macro model updated on 2026-03-07. Public-source updater refreshed 25 indicators; 20 indicators still require manual/proprietary updates. Composite score: 68.32 (温和扩张).",
+  "tables": {
+    "dimensions": [
+      {
+        "DimensionID": "D01",
+        "DimensionName": "货币政策与流动性",
+        "Tier": "Core Macro",
+        "Weight(%)": 12,
+        "Definition": "利率曲线、短端资金利率、央行资产负债表与净流动性。",
+        "Typical Update": "Daily/Weekly"
+      },
+      {
+        "DimensionID": "D02",
+        "DimensionName": "增长与前瞻",
+        "Tier": "Core Macro",
+        "Weight(%)": 11,
+        "Definition": "GDP/PMI/订单/初请等前瞻增长信号。",
+        "Typical Update": "Weekly/Monthly/Quarterly"
+      },
+      {
+        "DimensionID": "D03",
+        "DimensionName": "通胀与价格压力",
+        "Tier": "Core Macro",
+        "Weight(%)": 10,
+        "Definition": "核心通胀与通胀预期，判断政策约束与利润压力。",
+        "Typical Update": "Monthly"
+      },
+      {
+        "DimensionID": "D04",
+        "DimensionName": "就业与居民部门",
+        "Tier": "Core Macro",
+        "Weight(%)": 10,
+        "Definition": "就业、收入与居民信用压力。",
+        "Typical Update": "Monthly/Quarterly"
+      },
+      {
+        "DimensionID": "D05",
+        "DimensionName": "企业盈利与信用",
+        "Tier": "Core Macro",
+        "Weight(%)": 8,
+        "Definition": "盈利预期修正与信用利差/违约压力。",
+        "Typical Update": "Daily/Weekly/Monthly"
+      },
+      {
+        "DimensionID": "D06",
+        "DimensionName": "房地产与利率敏感部门",
+        "Tier": "Core Macro",
+        "Weight(%)": 6,
+        "Definition": "按揭利率、成交与开工，反映利率传导。",
+        "Typical Update": "Weekly/Monthly"
+      },
+      {
+        "DimensionID": "D07",
+        "DimensionName": "风险偏好与跨资产波动",
+        "Tier": "Market Mapping",
+        "Weight(%)": 6,
+        "Definition": "VIX/MOVE/信用利差等市场风险映射。",
+        "Typical Update": "Daily/Weekly"
+      },
+      {
+        "DimensionID": "D08",
+        "DimensionName": "外部部门与美元条件",
+        "Tier": "Policy & External",
+        "Weight(%)": 7,
+        "Definition": "DXY/利差/资本流动等外部融资条件。",
+        "Typical Update": "Daily/Monthly"
+      },
+      {
+        "DimensionID": "D09",
+        "DimensionName": "财政政策与债务约束",
+        "Tier": "Policy & External",
+        "Weight(%)": 8,
+        "Definition": "赤字、利息负担与债务路径。",
+        "Typical Update": "Quarterly/Annual"
+      },
+      {
+        "DimensionID": "D10",
+        "DimensionName": "金融条件与信用传导",
+        "Tier": "Core Macro",
+        "Weight(%)": 6,
+        "Definition": "金融条件指数、银行信贷供给与资金面压力。",
+        "Typical Update": "Weekly/Monthly"
+      },
+      {
+        "DimensionID": "D11",
+        "DimensionName": "大宗商品与能源/地缘风险",
+        "Tier": "External/Commodities",
+        "Weight(%)": 5,
+        "Definition": "油价/商品与地缘风险对通胀与增长的冲击。",
+        "Typical Update": "Daily/Monthly"
+      },
+      {
+        "DimensionID": "D12",
+        "DimensionName": "信心与不确定性",
+        "Tier": "Soft Data",
+        "Weight(%)": 6,
+        "Definition": "消费者/企业信心与政策不确定性。",
+        "Typical Update": "Monthly/Quarterly"
+      },
+      {
+        "DimensionID": "D13",
+        "DimensionName": "AI资本开支周期（主题）",
+        "Tier": "Theme Panel",
+        "Weight(%)": 4,
+        "Definition": "云与AI资本开支/营收动能（不应喧宾夺主）。",
+        "Typical Update": "Quarterly"
+      },
+      {
+        "DimensionID": "D14",
+        "DimensionName": "加密与稳定币流动性（主题）",
+        "Tier": "Theme Panel",
+        "Weight(%)": 1,
+        "Definition": "稳定币与链上流动性（低权重主题观察）。",
+        "Typical Update": "Daily/Weekly"
+      }
+    ],
+    "indicators": [
+      {
+        "IndicatorCode": "YC_10Y3M",
+        "DimensionID": "D01",
+        "IndicatorName": "10Y-3M利差（bps）",
+        "Units": "bps",
+        "Frequency": "Daily",
+        "Source": "FRED (H.15)",
+        "SourceURL": "https://fred.stlouisfed.org/series/DGS10",
+        "Series/Code": "DGS10 & DGS3MO",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 150,
+        "Worst": -200,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.4,
+        "Notes": "在 Scores 表用(10Y-3M)输入；建议直接填利差值。"
+      },
+      {
+        "IndicatorCode": "SOFR",
+        "DimensionID": "D01",
+        "IndicatorName": "SOFR（%）",
+        "Units": "%",
+        "Frequency": "Daily",
+        "Source": "NY Fed / FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/SOFR",
+        "Series/Code": "SOFR",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 0.5,
+        "Worst": 7,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": 0,
+        "CapHigh": 15,
+        "WeightWithinDim": 0.25,
+        "Notes": "可替换为EFFR或短端实际利率。"
+      },
+      {
+        "IndicatorCode": "FED_ASSETS",
+        "DimensionID": "D01",
+        "IndicatorName": "美联储总资产（$T）",
+        "Units": "$T",
+        "Frequency": "Weekly",
+        "Source": "FRED (H.4.1)",
+        "SourceURL": "https://fred.stlouisfed.org/series/WALCL",
+        "Series/Code": "WALCL",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 5,
+        "Worst": 9,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.15,
+        "Notes": "用于衡量QE/QT方向；也可改为YoY变化。"
+      },
+      {
+        "IndicatorCode": "NET_LIQ_PROXY",
+        "DimensionID": "D01",
+        "IndicatorName": "净流动性代理（自定义）",
+        "Units": "index",
+        "Frequency": "Weekly",
+        "Source": "User Calc",
+        "SourceURL": "(填你的来源或模型)",
+        "Series/Code": "N/A",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 1,
+        "Worst": -1,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.2,
+        "Notes": "建议：Fed资产- TGA - RRP（需你定义并填值）。"
+      },
+      {
+        "IndicatorCode": "GDP_QOQ_SAAR",
+        "DimensionID": "D02",
+        "IndicatorName": "实际GDP环比折年（%）",
+        "Units": "%",
+        "Frequency": "Quarterly",
+        "Source": "BEA",
+        "SourceURL": "https://www.bea.gov/",
+        "Series/Code": "GDP",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": -2,
+        "TargetLow": 1.5,
+        "TargetHigh": 3,
+        "WorstHigh": 5,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.3,
+        "Notes": "区间内更理想；衰退/过热都扣分。"
+      },
+      {
+        "IndicatorCode": "PMI_MAN",
+        "DimensionID": "D02",
+        "IndicatorName": "制造业PMI",
+        "Units": "index",
+        "Frequency": "Monthly",
+        "Source": "ISM/S&P",
+        "SourceURL": "(填你使用的PMI来源)",
+        "Series/Code": "PMI",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": 45,
+        "TargetLow": 50,
+        "TargetHigh": 55,
+        "WorstHigh": 60,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.25,
+        "Notes": ">=50扩张；过热也可能引发通胀/政策收紧。"
+      },
+      {
+        "IndicatorCode": "CLAIMS_4WMA",
+        "DimensionID": "D02",
+        "IndicatorName": "初请失业金四周均值",
+        "Units": "k",
+        "Frequency": "Weekly",
+        "Source": "FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/IC4WSA",
+        "Series/Code": "IC4WSA",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 180,
+        "Worst": 400,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.25,
+        "Notes": "越低越好。"
+      },
+      {
+        "IndicatorCode": "LEI",
+        "DimensionID": "D02",
+        "IndicatorName": "领先指标（LEI）同比（%）",
+        "Units": "%",
+        "Frequency": "Monthly",
+        "Source": "Conference Board",
+        "SourceURL": "https://www.conference-board.org/",
+        "Series/Code": "LEI YoY",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 5,
+        "Worst": -10,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.2,
+        "Notes": "需要你接入LEI数据。"
+      },
+      {
+        "IndicatorCode": "CORE_CPI_YOY",
+        "DimensionID": "D03",
+        "IndicatorName": "核心CPI同比（%）",
+        "Units": "%",
+        "Frequency": "Monthly",
+        "Source": "BLS/FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/CPILFESL",
+        "Series/Code": "CPILFESL",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": 0.5,
+        "TargetLow": 2,
+        "TargetHigh": 2.7,
+        "WorstHigh": 5,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "目标区间可按你的政策偏好调整。"
+      },
+      {
+        "IndicatorCode": "CORE_PCE_YOY",
+        "DimensionID": "D03",
+        "IndicatorName": "核心PCE同比（%）",
+        "Units": "%",
+        "Frequency": "Monthly",
+        "Source": "BEA/FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/PCEPILFE",
+        "Series/Code": "PCEPILFE",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": 0.5,
+        "TargetLow": 1.8,
+        "TargetHigh": 2.5,
+        "WorstHigh": 4.5,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "更贴近美联储目标。"
+      },
+      {
+        "IndicatorCode": "BREAKEVEN_5Y5Y",
+        "DimensionID": "D03",
+        "IndicatorName": "5Y5Y通胀预期（%）",
+        "Units": "%",
+        "Frequency": "Daily",
+        "Source": "FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/T5YIFR",
+        "Series/Code": "T5YIFR",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": 0.5,
+        "TargetLow": 2,
+        "TargetHigh": 2.6,
+        "WorstHigh": 3.5,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.3,
+        "Notes": "也可用10Y BEI等。"
+      },
+      {
+        "IndicatorCode": "UNRATE",
+        "DimensionID": "D04",
+        "IndicatorName": "失业率（%）",
+        "Units": "%",
+        "Frequency": "Monthly",
+        "Source": "BLS/FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/UNRATE",
+        "Series/Code": "UNRATE",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": 2.5,
+        "TargetLow": 3.5,
+        "TargetHigh": 4.5,
+        "WorstHigh": 7,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "过低可能偏热；过高是衰退信号。"
+      },
+      {
+        "IndicatorCode": "WAGE_GROWTH",
+        "DimensionID": "D04",
+        "IndicatorName": "平均时薪同比（%）",
+        "Units": "%",
+        "Frequency": "Monthly",
+        "Source": "BLS/FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/CES0500000003",
+        "Series/Code": "CES0500000003",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": 0.5,
+        "TargetLow": 3,
+        "TargetHigh": 4,
+        "WorstHigh": 6,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.25,
+        "Notes": "工资过高可能推升服务通胀。"
+      },
+      {
+        "IndicatorCode": "CC_DELINQ",
+        "DimensionID": "D04",
+        "IndicatorName": "信用卡拖欠率（%）",
+        "Units": "%",
+        "Frequency": "Quarterly",
+        "Source": "FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/DRCCLACBS",
+        "Series/Code": "DRCCLACBS",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 1.5,
+        "Worst": 5,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.25,
+        "Notes": "也可加车贷/学生贷。"
+      },
+      {
+        "IndicatorCode": "REAL_DISP_INC",
+        "DimensionID": "D04",
+        "IndicatorName": "实际可支配收入同比（%）",
+        "Units": "%",
+        "Frequency": "Monthly",
+        "Source": "BEA/FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/DSPIC96",
+        "Series/Code": "DSPIC96",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 4,
+        "Worst": -4,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.15,
+        "Notes": "用YoY变化需你在 Inputs 填值。"
+      },
+      {
+        "IndicatorCode": "SPX_FWD_PE",
+        "DimensionID": "D05",
+        "IndicatorName": "标普500 Forward P/E（x）",
+        "Units": "x",
+        "Frequency": "Weekly",
+        "Source": "FactSet/S&P",
+        "SourceURL": "(填你的数据源)",
+        "Series/Code": "FWD PE",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 14,
+        "Worst": 28,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.3,
+        "Notes": "若你无FactSet，可用公开估值替代。"
+      },
+      {
+        "IndicatorCode": "EPS_REV_BREADTH",
+        "DimensionID": "D05",
+        "IndicatorName": "EPS修正广度（上调-下调，%）",
+        "Units": "%",
+        "Frequency": "Weekly",
+        "Source": "IBES/FactSet",
+        "SourceURL": "(填你的数据源)",
+        "Series/Code": "EPS rev",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 30,
+        "Worst": -30,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "无数据则先留空。"
+      },
+      {
+        "IndicatorCode": "HY_OAS",
+        "DimensionID": "D05",
+        "IndicatorName": "高收益信用利差OAS（bps）",
+        "Units": "bps",
+        "Frequency": "Daily",
+        "Source": "FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/BAMLH0A0HYM2",
+        "Series/Code": "BAMLH0A0HYM2",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 250,
+        "Worst": 900,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "信用压力核心指标。"
+      },
+      {
+        "IndicatorCode": "MORTGAGE_30Y",
+        "DimensionID": "D06",
+        "IndicatorName": "30年按揭利率（%）",
+        "Units": "%",
+        "Frequency": "Weekly",
+        "Source": "Freddie Mac",
+        "SourceURL": "https://www.freddiemac.com/pmms",
+        "Series/Code": "PMMS",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 3,
+        "Worst": 8.5,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "用PMMS周度。"
+      },
+      {
+        "IndicatorCode": "EXIST_HOME_SALES",
+        "DimensionID": "D06",
+        "IndicatorName": "成屋销售折年（百万套）",
+        "Units": "M",
+        "Frequency": "Monthly",
+        "Source": "NAR",
+        "SourceURL": "https://www.nar.realtor/",
+        "Series/Code": "EHS",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 6,
+        "Worst": 3,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "反映交易活跃度。"
+      },
+      {
+        "IndicatorCode": "HOUSING_STARTS",
+        "DimensionID": "D06",
+        "IndicatorName": "新屋开工（百万套）",
+        "Units": "M",
+        "Frequency": "Monthly",
+        "Source": "Census/FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/HOUST",
+        "Series/Code": "HOUST",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 1.8,
+        "Worst": 0.9,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.3,
+        "Notes": "更前瞻。"
+      },
+      {
+        "IndicatorCode": "VIX",
+        "DimensionID": "D07",
+        "IndicatorName": "VIX",
+        "Units": "index",
+        "Frequency": "Daily",
+        "Source": "CBOE/FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/VIXCLS",
+        "Series/Code": "VIXCLS",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 12,
+        "Worst": 45,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.4,
+        "Notes": null
+      },
+      {
+        "IndicatorCode": "MOVE",
+        "DimensionID": "D07",
+        "IndicatorName": "MOVE",
+        "Units": "index",
+        "Frequency": "Daily",
+        "Source": "ICE",
+        "SourceURL": "(填你使用的MOVE来源)",
+        "Series/Code": "MOVE",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 60,
+        "Worst": 160,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "可用公开报价源；确保口径一致。"
+      },
+      {
+        "IndicatorCode": "SPX_DD_3M",
+        "DimensionID": "D07",
+        "IndicatorName": "标普500近3个月最大回撤（%）",
+        "Units": "%",
+        "Frequency": "Daily",
+        "Source": "User Calc",
+        "SourceURL": "(填你的来源)",
+        "Series/Code": "N/A",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 0,
+        "Worst": 20,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.25,
+        "Notes": "可选，用于风险状态。"
+      },
+      {
+        "IndicatorCode": "DXY",
+        "DimensionID": "D08",
+        "IndicatorName": "美元指数DXY",
+        "Units": "index",
+        "Frequency": "Daily",
+        "Source": "ICE/公开行情",
+        "SourceURL": "(填你来源)",
+        "Series/Code": "DXY",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": 85,
+        "TargetLow": 92,
+        "TargetHigh": 102,
+        "WorstHigh": 112,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "美元过强/过弱都可能带来问题。"
+      },
+      {
+        "IndicatorCode": "US_JP_10Y_SPREAD",
+        "DimensionID": "D08",
+        "IndicatorName": "美日10Y利差（bps）",
+        "Units": "bps",
+        "Frequency": "Daily",
+        "Source": "FRED/BOJ",
+        "SourceURL": "(填你来源)",
+        "Series/Code": "N/A",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 250,
+        "Worst": 0,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "利差过大=套息/汇率波动风险上升，方向可按策略调整。"
+      },
+      {
+        "IndicatorCode": "CAPITAL_FLOWS",
+        "DimensionID": "D08",
+        "IndicatorName": "海外净买入美国资产（自定义）",
+        "Units": "$B",
+        "Frequency": "Monthly",
+        "Source": "Treasury TIC/EPFR",
+        "SourceURL": "(填你的来源)",
+        "Series/Code": "TIC/EPFR",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 80,
+        "Worst": -80,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.3,
+        "Notes": "无数据可暂留空。"
+      },
+      {
+        "IndicatorCode": "DEFICIT_GDP",
+        "DimensionID": "D09",
+        "IndicatorName": "财政赤字/GDP（%）",
+        "Units": "%",
+        "Frequency": "Annual/Quarterly",
+        "Source": "CBO",
+        "SourceURL": "https://www.cbo.gov/publication/62105",
+        "Series/Code": "CBO baseline",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 2,
+        "Worst": 10,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.45,
+        "Notes": "越低越可持续。"
+      },
+      {
+        "IndicatorCode": "DEBT_GDP",
+        "DimensionID": "D09",
+        "IndicatorName": "债务/GDP（%）",
+        "Units": "%",
+        "Frequency": "Annual",
+        "Source": "CBO",
+        "SourceURL": "https://www.cbo.gov/publication/62105",
+        "Series/Code": "CBO baseline",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 60,
+        "Worst": 140,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.3,
+        "Notes": null
+      },
+      {
+        "IndicatorCode": "INT_REV",
+        "DimensionID": "D09",
+        "IndicatorName": "利息支出/财政收入（%）",
+        "Units": "%",
+        "Frequency": "Annual",
+        "Source": "Treasury/CBO",
+        "SourceURL": "(填你的来源)",
+        "Series/Code": "N/A",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 8,
+        "Worst": 25,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.25,
+        "Notes": "强烈建议加入，体现财政挤出。"
+      },
+      {
+        "IndicatorCode": "FCI",
+        "DimensionID": "D10",
+        "IndicatorName": "金融条件指数（FCI）",
+        "Units": "index",
+        "Frequency": "Weekly",
+        "Source": "GS/Chicago Fed",
+        "SourceURL": "(填你来源)",
+        "Series/Code": "FCI",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": -1,
+        "Worst": 1.5,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.4,
+        "Notes": "FCI越高越紧。"
+      },
+      {
+        "IndicatorCode": "BANK_LENDING",
+        "DimensionID": "D10",
+        "IndicatorName": "银行信贷增速（% YoY）",
+        "Units": "%",
+        "Frequency": "Weekly/Monthly",
+        "Source": "Fed H.8",
+        "SourceURL": "(填你来源)",
+        "Series/Code": "H.8",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": -5,
+        "TargetLow": 2,
+        "TargetHigh": 8,
+        "WorstHigh": 15,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": "过低=信用收缩。"
+      },
+      {
+        "IndicatorCode": "TED_SPREAD",
+        "DimensionID": "D10",
+        "IndicatorName": "TED利差（bps）",
+        "Units": "bps",
+        "Frequency": "Daily",
+        "Source": "FRED",
+        "SourceURL": "https://fred.stlouisfed.org/series/TEDRATE",
+        "Series/Code": "TEDRATE",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 20,
+        "Worst": 150,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.25,
+        "Notes": "资金面压力信号。"
+      },
+      {
+        "IndicatorCode": "WTI",
+        "DimensionID": "D11",
+        "IndicatorName": "WTI原油（$/桶）",
+        "Units": "$/bbl",
+        "Frequency": "Daily",
+        "Source": "NYMEX/公开行情",
+        "SourceURL": "(填你来源)",
+        "Series/Code": "WTI",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": 30,
+        "TargetLow": 55,
+        "TargetHigh": 85,
+        "WorstHigh": 120,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.4,
+        "Notes": "过高推通胀；过低或反映需求弱。"
+      },
+      {
+        "IndicatorCode": "CRB",
+        "DimensionID": "D11",
+        "IndicatorName": "大宗商品指数（CRB）同比（%）",
+        "Units": "%",
+        "Frequency": "Weekly",
+        "Source": "Refinitiv/公开",
+        "SourceURL": "(填你来源)",
+        "Series/Code": "CRB",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": -20,
+        "TargetLow": -5,
+        "TargetHigh": 10,
+        "WorstHigh": 30,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.3,
+        "Notes": "需你填YoY变化。"
+      },
+      {
+        "IndicatorCode": "GPR",
+        "DimensionID": "D11",
+        "IndicatorName": "地缘政治风险指数（GPR）",
+        "Units": "index",
+        "Frequency": "Monthly",
+        "Source": "Caldara & Iacoviello",
+        "SourceURL": "https://www.matteoiacoviello.com/gpr.htm",
+        "Series/Code": "GPR",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 80,
+        "Worst": 250,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.3,
+        "Notes": "务必填具体数值，不要只写“低位”。"
+      },
+      {
+        "IndicatorCode": "CB_CONS_CONF",
+        "DimensionID": "D12",
+        "IndicatorName": "消费者信心指数",
+        "Units": "index",
+        "Frequency": "Monthly",
+        "Source": "Conference Board",
+        "SourceURL": "https://www.conference-board.org/",
+        "Series/Code": "Consumer Confidence",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 120,
+        "Worst": 60,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.45,
+        "Notes": null
+      },
+      {
+        "IndicatorCode": "CEO_CONF",
+        "DimensionID": "D12",
+        "IndicatorName": "CEO Confidence",
+        "Units": "index",
+        "Frequency": "Quarterly",
+        "Source": "Conference Board",
+        "SourceURL": "https://www.conference-board.org/topics/CEO-Confidence/",
+        "Series/Code": "CEO Confidence",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 70,
+        "Worst": 35,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.35,
+        "Notes": ">50偏正面。"
+      },
+      {
+        "IndicatorCode": "EPU",
+        "DimensionID": "D12",
+        "IndicatorName": "经济政策不确定性（EPU）",
+        "Units": "index",
+        "Frequency": "Monthly",
+        "Source": "policyuncertainty.com",
+        "SourceURL": "https://www.policyuncertainty.com/",
+        "Series/Code": "EPU",
+        "ScaleType": "Linear",
+        "Direction": "LowerBetter",
+        "Best": 80,
+        "Worst": 300,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.2,
+        "Notes": "不确定性越高越差。"
+      },
+      {
+        "IndicatorCode": "CLOUD_AI_GROWTH",
+        "DimensionID": "D13",
+        "IndicatorName": "云业务增速（加权，% YoY）",
+        "Units": "%",
+        "Frequency": "Quarterly",
+        "Source": "财报/主流媒体",
+        "SourceURL": "https://www.reuters.com/",
+        "Series/Code": "AWS/Azure growth",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 35,
+        "Worst": 0,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.5,
+        "Notes": "可用AWS+Azure+GCP加权。"
+      },
+      {
+        "IndicatorCode": "AI_CAPEX_GUIDE",
+        "DimensionID": "D13",
+        "IndicatorName": "AI相关Capex指引（自定义）",
+        "Units": "index",
+        "Frequency": "Quarterly",
+        "Source": "财报",
+        "SourceURL": "(填你来源)",
+        "Series/Code": "N/A",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 1,
+        "Worst": -1,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.3,
+        "Notes": "将指引上修/下修编码为指数。"
+      },
+      {
+        "IndicatorCode": "SEMI_BOOK_BILL",
+        "DimensionID": "D13",
+        "IndicatorName": "半导体景气代理（Book-to-Bill）",
+        "Units": "ratio",
+        "Frequency": "Monthly",
+        "Source": "SIA/SEMI",
+        "SourceURL": "(填你来源)",
+        "Series/Code": "N/A",
+        "ScaleType": "TargetBand",
+        "Direction": "TargetRange",
+        "Best": null,
+        "Worst": null,
+        "WorstLow": 0.8,
+        "TargetLow": 1,
+        "TargetHigh": 1.2,
+        "WorstHigh": 1.4,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.2,
+        "Notes": "无则留空。"
+      },
+      {
+        "IndicatorCode": "BTC",
+        "DimensionID": "D14",
+        "IndicatorName": "BTC价格（$）",
+        "Units": "$",
+        "Frequency": "Daily",
+        "Source": "CoinMarketCap",
+        "SourceURL": "https://coinmarketcap.com/currencies/bitcoin/",
+        "Series/Code": "BTC",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 120000,
+        "Worst": 20000,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.4,
+        "Notes": "更合理是用趋势/波动而非绝对价。"
+      },
+      {
+        "IndicatorCode": "USDC_MCAP",
+        "DimensionID": "D14",
+        "IndicatorName": "USDC市值（$B）",
+        "Units": "$B",
+        "Frequency": "Daily",
+        "Source": "CoinMarketCap",
+        "SourceURL": "https://coinmarketcap.com/currencies/usd-coin/",
+        "Series/Code": "USDC",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 120,
+        "Worst": 20,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.4,
+        "Notes": "稳定币扩张是链上流动性信号。"
+      },
+      {
+        "IndicatorCode": "STABLECOIN_DOM",
+        "DimensionID": "D14",
+        "IndicatorName": "稳定币总市值（$B）",
+        "Units": "$B",
+        "Frequency": "Daily",
+        "Source": "CoinMarketCap",
+        "SourceURL": "https://coinmarketcap.com/view/stablecoin/",
+        "Series/Code": "Stablecoins",
+        "ScaleType": "Linear",
+        "Direction": "HigherBetter",
+        "Best": 350,
+        "Worst": 120,
+        "WorstLow": null,
+        "TargetLow": null,
+        "TargetHigh": null,
+        "WorstHigh": null,
+        "CapLow": null,
+        "CapHigh": null,
+        "WeightWithinDim": 0.2,
+        "Notes": "若无总市值可暂空。"
+      }
+    ],
+    "inputs": [
+      {
+        "AsOf（模型更新日期）": "蓝色单元格为输入。IndicatorCode 建议用下拉选择，避免拼写错误。",
+        "2026-03-07": null
+      },
+      {
+        "AsOf（模型更新日期）": "IndicatorCode",
+        "2026-03-07": "LatestValue"
+      },
+      {
+        "AsOf（模型更新日期）": "YC_10Y3M",
+        "2026-03-07": 38.0
+      },
+      {
+        "AsOf（模型更新日期）": "SOFR",
+        "2026-03-07": 3.66
+      },
+      {
+        "AsOf（模型更新日期）": "FED_ASSETS",
+        "2026-03-07": 6.6289
+      },
+      {
+        "AsOf（模型更新日期）": "NET_LIQ_PROXY",
+        "2026-03-07": -825.4269
+      },
+      {
+        "AsOf（模型更新日期）": "GDP_QOQ_SAAR",
+        "2026-03-07": 1.4
+      },
+      {
+        "AsOf（模型更新日期）": "PMI_MAN",
+        "2026-03-07": 52.5
+      },
+      {
+        "AsOf（模型更新日期）": "CLAIMS_4WMA",
+        "2026-03-07": 215750.0
+      },
+      {
+        "AsOf（模型更新日期）": "LEI",
+        "2026-03-07": -0.8
+      },
+      {
+        "AsOf（模型更新日期）": "CORE_CPI_YOY",
+        "2026-03-07": 2.9493
+      },
+      {
+        "AsOf（模型更新日期）": "CORE_PCE_YOY",
+        "2026-03-07": 2.9969
+      },
+      {
+        "AsOf（模型更新日期）": "BREAKEVEN_5Y5Y",
+        "2026-03-07": 2.11
+      },
+      {
+        "AsOf（模型更新日期）": "UNRATE",
+        "2026-03-07": 4.4
+      },
+      {
+        "AsOf（模型更新日期）": "WAGE_GROWTH",
+        "2026-03-07": 3.8397
+      },
+      {
+        "AsOf（模型更新日期）": "CC_DELINQ",
+        "2026-03-07": 2.94
+      },
+      {
+        "AsOf（模型更新日期）": "REAL_DISP_INC",
+        "2026-03-07": 0.9195
+      },
+      {
+        "AsOf（模型更新日期）": "SPX_FWD_PE",
+        "2026-03-07": 22.17
+      },
+      {
+        "AsOf（模型更新日期）": "EPS_REV_BREADTH",
+        "2026-03-07": -8
+      },
+      {
+        "AsOf（模型更新日期）": "HY_OAS",
+        "2026-03-07": 300.0
+      },
+      {
+        "AsOf（模型更新日期）": "MORTGAGE_30Y",
+        "2026-03-07": 6.0
+      },
+      {
+        "AsOf（模型更新日期）": "EXIST_HOME_SALES",
+        "2026-03-07": 3.91
+      },
+      {
+        "AsOf（模型更新日期）": "HOUSING_STARTS",
+        "2026-03-07": 1.404
+      },
+      {
+        "AsOf（模型更新日期）": "VIX",
+        "2026-03-07": 23.75
+      },
+      {
+        "AsOf（模型更新日期）": "MOVE",
+        "2026-03-07": 73.38
+      },
+      {
+        "AsOf（模型更新日期）": "SPX_DD_3M",
+        "2026-03-07": -4.5
+      },
+      {
+        "AsOf（模型更新日期）": "DXY",
+        "2026-03-07": 117.8223
+      },
+      {
+        "AsOf（模型更新日期）": "US_JP_10Y_SPREAD",
+        "2026-03-07": 185.0
+      },
+      {
+        "AsOf（模型更新日期）": "CAPITAL_FLOWS",
+        "2026-03-07": 85
+      },
+      {
+        "AsOf（模型更新日期）": "DEFICIT_GDP",
+        "2026-03-07": 5.8
+      },
+      {
+        "AsOf（模型更新日期）": "DEBT_GDP",
+        "2026-03-07": 101
+      },
+      {
+        "AsOf（模型更新日期）": "INT_REV",
+        "2026-03-07": 18
+      },
+      {
+        "AsOf（模型更新日期）": "FCI",
+        "2026-03-07": -0.5236
+      },
+      {
+        "AsOf（模型更新日期）": "BANK_LENDING",
+        "2026-03-07": 1.7857
+      },
+      {
+        "AsOf（模型更新日期）": "TED_SPREAD",
+        "2026-03-07": 0.09
+      },
+      {
+        "AsOf（模型更新日期）": "WTI",
+        "2026-03-07": 71.13
+      },
+      {
+        "AsOf（模型更新日期）": "CRB",
+        "2026-03-07": 3
+      },
+      {
+        "AsOf（模型更新日期）": "GPR",
+        "2026-03-07": 115
+      },
+      {
+        "AsOf（模型更新日期）": "CB_CONS_CONF",
+        "2026-03-07": 91.2
+      },
+      {
+        "AsOf（模型更新日期）": "CEO_CONF",
+        "2026-03-07": 59
+      },
+      {
+        "AsOf（模型更新日期）": "EPU",
+        "2026-03-07": 140
+      },
+      {
+        "AsOf（模型更新日期）": "CLOUD_AI_GROWTH",
+        "2026-03-07": 30
+      },
+      {
+        "AsOf（模型更新日期）": "AI_CAPEX_GUIDE",
+        "2026-03-07": 75
+      },
+      {
+        "AsOf（模型更新日期）": "SEMI_BOOK_BILL",
+        "2026-03-07": 1.08
+      },
+      {
+        "AsOf（模型更新日期）": "BTC",
+        "2026-03-07": 67959.0
+      },
+      {
+        "AsOf（模型更新日期）": "USDC_MCAP",
+        "2026-03-07": 77.3824
+      },
+      {
+        "AsOf（模型更新日期）": "STABLECOIN_DOM",
+        "2026-03-07": 240
+      }
+    ],
+    "scores": [
+      {
+        "IndicatorCode": "YC_10Y3M",
+        "DimensionID": "D01",
+        "IndicatorName": "10Y-3M利差（bps）",
+        "LatestValue": 38.0,
+        "Score(0-100)": 68.0,
+        "WeightWithinDim": 0.4,
+        "WeightedScore": 27.2
+      },
+      {
+        "IndicatorCode": "SOFR",
+        "DimensionID": "D01",
+        "IndicatorName": "SOFR（%）",
+        "LatestValue": 3.66,
+        "Score(0-100)": 51.38,
+        "WeightWithinDim": 0.25,
+        "WeightedScore": 12.8462
+      },
+      {
+        "IndicatorCode": "FED_ASSETS",
+        "DimensionID": "D01",
+        "IndicatorName": "美联储总资产（$T）",
+        "LatestValue": 6.6289,
+        "Score(0-100)": 59.28,
+        "WeightWithinDim": 0.15,
+        "WeightedScore": 8.8916
+      },
+      {
+        "IndicatorCode": "NET_LIQ_PROXY",
+        "DimensionID": "D01",
+        "IndicatorName": "净流动性代理（自定义）",
+        "LatestValue": -825.4269,
+        "Score(0-100)": 0,
+        "WeightWithinDim": 0.2,
+        "WeightedScore": 0.0
+      },
+      {
+        "IndicatorCode": "GDP_QOQ_SAAR",
+        "DimensionID": "D02",
+        "IndicatorName": "实际GDP环比折年（%）",
+        "LatestValue": 1.4,
+        "Score(0-100)": 97.14,
+        "WeightWithinDim": 0.3,
+        "WeightedScore": 29.1429
+      },
+      {
+        "IndicatorCode": "PMI_MAN",
+        "DimensionID": "D02",
+        "IndicatorName": "制造业PMI",
+        "LatestValue": 52.5,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.25,
+        "WeightedScore": 25.0
+      },
+      {
+        "IndicatorCode": "CLAIMS_4WMA",
+        "DimensionID": "D02",
+        "IndicatorName": "初请失业金四周均值",
+        "LatestValue": 215750.0,
+        "Score(0-100)": 0,
+        "WeightWithinDim": 0.25,
+        "WeightedScore": 0.0
+      },
+      {
+        "IndicatorCode": "LEI",
+        "DimensionID": "D02",
+        "IndicatorName": "领先指标（LEI）同比（%）",
+        "LatestValue": -0.8,
+        "Score(0-100)": 61.33,
+        "WeightWithinDim": 0.2,
+        "WeightedScore": 12.2667
+      },
+      {
+        "IndicatorCode": "CORE_CPI_YOY",
+        "DimensionID": "D03",
+        "IndicatorName": "核心CPI同比（%）",
+        "LatestValue": 2.9493,
+        "Score(0-100)": 89.16,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 31.2063
+      },
+      {
+        "IndicatorCode": "CORE_PCE_YOY",
+        "DimensionID": "D03",
+        "IndicatorName": "核心PCE同比（%）",
+        "LatestValue": 2.9969,
+        "Score(0-100)": 75.16,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 26.3042
+      },
+      {
+        "IndicatorCode": "BREAKEVEN_5Y5Y",
+        "DimensionID": "D03",
+        "IndicatorName": "5Y5Y通胀预期（%）",
+        "LatestValue": 2.11,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.3,
+        "WeightedScore": 30.0
+      },
+      {
+        "IndicatorCode": "UNRATE",
+        "DimensionID": "D04",
+        "IndicatorName": "失业率（%）",
+        "LatestValue": 4.4,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 35.0
+      },
+      {
+        "IndicatorCode": "WAGE_GROWTH",
+        "DimensionID": "D04",
+        "IndicatorName": "平均时薪同比（%）",
+        "LatestValue": 3.8397,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.25,
+        "WeightedScore": 25.0
+      },
+      {
+        "IndicatorCode": "CC_DELINQ",
+        "DimensionID": "D04",
+        "IndicatorName": "信用卡拖欠率（%）",
+        "LatestValue": 2.94,
+        "Score(0-100)": 58.86,
+        "WeightWithinDim": 0.25,
+        "WeightedScore": 14.7143
+      },
+      {
+        "IndicatorCode": "REAL_DISP_INC",
+        "DimensionID": "D04",
+        "IndicatorName": "实际可支配收入同比（%）",
+        "LatestValue": 0.9195,
+        "Score(0-100)": 61.49,
+        "WeightWithinDim": 0.15,
+        "WeightedScore": 9.2241
+      },
+      {
+        "IndicatorCode": "SPX_FWD_PE",
+        "DimensionID": "D05",
+        "IndicatorName": "标普500 Forward P/E（x）",
+        "LatestValue": 22.17,
+        "Score(0-100)": 41.64,
+        "WeightWithinDim": 0.3,
+        "WeightedScore": 12.4929
+      },
+      {
+        "IndicatorCode": "EPS_REV_BREADTH",
+        "DimensionID": "D05",
+        "IndicatorName": "EPS修正广度（上调-下调，%）",
+        "LatestValue": -8.0,
+        "Score(0-100)": 36.67,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 12.8333
+      },
+      {
+        "IndicatorCode": "HY_OAS",
+        "DimensionID": "D05",
+        "IndicatorName": "高收益信用利差OAS（bps）",
+        "LatestValue": 300.0,
+        "Score(0-100)": 92.31,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 32.3077
+      },
+      {
+        "IndicatorCode": "MORTGAGE_30Y",
+        "DimensionID": "D06",
+        "IndicatorName": "30年按揭利率（%）",
+        "LatestValue": 6.0,
+        "Score(0-100)": 45.45,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 15.9091
+      },
+      {
+        "IndicatorCode": "EXIST_HOME_SALES",
+        "DimensionID": "D06",
+        "IndicatorName": "成屋销售折年（百万套）",
+        "LatestValue": 3.91,
+        "Score(0-100)": 30.33,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 10.6167
+      },
+      {
+        "IndicatorCode": "HOUSING_STARTS",
+        "DimensionID": "D06",
+        "IndicatorName": "新屋开工（百万套）",
+        "LatestValue": 1.404,
+        "Score(0-100)": 56.0,
+        "WeightWithinDim": 0.3,
+        "WeightedScore": 16.8
+      },
+      {
+        "IndicatorCode": "VIX",
+        "DimensionID": "D07",
+        "IndicatorName": "VIX",
+        "LatestValue": 23.75,
+        "Score(0-100)": 64.39,
+        "WeightWithinDim": 0.4,
+        "WeightedScore": 25.7576
+      },
+      {
+        "IndicatorCode": "MOVE",
+        "DimensionID": "D07",
+        "IndicatorName": "MOVE",
+        "LatestValue": 73.38,
+        "Score(0-100)": 86.62,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 30.317
+      },
+      {
+        "IndicatorCode": "SPX_DD_3M",
+        "DimensionID": "D07",
+        "IndicatorName": "标普500近3个月最大回撤（%）",
+        "LatestValue": -4.5,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.25,
+        "WeightedScore": 25.0
+      },
+      {
+        "IndicatorCode": "DXY",
+        "DimensionID": "D08",
+        "IndicatorName": "美元指数DXY",
+        "LatestValue": 117.8223,
+        "Score(0-100)": 0,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 0.0
+      },
+      {
+        "IndicatorCode": "US_JP_10Y_SPREAD",
+        "DimensionID": "D08",
+        "IndicatorName": "美日10Y利差（bps）",
+        "LatestValue": 185.0,
+        "Score(0-100)": 74.0,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 25.9
+      },
+      {
+        "IndicatorCode": "CAPITAL_FLOWS",
+        "DimensionID": "D08",
+        "IndicatorName": "海外净买入美国资产（自定义）",
+        "LatestValue": 85.0,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.3,
+        "WeightedScore": 30.0
+      },
+      {
+        "IndicatorCode": "DEFICIT_GDP",
+        "DimensionID": "D09",
+        "IndicatorName": "财政赤字/GDP（%）",
+        "LatestValue": 5.8,
+        "Score(0-100)": 52.5,
+        "WeightWithinDim": 0.45,
+        "WeightedScore": 23.625
+      },
+      {
+        "IndicatorCode": "DEBT_GDP",
+        "DimensionID": "D09",
+        "IndicatorName": "债务/GDP（%）",
+        "LatestValue": 101.0,
+        "Score(0-100)": 48.75,
+        "WeightWithinDim": 0.3,
+        "WeightedScore": 14.625
+      },
+      {
+        "IndicatorCode": "INT_REV",
+        "DimensionID": "D09",
+        "IndicatorName": "利息支出/财政收入（%）",
+        "LatestValue": 18.0,
+        "Score(0-100)": 41.18,
+        "WeightWithinDim": 0.25,
+        "WeightedScore": 10.2941
+      },
+      {
+        "IndicatorCode": "FCI",
+        "DimensionID": "D10",
+        "IndicatorName": "金融条件指数（FCI）",
+        "LatestValue": -0.5236,
+        "Score(0-100)": 80.94,
+        "WeightWithinDim": 0.4,
+        "WeightedScore": 32.3776
+      },
+      {
+        "IndicatorCode": "BANK_LENDING",
+        "DimensionID": "D10",
+        "IndicatorName": "银行信贷增速（% YoY）",
+        "LatestValue": 1.7857,
+        "Score(0-100)": 96.94,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 33.9285
+      },
+      {
+        "IndicatorCode": "TED_SPREAD",
+        "DimensionID": "D10",
+        "IndicatorName": "TED利差（bps）",
+        "LatestValue": 0.09,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.25,
+        "WeightedScore": 25.0
+      },
+      {
+        "IndicatorCode": "WTI",
+        "DimensionID": "D11",
+        "IndicatorName": "WTI原油（$/桶）",
+        "LatestValue": 71.13,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.4,
+        "WeightedScore": 40.0
+      },
+      {
+        "IndicatorCode": "CRB",
+        "DimensionID": "D11",
+        "IndicatorName": "大宗商品指数（CRB）同比（%）",
+        "LatestValue": 3.0,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.3,
+        "WeightedScore": 30.0
+      },
+      {
+        "IndicatorCode": "GPR",
+        "DimensionID": "D11",
+        "IndicatorName": "地缘政治风险指数（GPR）",
+        "LatestValue": 115.0,
+        "Score(0-100)": 79.41,
+        "WeightWithinDim": 0.3,
+        "WeightedScore": 23.8235
+      },
+      {
+        "IndicatorCode": "CB_CONS_CONF",
+        "DimensionID": "D12",
+        "IndicatorName": "消费者信心指数",
+        "LatestValue": 91.2,
+        "Score(0-100)": 52.0,
+        "WeightWithinDim": 0.45,
+        "WeightedScore": 23.4
+      },
+      {
+        "IndicatorCode": "CEO_CONF",
+        "DimensionID": "D12",
+        "IndicatorName": "CEO Confidence",
+        "LatestValue": 59.0,
+        "Score(0-100)": 68.57,
+        "WeightWithinDim": 0.35,
+        "WeightedScore": 24.0
+      },
+      {
+        "IndicatorCode": "EPU",
+        "DimensionID": "D12",
+        "IndicatorName": "经济政策不确定性（EPU）",
+        "LatestValue": 140.0,
+        "Score(0-100)": 72.73,
+        "WeightWithinDim": 0.2,
+        "WeightedScore": 14.5455
+      },
+      {
+        "IndicatorCode": "CLOUD_AI_GROWTH",
+        "DimensionID": "D13",
+        "IndicatorName": "云业务增速（加权，% YoY）",
+        "LatestValue": 30.0,
+        "Score(0-100)": 85.71,
+        "WeightWithinDim": 0.5,
+        "WeightedScore": 42.8571
+      },
+      {
+        "IndicatorCode": "AI_CAPEX_GUIDE",
+        "DimensionID": "D13",
+        "IndicatorName": "AI相关Capex指引（自定义）",
+        "LatestValue": 75.0,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.3,
+        "WeightedScore": 30.0
+      },
+      {
+        "IndicatorCode": "SEMI_BOOK_BILL",
+        "DimensionID": "D13",
+        "IndicatorName": "半导体景气代理（Book-to-Bill）",
+        "LatestValue": 1.08,
+        "Score(0-100)": 100,
+        "WeightWithinDim": 0.2,
+        "WeightedScore": 20.0
+      },
+      {
+        "IndicatorCode": "BTC",
+        "DimensionID": "D14",
+        "IndicatorName": "BTC价格（$）",
+        "LatestValue": 67959.0,
+        "Score(0-100)": 47.96,
+        "WeightWithinDim": 0.4,
+        "WeightedScore": 19.1836
+      },
+      {
+        "IndicatorCode": "USDC_MCAP",
+        "DimensionID": "D14",
+        "IndicatorName": "USDC市值（$B）",
+        "LatestValue": 77.3824,
+        "Score(0-100)": 57.38,
+        "WeightWithinDim": 0.4,
+        "WeightedScore": 22.953
+      },
+      {
+        "IndicatorCode": "STABLECOIN_DOM",
+        "DimensionID": "D14",
+        "IndicatorName": "稳定币总市值（$B）",
+        "LatestValue": 240.0,
+        "Score(0-100)": 52.17,
+        "WeightWithinDim": 0.2,
+        "WeightedScore": 10.4348
+      }
+    ],
+    "alerts": [
+      {
+        "id": "A01",
+        "level": "RED",
+        "condition": "VIX > 30",
+        "triggered": false
+      },
+      {
+        "id": "A02",
+        "level": "RED",
+        "condition": "MOVE > 140",
+        "triggered": false
+      },
+      {
+        "id": "A03",
+        "level": "YELLOW",
+        "condition": "HY OAS > 600bps",
+        "triggered": false
+      },
+      {
+        "id": "A04",
+        "level": "YELLOW",
+        "condition": "10Y-3M < -50bps",
+        "triggered": false
+      },
+      {
+        "id": "A05",
+        "level": "YELLOW",
+        "condition": "失业率 > 6%",
+        "triggered": false
+      },
+      {
+        "id": "A06",
+        "level": "YELLOW",
+        "condition": "核心PCE > 3.5%",
+        "triggered": false
+      },
+      {
+        "id": "A07",
+        "level": "YELLOW",
+        "condition": "WTI > 100",
+        "triggered": false
+      }
+    ]
+  },
+  "onlineUpdate": {
+    "updated_count": 25,
+    "failed_count": 20,
+    "updated": [
+      {
+        "code": "YC_10Y3M",
+        "value": 38.0,
+        "date": "2026-03-04"
+      },
+      {
+        "code": "SOFR",
+        "value": 3.66,
+        "date": "2026-03-05"
+      },
+      {
+        "code": "FED_ASSETS",
+        "value": 6.628894,
+        "date": "2026-03-04"
+      },
+      {
+        "code": "NET_LIQ_PROXY",
+        "value": -825.426899,
+        "date": "2026-03-05"
+      },
+      {
+        "code": "GDP_QOQ_SAAR",
+        "value": 1.4,
+        "date": "2025-10-01"
+      },
+      {
+        "code": "CLAIMS_4WMA",
+        "value": 215750.0,
+        "date": "2026-02-28"
+      },
+      {
+        "code": "CORE_CPI_YOY",
+        "value": 2.949338,
+        "date": "2026-01-01"
+      },
+      {
+        "code": "CORE_PCE_YOY",
+        "value": 2.996876,
+        "date": "2025-12-01"
+      },
+      {
+        "code": "BREAKEVEN_5Y5Y",
+        "value": 2.11,
+        "date": "2026-03-05"
+      },
+      {
+        "code": "UNRATE",
+        "value": 4.4,
+        "date": "2026-02-01"
+      },
+      {
+        "code": "WAGE_GROWTH",
+        "value": 3.839733,
+        "date": "2026-02-01"
+      },
+      {
+        "code": "CC_DELINQ",
+        "value": 2.94,
+        "date": "2025-10-01"
+      },
+      {
+        "code": "REAL_DISP_INC",
+        "value": 0.919526,
+        "date": "2025-12-01"
+      },
+      {
+        "code": "HY_OAS",
+        "value": 300.0,
+        "date": "2026-03-05"
+      },
+      {
+        "code": "MORTGAGE_30Y",
+        "value": 6.0,
+        "date": "2026-03-05"
+      },
+      {
+        "code": "HOUSING_STARTS",
+        "value": 1.404,
+        "date": "2025-12-01"
+      },
+      {
+        "code": "VIX",
+        "value": 23.75,
+        "date": "2026-03-05"
+      },
+      {
+        "code": "DXY",
+        "value": 117.8223,
+        "date": "2026-02-27"
+      },
+      {
+        "code": "US_JP_10Y_SPREAD",
+        "value": 185.0,
+        "date": "2026-03-04"
+      },
+      {
+        "code": "FCI",
+        "value": -0.52365,
+        "date": "2026-02-27"
+      },
+      {
+        "code": "BANK_LENDING",
+        "value": 1.785657,
+        "date": "2026-02-18"
+      },
+      {
+        "code": "TED_SPREAD",
+        "value": 0.09,
+        "date": "2022-01-21"
+      },
+      {
+        "code": "WTI",
+        "value": 71.13,
+        "date": "2026-03-02"
+      },
+      {
+        "code": "BTC",
+        "value": 67959.0,
+        "date": "2026-03-07"
+      },
+      {
+        "code": "USDC_MCAP",
+        "value": 77.382435,
+        "date": "2026-03-07"
+      }
+    ],
+    "failed": [
+      {
+        "code": "PMI_MAN",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "LEI",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "SPX_FWD_PE",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "EPS_REV_BREADTH",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "EXIST_HOME_SALES",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "MOVE",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "SPX_DD_3M",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "CAPITAL_FLOWS",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "DEFICIT_GDP",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "DEBT_GDP",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "INT_REV",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "CRB",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "GPR",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "CB_CONS_CONF",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "CEO_CONF",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "EPU",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "CLOUD_AI_GROWTH",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "AI_CAPEX_GUIDE",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "SEMI_BOOK_BILL",
+        "error": "manual/proprietary source required"
+      },
+      {
+        "code": "STABLECOIN_DOM",
+        "error": "manual/proprietary source required"
+      }
+    ]
+  }
+}

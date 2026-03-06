@@ -30,6 +30,16 @@ A static bilingual website for your macro monitoring model, ready for GitHub Pag
 - Configure Pages source to `main` branch and `/ (root)` path
 - Site is served directly from the static files in this repository
 
+8. Daily production pipeline:
+- Run `python3 scripts/daily_refresh.py`
+- It will:
+  - pull latest available online data
+  - update `model.xlsx` Inputs + AsOf date
+  - recalculate indicator/dimension scores
+  - generate `data/latest_snapshot.json` for dashboard
+  - generate `reports/<YYYY-MM-DD>.txt` and `reports/<YYYY-MM-DD>.html`
+  - update `reports/index.json` for report links
+
 ## Pages
 
 - `index.html`: dashboard

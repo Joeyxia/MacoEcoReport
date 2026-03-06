@@ -1,214 +1,213 @@
 {
-  "as_of": "2026-03-07",
   "updated_count": 25,
   "failed_count": 20,
   "updated": [
     {
       "code": "YC_10Y3M",
-      "date": "2026-03-04",
-      "value": 38.0
+      "value": 38.0,
+      "date": "2026-03-04"
     },
     {
       "code": "SOFR",
-      "date": "2026-03-05",
-      "value": 3.66
+      "value": 3.66,
+      "date": "2026-03-05"
     },
     {
       "code": "FED_ASSETS",
-      "date": "2026-03-04",
-      "value": 6.628894
+      "value": 6.628894,
+      "date": "2026-03-04"
     },
     {
       "code": "NET_LIQ_PROXY",
-      "date": "2026-03-05",
-      "value": -825.426899
+      "value": -825.426899,
+      "date": "2026-03-05"
     },
     {
       "code": "GDP_QOQ_SAAR",
-      "date": "2025-10-01",
-      "value": 1.4
+      "value": 1.4,
+      "date": "2025-10-01"
     },
     {
       "code": "CLAIMS_4WMA",
-      "date": "2026-02-28",
-      "value": 215750.0
+      "value": 215750.0,
+      "date": "2026-02-28"
     },
     {
       "code": "CORE_CPI_YOY",
-      "date": "2026-01-01",
-      "value": 2.949338
+      "value": 2.949338,
+      "date": "2026-01-01"
     },
     {
       "code": "CORE_PCE_YOY",
-      "date": "2025-12-01",
-      "value": 2.996876
+      "value": 2.996876,
+      "date": "2025-12-01"
     },
     {
       "code": "BREAKEVEN_5Y5Y",
-      "date": "2026-03-05",
-      "value": 2.11
+      "value": 2.11,
+      "date": "2026-03-05"
     },
     {
       "code": "UNRATE",
-      "date": "2026-02-01",
-      "value": 4.4
+      "value": 4.4,
+      "date": "2026-02-01"
     },
     {
       "code": "WAGE_GROWTH",
-      "date": "2026-02-01",
-      "value": 3.839733
+      "value": 3.839733,
+      "date": "2026-02-01"
     },
     {
       "code": "CC_DELINQ",
-      "date": "2025-10-01",
-      "value": 2.94
+      "value": 2.94,
+      "date": "2025-10-01"
     },
     {
       "code": "REAL_DISP_INC",
-      "date": "2025-12-01",
-      "value": 0.919526
+      "value": 0.919526,
+      "date": "2025-12-01"
     },
     {
       "code": "HY_OAS",
-      "date": "2026-03-05",
-      "value": 3.0
+      "value": 300.0,
+      "date": "2026-03-05"
     },
     {
       "code": "MORTGAGE_30Y",
-      "date": "2026-03-05",
-      "value": 6.0
+      "value": 6.0,
+      "date": "2026-03-05"
     },
     {
       "code": "HOUSING_STARTS",
-      "date": "2025-12-01",
-      "value": 1.404
+      "value": 1.404,
+      "date": "2025-12-01"
     },
     {
       "code": "VIX",
-      "date": "2026-03-05",
-      "value": 23.75
+      "value": 23.75,
+      "date": "2026-03-05"
     },
     {
       "code": "DXY",
-      "date": "2026-02-27",
-      "value": 117.8223
+      "value": 117.8223,
+      "date": "2026-02-27"
     },
     {
       "code": "US_JP_10Y_SPREAD",
-      "date": "2026-03-04",
-      "value": 185.0
+      "value": 185.0,
+      "date": "2026-03-04"
     },
     {
       "code": "FCI",
-      "date": "2026-02-27",
-      "value": -0.52365
+      "value": -0.52365,
+      "date": "2026-02-27"
     },
     {
       "code": "BANK_LENDING",
-      "date": "2026-02-18",
-      "value": 1.785657
+      "value": 1.785657,
+      "date": "2026-02-18"
     },
     {
       "code": "TED_SPREAD",
-      "date": "2022-01-21",
-      "value": 0.09
+      "value": 0.09,
+      "date": "2022-01-21"
     },
     {
       "code": "WTI",
-      "date": "2026-03-02",
-      "value": 71.13
+      "value": 71.13,
+      "date": "2026-03-02"
     },
     {
       "code": "BTC",
-      "date": "2026-03-07",
-      "value": 68228.0
+      "value": 67959.0,
+      "date": "2026-03-07"
     },
     {
       "code": "USDC_MCAP",
-      "date": "2026-03-07",
-      "value": 77.389777
+      "value": 77.382435,
+      "date": "2026-03-07"
     }
   ],
   "failed": [
     {
       "code": "PMI_MAN",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "LEI",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "SPX_FWD_PE",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "EPS_REV_BREADTH",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "EXIST_HOME_SALES",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "MOVE",
-      "error": "no value fetched"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "SPX_DD_3M",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "CAPITAL_FLOWS",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "DEFICIT_GDP",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "DEBT_GDP",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "INT_REV",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "CRB",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "GPR",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "CB_CONS_CONF",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "CEO_CONF",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "EPU",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "CLOUD_AI_GROWTH",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "AI_CAPEX_GUIDE",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "SEMI_BOOK_BILL",
-      "error": "no public updater mapped"
+      "error": "manual/proprietary source required"
     },
     {
       "code": "STABLECOIN_DOM",
-      "error": "float() argument must be a string or a real number, not 'dict'"
+      "error": "manual/proprietary source required"
     }
   ]
 }

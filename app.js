@@ -4,6 +4,7 @@ const STORAGE_KEY = "macro-monitor-model";
 const LANG_KEY = "macro-monitor-lang";
 const DEFAULT_MODEL_FILE = "./model.xlsx";
 const STATIC_REPORT_INDEX = "./reports/index.json";
+const STATIC_SNAPSHOT = "./data/latest_snapshot.json";
 
 const i18n = {
   en: {
@@ -337,6 +338,8 @@ function saveModelFallback(model) {
 }
 
 async function loadCurrentModel() {
+  const snapshot = await loadStaticSnapshot();
+  if (snapshot) return { ...sampleModel, ...snapshot };
   const fromDb = await dbGet("model", "current");
   if (fromDb?.payload) return fromDb.payload;
   return loadModelFallback();
@@ -376,6 +379,16 @@ async function loadStaticReports() {
     return Array.isArray(payload?.reports) ? payload.reports : [];
   } catch {
     return [];
+  }
+}
+
+async function loadStaticSnapshot() {
+  try {
+    const res = await fetch(STATIC_SNAPSHOT, { cache: "no-cache" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
   }
 }
 
@@ -938,19 +951,20 @@ async function renderLatestReportSummary(model) {
     <div class="summary-score">${round(model.totalScore, 1)}/100 · ${escapeHtml(model.status)}</div>
     <div class="summary-line">${getLang() === "zh" ? "模型更新日" : "Model As-Of"}: ${escapeHtml(model.asOf)}</div>
     <div class="summary-line">${getLang() === "zh" ? "最新报告日期" : "Latest Report Date"}: ${escapeHtml(latest?.date || "--")}</div>
-    <div class="summary-line">${getLang() === "zh" ? "简要结论" : "Short Summary"}: ${
-      getLang() === "zh"
-        ? `当前处于${escapeHtml(model.status)}，重点关注${weakDims.map((d) => d.name).join(" / ")}。`
-        : `Current regime is ${escapeHtml(model.status)}; watch ${weakDims.map((d) => d.name).join(" / ")}.`
-    }</div>
+    <div class="summary-line">${getLang() === "zh" ? "简要结论" : "Short Summary"}: ${escapeHtml(
+      model.latestReportSummary ||
+        (getLang() === "zh"
+          ? `当前处于${escapeHtml(model.status)}，重点关注${weakDims.map((d) => d.name).join(" / ")}。`
+          : `Current regime is ${escapeHtml(model.status)}; watch ${weakDims.map((d) => d.name).join(" / ")}.`)
+    )}</div>
   `;
 
   if (!watchRoot) return;
   watchRoot.innerHTML = "";
-  const items = [
-    ...activeAlerts.map((a) => `${a.id}: ${a.condition}`),
-    ...weakDims.map((d) => `${d.name}: ${round(d.score, 1)}`)
-  ];
+  const snapshotWatch = (model.keyWatch || []).map((x) => `${x.label}: ${x.value}`);
+  const items = snapshotWatch.length
+    ? snapshotWatch
+    : [...activeAlerts.map((a) => `${a.id}: ${a.condition}`), ...weakDims.map((d) => `${d.name}: ${round(d.score, 1)}`)];
   if (!items.length) items.push(getLang() === "zh" ? "暂无重点关注项。" : "No urgent watch items.");
 
   items.slice(0, 6).forEach((text) => {
@@ -1257,7 +1271,7 @@ function renderReportLinks(reports) {
           <span class="badge">${signalLabel}: ${escapeHtml(report.meta?.status ?? "--")}</span>
         </div>
       </div>
-      <a class="report-open" href="daily-report.html?date=${encodeURIComponent(report.date)}">${getLang() === "zh" ? "打开" : "Open"}</a>
+      <a class="report-open" href="${escapeHtml(report.path || `daily-report.html?date=${encodeURIComponent(report.date)}`)}">${getLang() === "zh" ? "打开" : "Open"}</a>
     `;
     root.appendChild(item);
   });
@@ -1724,15 +1738,18 @@ async function initDashboard() {
   const status = document.getElementById("file-status");
   let model = await loadCurrentModel();
   renderDashboard(model);
-
-  try {
-    const buffer = await loadDefaultWorkbook();
-    model = parseWorkbook(buffer);
-    await saveCurrentModel(model);
-    renderDashboard(model);
-    if (status) status.textContent = "Auto-loaded: model.xlsx";
-  } catch {
-    if (status) status.textContent = getLang() === "zh" ? "使用本地缓存/样例数据。" : "Using saved/sample data.";
+  if (!model?.tables?.dimensions?.length) {
+    try {
+      const buffer = await loadDefaultWorkbook();
+      model = parseWorkbook(buffer);
+      await saveCurrentModel(model);
+      renderDashboard(model);
+      if (status) status.textContent = "Auto-loaded: model.xlsx";
+    } catch {
+      if (status) status.textContent = getLang() === "zh" ? "使用本地缓存/样例数据。" : "Using saved/sample data.";
+    }
+  } else if (status) {
+    status.textContent = getLang() === "zh" ? "已加载最新快照数据" : "Loaded latest snapshot data";
   }
 
   setupUpload((next) => {

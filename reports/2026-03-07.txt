@@ -1,17 +1,17 @@
 Macro Daily Report (2026-03-07)
 Model As-Of: 2026-03-07
-Public-data refresh updated 25 indicators; 20 require manual/proprietary updates.
+Composite Score: 68.32 (温和扩张)
 
 Key Indicators To Watch
-- YC_10Y3M: 38
+- YC_10Y3M: 38.0
 - VIX: 23.75
-- HY_OAS: 300
+- HY_OAS: 300.0
 - CORE_CPI_YOY: 2.9493
 - UNRATE: 4.4
 - WTI: 71.13
-- BTC: 68228
+- BTC: 67959.0
 
 Short Summary
-- Yield curve, rates, labor and inflation proxies were refreshed from latest available public sources.
-- Credit and volatility are currently not signaling acute systemic stress from refreshed public indicators.
-- Several thematic/proprietary series (PMI/LEI/EPS/MOVE/EPU/theme panel) still need manual institutional source updates before final IC use.
+- Macro model updated on 2026-03-07. Public-source updater refreshed 25 indicators; 20 indicators still require manual/proprietary updates. Composite score: 68.32 (温和扩张).
+- Weakest dimensions: D06 房地产与利率敏感部门 (43.33), D09 财政政策与债务约束 (48.54), D01 货币政策与流动性 (48.94)
+- Strongest dimensions: D11 大宗商品与能源/地缘风险 (93.82), D13 AI资本开支周期（主题） (92.86), D10 金融条件与信用传导 (91.31)
