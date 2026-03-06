@@ -35,7 +35,20 @@
         </div>
       </section>
 
-      <section class="grid three-col" id="glossary-grid"></section>
+      <section class="panel">
+        <div class="glossary-controls">
+          <input id="glossary-search" class="search-input" type="text" placeholder="Search terms..." />
+          <select id="glossary-filter" class="filter-select">
+            <option value="all">All Categories</option>
+            <option value="core-macro">Core Macro</option>
+            <option value="policy-external">Policy & External</option>
+            <option value="market-mapping">Market Mapping</option>
+            <option value="theme-panel">Theme Panel</option>
+            <option value="data-source">Data Source</option>
+          </select>
+        </div>
+        <div class="grid three-col glossary-grid" id="glossary-grid"></div>
+      </section>
     </main>
   </body>
 </html>

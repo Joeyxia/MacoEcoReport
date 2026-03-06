@@ -21,6 +21,8 @@ const i18n = {
     top_dimension_contributors: "Top Dimension Contributors",
     primary_drivers: "Primary Drivers",
     key_indicators_overview: "Key Indicators Snapshot",
+    latest_report_summary: "Latest Report Summary",
+    daily_watch_items: "Daily Watch Items",
     dimensions_14_detail: "All 14 Dimensions Detail (from Dimensions Sheet)",
     dimensions_14_detail_desc: "This section shows complete dimension definitions, tiers, weights, and update frequencies.",
     model_core_tables: "Model Core Tables",
@@ -44,6 +46,7 @@ const i18n = {
     save: "Save",
     download_txt: "Download .txt",
     run_online_check: "Run online data check before final report",
+    report_preview: "Report Preview (Reference Format)",
     daily_report_archive: "Daily Report Archive",
     daily_report_archive_desc: "Each saved day has a direct link.",
     online_check_results: "Online Data Check Results",
@@ -72,6 +75,8 @@ const i18n = {
     top_dimension_contributors: "维度贡献 Top",
     primary_drivers: "核心驱动",
     key_indicators_overview: "关键指标概览",
+    latest_report_summary: "最新报告摘要",
+    daily_watch_items: "当日关注项",
     dimensions_14_detail: "14个维度信息（来自 Dimensions 表）",
     dimensions_14_detail_desc: "展示维度定义、层级、权重和更新频率。",
     model_core_tables: "模型核心数据表",
@@ -95,6 +100,7 @@ const i18n = {
     save: "保存",
     download_txt: "下载 .txt",
     run_online_check: "生成最终报告前执行在线数据校验",
+    report_preview: "报告预览（参考格式）",
     daily_report_archive: "每日报告归档",
     daily_report_archive_desc: "每一天报告都生成可访问链接。",
     online_check_results: "在线数据校验结果",
@@ -601,7 +607,14 @@ function renderDimensionLayers(rows, model) {
   const root = document.getElementById("dimension-layers");
   if (!root) return;
 
-  const list = (rows || []).slice(0, 14);
+  const list = (rows || [])
+    .filter((row) => /^D\d{2}$/i.test(findValue(row, ["dimensionid", "维度id", "id"])))
+    .sort((a, b) => {
+      const ai = findValue(a, ["dimensionid", "维度id", "id"]);
+      const bi = findValue(b, ["dimensionid", "维度id", "id"]);
+      return ai.localeCompare(bi, undefined, { numeric: true });
+    })
+    .slice(0, 14);
   if (!list.length) {
     root.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "Dimensions 表暂无数据。" : "No Dimensions data found."}</p>`;
     return;
@@ -690,6 +703,132 @@ function renderKeyIndicators(model) {
   });
 }
 
+function buildDimensionBundles(model) {
+  const dims = (model.tables?.dimensions || [])
+    .filter((row) => /^D\d{2}$/i.test(findValue(row, ["dimensionid", "维度id", "id"])))
+    .sort((a, b) => {
+      const ai = findValue(a, ["dimensionid", "维度id", "id"]);
+      const bi = findValue(b, ["dimensionid", "维度id", "id"]);
+      return ai.localeCompare(bi, undefined, { numeric: true });
+    });
+
+  const indicators = model.tables?.indicators || [];
+  const inputs = model.tables?.inputs || [];
+  const inputCodeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
+  const inputValKey = inputs.length ? keyByIncludes(inputs[0], ["latestvalue", "value", "值"]) : null;
+
+  return dims.map((dim) => {
+    const id = findValue(dim, ["dimensionid", "维度id", "id"]);
+    const name = findValue(dim, ["dimensionname", "维度名称", "维度"]);
+    const tier = findValue(dim, ["tier", "层级"]);
+    const weight = findValue(dim, ["weight", "权重", "%"]);
+    const metric = findDimensionMetric(model, id, name);
+
+    const dimIndicators = indicators
+      .filter((row) => findValue(row, ["dimensionid", "维度id", "id"]).toLowerCase() === id.toLowerCase())
+      .slice(0, 3)
+      .map((row) => {
+        const code = findValue(row, ["indicatorcode", "code"]);
+        const indicatorName = findValue(row, ["indicatorname", "指标", "name"]) || code;
+        const input = inputs.find((x) => asText(x[inputCodeKey]) === code);
+        const value = input ? asText(input[inputValKey]) : "";
+        return { indicatorName, value };
+      });
+
+    return { id, name, tier, weight, metric, indicators: dimIndicators };
+  });
+}
+
+async function renderLatestReportSummary(model) {
+  const root = document.getElementById("latest-report-summary");
+  const watchRoot = document.getElementById("daily-watch-items");
+  if (!root) return;
+
+  const reports = await listReports();
+  const latest = reports[0];
+  const activeAlerts = (model.alerts || []).filter((a) => a.triggered);
+  const weakDims = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 3);
+
+  root.innerHTML = `
+    <div class="summary-score">${round(model.totalScore, 1)}/100 · ${escapeHtml(model.status)}</div>
+    <div class="summary-line">${getLang() === "zh" ? "模型更新日" : "Model As-Of"}: ${escapeHtml(model.asOf)}</div>
+    <div class="summary-line">${getLang() === "zh" ? "最新报告日期" : "Latest Report Date"}: ${escapeHtml(latest?.date || "--")}</div>
+    <div class="summary-line">${getLang() === "zh" ? "简要结论" : "Short Summary"}: ${
+      getLang() === "zh"
+        ? `当前处于${escapeHtml(model.status)}，重点关注${weakDims.map((d) => d.name).join(" / ")}。`
+        : `Current regime is ${escapeHtml(model.status)}; watch ${weakDims.map((d) => d.name).join(" / ")}.`
+    }</div>
+  `;
+
+  if (!watchRoot) return;
+  watchRoot.innerHTML = "";
+  const items = [
+    ...activeAlerts.map((a) => `${a.id}: ${a.condition}`),
+    ...weakDims.map((d) => `${d.name}: ${round(d.score, 1)}`)
+  ];
+  if (!items.length) items.push(getLang() === "zh" ? "暂无重点关注项。" : "No urgent watch items.");
+
+  items.slice(0, 6).forEach((text) => {
+    const link = document.createElement("div");
+    link.className = "report-link";
+    link.textContent = text;
+    watchRoot.appendChild(link);
+  });
+}
+
+function groupByTier(bundles) {
+  const groups = new Map();
+  bundles.forEach((bundle) => {
+    if (!groups.has(bundle.tier)) groups.set(bundle.tier, []);
+    groups.get(bundle.tier).push(bundle);
+  });
+  return groups;
+}
+
+function renderDailyReportPreview(model, date) {
+  const root = document.getElementById("report-preview");
+  if (!root) return;
+
+  const bundles = buildDimensionBundles(model);
+  const tierGroups = groupByTier(bundles);
+  const topWatch = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 5);
+
+  root.innerHTML = `
+    <section class="preview-header">
+      <h3>${getLang() === "zh" ? `14维宏观监控模型报告 (${date})` : `14-Dimension Macro Report (${date})`}</h3>
+      <div>${getLang() === "zh" ? "综合评分" : "Composite Score"}: ${round(model.totalScore, 1)}/100</div>
+      <div>${getLang() === "zh" ? "投资信号" : "Signal"}: ${escapeHtml(model.status)}</div>
+    </section>
+    <section class="preview-section">
+      <h3>${getLang() === "zh" ? "核心结论" : "Core Conclusion"}</h3>
+      <ul class="preview-list">
+        ${topWatch.map((d) => `<li>${escapeHtml(d.name)}: ${round(d.score, 1)}</li>`).join("")}
+      </ul>
+    </section>
+  `;
+
+  for (const [tier, dims] of tierGroups.entries()) {
+    const tierNode = document.createElement("section");
+    tierNode.className = "preview-tier";
+    tierNode.innerHTML = `<h3>${escapeHtml(tier)}</h3>`;
+
+    dims.forEach((dim) => {
+      const trend = scoreTrend(dim.metric.score || 0);
+      const card = document.createElement("div");
+      card.className = "preview-dim-card";
+      card.innerHTML = `
+        <strong>${escapeHtml(dim.id)} ${escapeHtml(dim.name)}</strong>
+        <div>${getLang() === "zh" ? "权重" : "Weight"} ${escapeHtml(dim.weight)} | ${getLang() === "zh" ? "评分" : "Score"} ${round(dim.metric.score, 1)} ${trend.symbol} | ${getLang() === "zh" ? "贡献" : "Contribution"} ${round(dim.metric.contribution, 2)}</div>
+        <ul class="preview-list">
+          ${dim.indicators.map((i) => `<li>${escapeHtml(i.indicatorName)}: ${escapeHtml(i.value || "--")}</li>`).join("")}
+        </ul>
+      `;
+      tierNode.appendChild(card);
+    });
+    root.appendChild(tierNode);
+  }
+}
+
 function findValue(row, patterns) {
   const key = Object.keys(row || {}).find((k) => patterns.some((p) => k.toLowerCase().includes(p)));
   return key ? asText(row[key]) : "";
@@ -747,6 +886,7 @@ function renderDashboard(model) {
   });
 
   renderKeyIndicators(model);
+  renderLatestReportSummary(model);
   renderDimensionLayers(model.tables?.dimensions || [], model);
   renderObjectTable("dimensions-table", model.tables?.dimensions || []);
   renderObjectTable("inputs-table", model.tables?.inputs || []);
@@ -975,6 +1115,7 @@ async function renderDailyReport(model) {
   const existing = await loadReport(date);
   const initial = existing?.text || generateDailyText(model, date, null);
   editor.value = initial;
+  renderDailyReportPreview(model, date);
 
   renderObjectTable("daily-scores-table", model.tables?.scores || []);
   renderOnlineCheckTable(model.onlineCheck || []);
@@ -982,6 +1123,7 @@ async function renderDailyReport(model) {
 
   regenBtn?.addEventListener("click", () => {
     editor.value = generateDailyText(model, date, null);
+    renderDailyReportPreview(model, date);
     saveStatus.textContent = getLang() === "zh" ? "草稿已重新生成。" : "Draft regenerated.";
   });
 
@@ -1000,6 +1142,7 @@ async function renderDailyReport(model) {
     }
 
     editor.value = generateDailyText(targetModel, date, summary);
+    renderDailyReportPreview(targetModel, date);
     await saveReport(date, editor.value, { score: round(targetModel.totalScore, 1), status: targetModel.status });
     renderReportLinks(await listReports());
     saveStatus.textContent = getLang() === "zh" ? "最终报告已生成并保存。" : "Final report generated and saved.";
@@ -1023,18 +1166,98 @@ async function renderDailyReport(model) {
   });
 }
 
-function renderGlossary() {
+function mapTierToCategory(tier) {
+  const t = asText(tier).toLowerCase();
+  if (t.includes("core")) return "core-macro";
+  if (t.includes("policy") || t.includes("external") || t.includes("soft")) return "policy-external";
+  if (t.includes("market") || t.includes("shock")) return "market-mapping";
+  if (t.includes("theme")) return "theme-panel";
+  return "core-macro";
+}
+
+function buildGlossaryEntries(model) {
+  const dims = (model.tables?.dimensions || [])
+    .filter((row) => /^D\\d{2}$/i.test(findValue(row, ["dimensionid", "维度id", "id"])))
+    .slice(0, 14)
+    .map((row) => {
+      const id = findValue(row, ["dimensionid", "维度id", "id"]);
+      const name = findValue(row, ["dimensionname", "维度名称", "维度"]);
+      const weight = findValue(row, ["weight", "权重", "%"]);
+      const tier = findValue(row, ["tier", "层级"]);
+      const definition = findValue(row, ["definition", "定义", "说明"]);
+      const update = findValue(row, ["typical update", "frequency", "更新"]);
+      const indicators = (model.tables?.indicators || [])
+        .filter((i) => findValue(i, ["dimensionid", "维度id", "id"]).toLowerCase() === id.toLowerCase())
+        .slice(0, 3)
+        .map((i) => findValue(i, ["indicatorname", "指标", "name"]))
+        .filter(Boolean)
+        .join(" / ");
+
+      return {
+        category: mapTierToCategory(tier),
+        title: `${id} ${name}`,
+        weight,
+        definition,
+        details: `${getLang() === "zh" ? "关键指标" : "Key Indicators"}: ${indicators || "--"} · ${
+          getLang() === "zh" ? "更新频率" : "Update"
+        }: ${update || "--"}`
+      };
+    });
+
+  const sources = [...new Set((model.tables?.indicators || []).map((row) => findValue(row, ["主数据源", "source"])).filter(Boolean))]
+    .slice(0, 6)
+    .map((source) => ({
+      category: "data-source",
+      title: source,
+      weight: "",
+      definition: getLang() === "zh" ? "模型使用的主要数据来源。" : "Primary data source used by the model.",
+      details: source
+    }));
+
+  return [...dims, ...sources];
+}
+
+function renderGlossary(model) {
   const root = document.getElementById("glossary-grid");
+  const search = document.getElementById("glossary-search");
+  const filter = document.getElementById("glossary-filter");
   if (!root) return;
 
-  const lang = getLang();
-  root.innerHTML = "";
-  glossaryTerms.forEach((item) => {
-    const card = document.createElement("article");
-    card.className = "glossary-card";
-    card.innerHTML = `<h3>${escapeHtml(item[lang].term)}</h3><p>${escapeHtml(item[lang].desc)}</p>`;
-    root.appendChild(card);
-  });
+  const staticEntries = glossaryTerms.map((item) => ({
+    category: "core-macro",
+    title: item[getLang()].term,
+    weight: "",
+    definition: item[getLang()].desc,
+    details: ""
+  }));
+  const entries = [...buildGlossaryEntries(model), ...staticEntries];
+
+  const draw = () => {
+    const q = asText(search?.value).toLowerCase();
+    const c = asText(filter?.value) || "all";
+    const filtered = entries.filter((entry) => {
+      const hitCategory = c === "all" || entry.category === c;
+      const blob = `${entry.title} ${entry.definition} ${entry.details}`.toLowerCase();
+      return hitCategory && (!q || blob.includes(q));
+    });
+
+    root.innerHTML = "";
+    filtered.forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "glossary-card";
+      card.innerHTML = `
+        <h3>${escapeHtml(item.title)}</h3>
+        ${item.weight ? `<div class="term-weight">${getLang() === "zh" ? "权重" : "Weight"}: ${escapeHtml(item.weight)}</div>` : ""}
+        <p>${escapeHtml(item.definition)}</p>
+        ${item.details ? `<p>${escapeHtml(item.details)}</p>` : ""}
+      `;
+      root.appendChild(card);
+    });
+  };
+
+  search?.addEventListener("input", draw);
+  filter?.addEventListener("change", draw);
+  draw();
 }
 
 function renderIndicatorsPage(model) {
@@ -1114,13 +1337,13 @@ async function init() {
     if (page === "dashboard") renderDashboard(currentModel);
     if (page === "daily-report") renderDailyReport(currentModel);
     if (page === "indicators") renderIndicatorsPage(currentModel);
-    if (page === "glossary") renderGlossary();
+    if (page === "glossary") renderGlossary(currentModel);
   });
 
   if (page === "dashboard") await initDashboard();
   if (page === "daily-report") await renderDailyReport(model);
   if (page === "indicators") renderIndicatorsPage(model);
-  if (page === "glossary") renderGlossary();
+  if (page === "glossary") renderGlossary(model);
 }
 
 document.addEventListener("DOMContentLoaded", init);

@@ -293,6 +293,22 @@ input[type="file"] {
   background: rgba(255, 255, 255, 0.75);
 }
 
+.summary-panel {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.summary-line {
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.summary-score {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
 .indicator-mini-card {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -584,6 +600,70 @@ input[type="file"] {
 .report-link:hover,
 .report-open:hover {
   background: rgba(10, 122, 104, 0.12);
+}
+
+.report-preview {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.preview-header,
+.preview-section,
+.preview-tier {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0.8rem;
+}
+
+.preview-header h3,
+.preview-section h3,
+.preview-tier h3 {
+  margin: 0 0 0.5rem;
+}
+
+.preview-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.2rem;
+  color: var(--ink-soft);
+}
+
+.preview-dim-card {
+  margin-top: 0.45rem;
+  border: 1px solid rgba(18, 36, 40, 0.1);
+  border-radius: 10px;
+  padding: 0.55rem;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.glossary-controls {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.search-input,
+.filter-select {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.62rem;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.search-input {
+  min-width: 220px;
+  flex: 1;
+}
+
+.glossary-card .term-weight {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin-top: 0.2rem;
 }
 
 @media (max-width: 920px) {
