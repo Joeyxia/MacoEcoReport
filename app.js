@@ -826,6 +826,12 @@ function renderDimensionLayers(rows, model) {
   });
 
   root.innerHTML = "";
+  const payloadIndicators = Array.isArray(model.indicatorDetails) ? model.indicatorDetails : [];
+  const tableIndicators = model.tables?.indicators || [];
+  const tableInputs = model.tables?.inputs || [];
+  const inputCodeKey = tableInputs.length ? keyByIncludes(tableInputs[0], ["indicatorcode", "code"]) : null;
+  const inputValKey = tableInputs.length ? keyByIncludes(tableInputs[0], ["latestvalue", "value", "值"]) : null;
+
   for (const [tier, dims] of grouped.entries()) {
     const layer = document.createElement("section");
     layer.className = "layer-block";
@@ -848,6 +854,31 @@ function renderDimensionLayers(rows, model) {
       const update = findValue(row, ["typical update", "frequency", "更新"]);
       const metric = findDimensionMetric(model, id, name);
       const trend = scoreTrend(metric.score || 0);
+      let dimIndicators = [];
+
+      if (payloadIndicators.length) {
+        dimIndicators = payloadIndicators
+          .filter((x) => asText(x.DimensionID).toLowerCase() === asText(id).toLowerCase())
+          .slice(0, 3)
+          .map((x) => ({
+            indicatorName: x.IndicatorName || x.IndicatorCode,
+            value: x.LatestValue
+          }));
+      } else {
+        dimIndicators = tableIndicators
+          .filter((r) => findValue(r, ["dimensionid", "维度id", "id"]).toLowerCase() === id.toLowerCase())
+          .slice(0, 3)
+          .map((r) => {
+            const code = findValue(r, ["indicatorcode", "code"]);
+            const indicatorName = findValue(r, ["indicatorname", "指标", "name"]) || code;
+            const input = tableInputs.find((x) => asText(x[inputCodeKey]) === code);
+            const value = input ? asText(input[inputValKey]) : "";
+            return { indicatorName, value };
+          });
+      }
+      const indicatorList = dimIndicators
+        .map((i) => `<li>${escapeHtml(i.indicatorName)}: ${escapeHtml(i.value ?? "--")}</li>`)
+        .join("");
 
       const card = document.createElement("article");
       card.className = "dimension-card";
@@ -862,6 +893,7 @@ function renderDimensionLayers(rows, model) {
           <span>${getLang() === "zh" ? "贡献" : "Contribution"}: ${round(metric.contribution || 0, 2)}</span>
           <span class="${trend.cls}">${trend.symbol}</span>
         </div>
+        <ul class="preview-list">${indicatorList}</ul>
         <p>${escapeHtml(definition)}</p>
       `;
       container.appendChild(card);
