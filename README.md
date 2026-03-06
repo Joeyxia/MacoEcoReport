@@ -27,8 +27,8 @@ A static bilingual website for your macro monitoring model, ready for GitHub Pag
 - Separate `indicators.html` page shows all indicator information from `Indicators` sheet
 
 7. GitHub Pages deployment:
-- Workflow at `.github/workflows/deploy-pages.yml`
-- Push to `main` triggers deployment
+- Configure Pages source to `main` branch and `/ (root)` path
+- Site is served directly from the static files in this repository
 
 ## Pages
 
