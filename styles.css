@@ -683,6 +683,23 @@ input[type="file"] {
   margin-top: 0.2rem;
 }
 
+.signal-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.78rem;
+}
+
+.signal-card h3 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.signal-card p {
+  margin: 0.38rem 0 0;
+  color: var(--ink-soft);
+}
+
 @media (max-width: 920px) {
   .site-header {
     grid-template-columns: 1fr;

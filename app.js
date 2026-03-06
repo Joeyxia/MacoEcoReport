@@ -1247,7 +1247,210 @@ function mapTierToCategory(tier) {
   return "core-macro";
 }
 
+function referenceGlossaryCatalog() {
+  const zh = getLang() === "zh";
+  return [
+    {
+      category: "core-macro",
+      title: zh ? "D01 货币政策与流动性" : "D01 Monetary Policy & Liquidity",
+      weight: "12%",
+      definition: zh ? "利率曲线、短端资金利率、央行资产负债表与净流动性。" : "Yield curve, short-end funding, central bank balance sheet, and net liquidity.",
+      details: zh ? "关键指标: 10Y-3M利差、SOFR、美联储总资产、净流动性代理" : "Key indicators: 10Y-3M spread, SOFR, Fed assets, net liquidity proxy",
+      why: zh ? "用于判断流动性环境和政策方向是否支持风险资产。" : "Measures whether policy/liquidity backdrop supports risk assets.",
+      read: zh ? "曲线修复、资金利率稳定、净流动性改善通常对应更高风险偏好。" : "Curve normalization and improving net liquidity are usually risk-supportive.",
+      use: zh ? "在日报中作为市场风格切换的前置信号。" : "Use as a lead signal for market regime/style shifts."
+    },
+    {
+      category: "core-macro",
+      title: zh ? "D02 增长与前瞻" : "D02 Growth & Forward Signals",
+      weight: "11%",
+      definition: zh ? "GDP/PMI/订单/初请等前瞻增长信号。" : "Forward growth indicators such as GDP, PMI, orders, and claims.",
+      details: zh ? "关键指标: 实际GDP、制造业PMI、初请失业金4周均值、LEI同比" : "Key indicators: real GDP, PMI, claims 4WMA, LEI YoY",
+      why: zh ? "用于跟踪经济动能是否放缓或再加速。" : "Tracks macro momentum deceleration vs re-acceleration.",
+      read: zh ? "前瞻项恶化往往早于盈利和就业回落。" : "Forward indicators typically lead earnings and labor turns.",
+      use: zh ? "结合D05盈利维度用于判断景气持续性。" : "Pair with D05 to assess cycle sustainability."
+    },
+    {
+      category: "core-macro",
+      title: zh ? "D03 通胀与价格压力" : "D03 Inflation & Price Pressure",
+      weight: "10%",
+      definition: zh ? "核心通胀与通胀预期，判断政策约束与利润压力。" : "Core inflation and inflation expectations to infer policy/profit pressure.",
+      details: zh ? "关键指标: 核心CPI、核心PCE、5Y5Y通胀预期" : "Key indicators: core CPI, core PCE, 5Y5Y inflation expectation",
+      why: zh ? "决定利率路径、估值折现和利润空间。" : "Drives rates path, valuation discounting, and margin pressure.",
+      read: zh ? "通胀回落至目标区间通常利好风险资产估值。" : "Disinflation toward target is generally supportive for valuations.",
+      use: zh ? "与D01联动判断政策松紧边际变化。" : "Use with D01 to track policy tightening/easing margins."
+    },
+    {
+      category: "core-macro",
+      title: zh ? "D04 就业与居民部门" : "D04 Labor & Households",
+      weight: "10%",
+      definition: zh ? "就业、收入与居民信用压力。" : "Labor, income, and household credit stress.",
+      details: zh ? "关键指标: 失业率、工资增速、信用卡拖欠率、实际可支配收入同比" : "Key indicators: unemployment, wage growth, card delinquency, real disposable income YoY",
+      why: zh ? "居民部门是消费和经济韧性的核心。" : "Households drive consumption and macro resilience.",
+      read: zh ? "失业恶化+拖欠上行通常对应防御风格上升。" : "Rising unemployment and delinquencies usually favor defensive posture.",
+      use: zh ? "用于判断增长下行是否进入需求收缩阶段。" : "Helps detect transition into demand contraction."
+    },
+    {
+      category: "core-macro",
+      title: zh ? "D05 企业盈利与信用" : "D05 Earnings & Credit",
+      weight: "8%",
+      definition: zh ? "盈利预期修正与信用利差/违约压力。" : "Earnings revisions and credit-spread/default stress.",
+      details: zh ? "关键指标: 标普500 Forward P/E、EPS修正广度、HY OAS" : "Key indicators: S&P 500 Fwd P/E, EPS revision breadth, HY OAS",
+      why: zh ? "连接估值端和信用端，是资产定价核心桥梁。" : "Bridges equity valuation and credit stress in pricing.",
+      read: zh ? "EPS下修与OAS走阔同时出现时风险上升更快。" : "Simultaneous EPS downgrades and OAS widening raise risk sharply.",
+      use: zh ? "用于行业配置和信用敞口管理。" : "Use for sector allocation and credit exposure control."
+    },
+    {
+      category: "core-macro",
+      title: zh ? "D06 房地产与利率敏感部门" : "D06 Housing & Rate-sensitive Sectors",
+      weight: "6%",
+      definition: zh ? "按揭利率、成交与开工，反映利率传导。" : "Mortgage rates, transactions, and starts as rate transmission channel.",
+      details: zh ? "关键指标: 30年按揭利率、成屋销售、新屋开工" : "Key indicators: 30Y mortgage, existing home sales, housing starts",
+      why: zh ? "地产是政策利率传导到实体的重要通道。" : "Housing is a key channel from policy rates to real activity.",
+      read: zh ? "融资成本高企+成交疲弱通常压制后续增长。" : "High financing costs + weak transactions usually weigh on growth.",
+      use: zh ? "可作为衰退风险早期筛查项之一。" : "Use as an early recession-risk filter."
+    },
+    {
+      category: "core-macro",
+      title: zh ? "D10 金融条件与信用传导" : "D10 Financial Conditions & Credit Transmission",
+      weight: "6%",
+      definition: zh ? "金融条件指数、银行信贷供给与资金面压力。" : "FCI, bank credit supply, and funding pressure.",
+      details: zh ? "关键指标: FCI、银行信贷增速、TED利差" : "Key indicators: FCI, bank lending growth, TED spread",
+      why: zh ? "决定政策变化能否有效传导至实体融资端。" : "Shows whether policy changes pass through to real financing conditions.",
+      read: zh ? "金融条件收紧且信贷放缓时，景气下行风险增加。" : "Tighter conditions with slower lending increase downside risk.",
+      use: zh ? "用于判断信用周期的拐点位置。" : "Use to detect turning points in credit cycle."
+    },
+    {
+      category: "policy-external",
+      title: zh ? "D08 外部部门与美元条件" : "D08 External Sector & Dollar Conditions",
+      weight: "7%",
+      definition: zh ? "DXY/利差/资本流动等外部融资条件。" : "DXY, cross-rate spreads, and capital flows.",
+      details: zh ? "关键指标: DXY/REER、美日利差、海外净买入美国资产" : "Key indicators: DXY/REER, US-JP spread, foreign net buying of US assets",
+      why: zh ? "美元与跨境资金流影响全球流动性与风险偏好。" : "Dollar/flow dynamics shape global liquidity and risk appetite.",
+      read: zh ? "美元过强通常对应外部融资条件收紧。" : "Overly strong USD usually tightens external financing conditions.",
+      use: zh ? "用于跨市场和汇率敏感资产的风险管理。" : "Use for cross-market and FX-sensitive risk management."
+    },
+    {
+      category: "policy-external",
+      title: zh ? "D09 财政政策与债务约束" : "D09 Fiscal Policy & Debt Constraint",
+      weight: "8%",
+      definition: zh ? "赤字、利息负担与债务路径。" : "Deficit, interest burden, and debt trajectory.",
+      details: zh ? "关键指标: 财政赤字/GDP、债务/GDP、利息支出/财政收入" : "Key indicators: deficit/GDP, debt/GDP, interest/revenue",
+      why: zh ? "财政可持续性决定中长期政策空间与期限溢价。" : "Fiscal sustainability drives long-run policy room and term premium.",
+      read: zh ? "利息负担上行快于收入时，财政约束显著强化。" : "Interest burden rising faster than revenue tightens fiscal constraints.",
+      use: zh ? "用于评估长端利率与风险资产估值约束。" : "Use to assess long-rate and valuation constraints."
+    },
+    {
+      category: "policy-external",
+      title: zh ? "D12 信心与不确定性" : "D12 Confidence & Uncertainty",
+      weight: "6%",
+      definition: zh ? "消费者/企业信心与政策不确定性。" : "Consumer/business confidence and policy uncertainty.",
+      details: zh ? "关键指标: 消费者信心、CEO Confidence、EPU" : "Key indicators: consumer confidence, CEO confidence, EPU",
+      why: zh ? "软数据影响投资和招聘意愿，常领先硬数据拐点。" : "Soft data influences capex/hiring and often leads hard-data turns.",
+      read: zh ? "信心回落与不确定性上升通常抑制企业支出。" : "Falling confidence and rising uncertainty usually suppress spending.",
+      use: zh ? "用于验证增长指标是否会继续走弱。" : "Use to validate whether growth weakening may persist."
+    },
+    {
+      category: "market-mapping",
+      title: zh ? "D07 风险偏好与跨资产波动" : "D07 Risk Appetite & Cross-asset Volatility",
+      weight: "6%",
+      definition: zh ? "VIX/MOVE/回撤等市场风险映射。" : "Market risk mapping via VIX, MOVE, and drawdown metrics.",
+      details: zh ? "关键指标: VIX、MOVE、3个月最大回撤" : "Key indicators: VIX, MOVE, 3M max drawdown",
+      why: zh ? "直接反映市场风险溢价与去风险压力。" : "Directly reflects risk premia and de-risk pressure.",
+      read: zh ? "波动率快速抬升通常先于资金面紧张扩散。" : "Vol spikes often precede broader stress propagation.",
+      use: zh ? "用于仓位、杠杆与对冲强度管理。" : "Use for position sizing, leverage, and hedge intensity."
+    },
+    {
+      category: "market-mapping",
+      title: zh ? "D11 大宗商品与能源/地缘风险" : "D11 Commodities & Geopolitical Risk",
+      weight: "5%",
+      definition: zh ? "油价/商品与地缘风险对通胀和增长的冲击。" : "Commodity and geopolitical shocks to inflation and growth.",
+      details: zh ? "关键指标: WTI、CRB同比、GPR指数" : "Key indicators: WTI, CRB YoY, GPR index",
+      why: zh ? "外生冲击会同时改变通胀路径与增长预期。" : "Exogenous shocks can alter both inflation path and growth outlook.",
+      read: zh ? "能源上行+地缘紧张上升时需防范滞胀尾部。" : "Energy spikes plus geopolitical stress raise stagflation tail risks.",
+      use: zh ? "用于事件驱动风险预案与对冲。" : "Use for event-driven contingency and hedging."
+    },
+    {
+      category: "theme-panel",
+      title: zh ? "D13 AI资本开支周期（主题）" : "D13 AI Capex Cycle (Theme)",
+      weight: "4%",
+      definition: zh ? "云与AI资本开支/营收动能（主题观察）。" : "Cloud/AI capex and revenue momentum as theme monitor.",
+      details: zh ? "关键指标: 云业务增速、AI Capex指引、半导体景气代理" : "Key indicators: cloud growth, AI capex guidance, semiconductor proxy",
+      why: zh ? "反映技术投资景气和相关产业链盈利弹性。" : "Captures innovation-cycle strength and chain-level earnings beta.",
+      read: zh ? "景气上行有利成长风格，但需警惕估值过热。" : "Upswing supports growth style but may raise valuation overheating risk.",
+      use: zh ? "建议作为主题面板，不替代核心宏观维度。" : "Use as a theme panel, not a substitute for core macro blocks."
+    },
+    {
+      category: "theme-panel",
+      title: zh ? "D14 加密与稳定币流动性（主题）" : "D14 Crypto & Stablecoin Liquidity (Theme)",
+      weight: "1%",
+      definition: zh ? "稳定币与链上流动性的低权重主题观察。" : "Low-weight thematic monitor of stablecoin and on-chain liquidity.",
+      details: zh ? "关键指标: BTC、USDC市值、稳定币总市值" : "Key indicators: BTC, USDC market cap, total stablecoin cap",
+      why: zh ? "可提供风险偏好边际变化的补充信号。" : "Provides supplementary signal on marginal risk appetite shifts.",
+      read: zh ? "波动高、噪音大，需与主模型交叉验证。" : "High volatility/noise requires cross-check with core model.",
+      use: zh ? "保持低权重，避免对总分造成过度扰动。" : "Keep low weight to avoid over-influencing headline score."
+    },
+    {
+      category: "data-source",
+      title: "FRED (Federal Reserve Economic Data)",
+      weight: "",
+      definition: zh ? "美联储圣路易斯分行经济数据平台。" : "Federal Reserve Bank of St. Louis economic data platform.",
+      details: zh ? "覆盖利率、就业、通胀、信用等核心时间序列。访问: https://fred.stlouisfed.org/" : "Covers rates, labor, inflation, credit and more. URL: https://fred.stlouisfed.org/",
+      why: zh ? "主源稳定、可回溯，适合模型长期维护。" : "Stable and backtestable primary source for long-horizon maintenance.",
+      read: zh ? "同一指标建议固定代码，减少口径漂移。" : "Keep fixed series code per indicator to reduce methodology drift.",
+      use: zh ? "报告发布前核对最近观测与更新时间戳。" : "Validate latest observations and timestamps before publishing."
+    },
+    {
+      category: "data-source",
+      title: "BEA (Bureau of Economic Analysis)",
+      weight: "",
+      definition: zh ? "美国经济分析局，发布GDP/PCE等官方数据。" : "US Bureau of Economic Analysis, publisher of GDP/PCE data.",
+      details: zh ? "关键数据: 实际GDP、个人消费支出、收入相关序列。访问: https://www.bea.gov/" : "Key data: real GDP, PCE, income-related series. URL: https://www.bea.gov/",
+      why: zh ? "是增长与通胀核心数据的官方来源之一。" : "Official source for critical growth/inflation components.",
+      read: zh ? "注意首发值与修订值版本差异。" : "Track first release vs revised vintages.",
+      use: zh ? "模型中应统一使用同一版次口径。" : "Use consistent vintage methodology in the model."
+    },
+    {
+      category: "data-source",
+      title: "BLS (Bureau of Labor Statistics)",
+      weight: "",
+      definition: zh ? "美国劳工统计局，发布就业与CPI数据。" : "US Bureau of Labor Statistics for labor and CPI data.",
+      details: zh ? "关键数据: CPI、失业率、工资等。访问: https://www.bls.gov/" : "Key data: CPI, unemployment, wages. URL: https://www.bls.gov/",
+      why: zh ? "就业与通胀是政策路径判断核心变量。" : "Labor and inflation are core policy-path variables.",
+      read: zh ? "应结合趋势而非单次读数判断拐点。" : "Infer turning points from trend, not one-off prints.",
+      use: zh ? "与BEA/FRED交叉验证后用于日报结论。" : "Cross-check with BEA/FRED before daily conclusions."
+    }
+  ];
+}
+
+function referenceSignalGuide() {
+  const zh = getLang() === "zh";
+  return [
+    {
+      title: zh ? "≥70分 - 强烈看多" : ">=70 - Strong Bullish",
+      text: zh ? "经济环境强劲、流动性支持明显，适合积极风险配置。" : "Strong macro/liquidity backdrop supports aggressive risk allocation."
+    },
+    {
+      title: zh ? "60-69分 - 温和看多" : "60-69 - Mild Bullish",
+      text: zh ? "基本面稳健但有不确定性，适合平衡偏进攻配置。" : "Fundamentals are healthy but mixed; balanced pro-risk stance."
+    },
+    {
+      title: zh ? "40-59分 - 中性" : "40-59 - Neutral",
+      text: zh ? "多空因素交织，建议精选资产并重视风控。" : "Mixed forces; selective positioning with tighter risk controls."
+    },
+    {
+      title: zh ? "30-39分 - 温和看空" : "30-39 - Mild Bearish",
+      text: zh ? "下行压力增加，宜降低β并提高防御仓位。" : "Downside pressure rises; reduce beta and increase defensives."
+    },
+    {
+      title: zh ? "≤29分 - 强烈看空" : "<=29 - Strong Bearish",
+      text: zh ? "衰退/危机风险高，优先资本保护与流动性管理。" : "High recession/crisis risk; prioritize capital preservation and liquidity."
+    }
+  ];
+}
+
 function buildGlossaryEntries(model) {
+  const reference = referenceGlossaryCatalog();
   const dims = (model.tables?.dimensions || [])
     .filter((row) => /^D\\d{2}$/i.test(findValue(row, ["dimensionid", "维度id", "id"])))
     .slice(0, 14)
@@ -1310,7 +1513,7 @@ function buildGlossaryEntries(model) {
           : "Validate source timestamps before publishing reports."
     }));
 
-  return [...dims, ...sources];
+  return [...reference, ...dims, ...sources];
 }
 
 function renderGlossary(model) {
@@ -1360,6 +1563,17 @@ function renderGlossary(model) {
   search?.addEventListener("input", draw);
   filter?.addEventListener("change", draw);
   draw();
+
+  const signalRoot = document.getElementById("signal-guide-grid");
+  if (signalRoot) {
+    signalRoot.innerHTML = "";
+    referenceSignalGuide().forEach((s) => {
+      const card = document.createElement("article");
+      card.className = "signal-card";
+      card.innerHTML = `<h3>${escapeHtml(s.title)}</h3><p>${escapeHtml(s.text)}</p>`;
+      signalRoot.appendChild(card);
+    });
+  }
 }
 
 function renderIndicatorsPage(model) {
