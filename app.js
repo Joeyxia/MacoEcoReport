@@ -137,28 +137,100 @@ const sampleModel = {
 
 const glossaryTerms = [
   {
-    en: { term: "Macro Composite Score", desc: "Weighted 0-100 aggregate score across the 14 dimensions." },
-    zh: { term: "宏观综合评分", desc: "14个维度加权后的0-100综合分。" }
+    en: {
+      term: "Macro Composite Score",
+      desc: "Weighted 0-100 aggregate score across the 14 dimensions.",
+      why: "It is the top-level regime signal used for strategic risk stance.",
+      read: "75+ overheated expansion; 60-75 moderate expansion; 45-60 fragile neutral; 30-45 defensive; below 30 crisis.",
+      use: "Use score trend (not one-point value) to size risk budgets."
+    },
+    zh: {
+      term: "宏观综合评分",
+      desc: "14个维度加权后的0-100综合分。",
+      why: "它是用于战略风险配置的顶层状态信号。",
+      read: "75以上偏热扩张；60-75温和扩张；45-60中性偏脆弱；30-45防御；30以下危机。",
+      use: "建议看趋势而不是单日点位，用于调整组合风险预算。"
+    }
   },
   {
-    en: { term: "Alert Trigger", desc: "Threshold-based risk event (for example VIX > 30)." },
-    zh: { term: "预警触发", desc: "基于阈值触发的风险事件（例如 VIX > 30）。" }
+    en: {
+      term: "Alert Trigger",
+      desc: "Threshold-based risk event (for example VIX > 30).",
+      why: "Alerts provide tactical risk control signals that react faster than smoothed scores.",
+      read: "RED means immediate stress, YELLOW means rising fragility, no trigger means thresholds are stable.",
+      use: "Use alerts for hedging and gross/net exposure adjustments."
+    },
+    zh: {
+      term: "预警触发",
+      desc: "基于阈值触发的风险事件（例如 VIX > 30）。",
+      why: "预警比平滑后的总分更快，适合战术风控。",
+      read: "红灯代表即时压力，黄灯代表脆弱性上升，无触发代表阈值内稳定。",
+      use: "可用于对冲比例和仓位暴露的快速调整。"
+    }
   },
   {
-    en: { term: "TargetBand", desc: "Scoring mode where a defined value range receives highest score." },
-    zh: { term: "TargetBand", desc: "目标区间评分：数值落在区间内得分最高。" }
+    en: {
+      term: "TargetBand",
+      desc: "Scoring mode where a defined value range receives highest score.",
+      why: "Many macro variables are healthiest in a middle range instead of monotonic higher/lower.",
+      read: "Inside band = high score; outside band decays toward worst bounds.",
+      use: "Typical for inflation, unemployment, and policy-sensitive variables."
+    },
+    zh: {
+      term: "TargetBand",
+      desc: "目标区间评分：数值落在区间内得分最高。",
+      why: "许多宏观变量并非越高越好或越低越好，而是存在最优中枢。",
+      read: "落在目标区间内高分，偏离后向最差边界线性衰减。",
+      use: "常用于通胀、失业率、政策敏感型变量。"
+    }
   },
   {
-    en: { term: "WeightedContribution", desc: "Dimension contribution after dimension weight is applied." },
-    zh: { term: "加权贡献", desc: "维度分乘以维度权重后的总分贡献。" }
+    en: {
+      term: "WeightedContribution",
+      desc: "Dimension contribution after dimension weight is applied.",
+      why: "It identifies what truly drives headline score changes.",
+      read: "High score with low weight can contribute less than medium score with high weight.",
+      use: "Track contribution deltas to explain day-over-day regime shifts."
+    },
+    zh: {
+      term: "加权贡献",
+      desc: "维度分乘以维度权重后的总分贡献。",
+      why: "它能定位真正推动总分变化的来源。",
+      read: "低权重高分维度可能贡献小于高权重中等分维度。",
+      use: "可用于解释日报中总分变动的核心原因。"
+    }
   },
   {
-    en: { term: "HY OAS", desc: "US high-yield option-adjusted spread, a credit stress gauge." },
-    zh: { term: "HY OAS", desc: "美国高收益债 OAS，反映信用压力。" }
+    en: {
+      term: "HY OAS",
+      desc: "US high-yield option-adjusted spread, a credit stress gauge.",
+      why: "It is a direct market-implied proxy for default and refinancing pressure.",
+      read: "Widening spread usually means tighter financial conditions and weaker risk appetite.",
+      use: "Use together with VIX/MOVE for cross-asset stress confirmation."
+    },
+    zh: {
+      term: "HY OAS",
+      desc: "美国高收益债 OAS，反映信用压力。",
+      why: "它直接反映违约与再融资压力的市场定价。",
+      read: "利差走阔通常意味着金融条件收紧、风险偏好下降。",
+      use: "建议与VIX/MOVE联动观察确认跨资产压力。"
+    }
   },
   {
-    en: { term: "Net Liquidity Proxy", desc: "Common proxy: Fed assets - TGA - RRP." },
-    zh: { term: "净流动性代理", desc: "常用口径：美联储资产 - TGA - RRP。" }
+    en: {
+      term: "Net Liquidity Proxy",
+      desc: "Common proxy: Fed assets - TGA - RRP.",
+      why: "It approximates system liquidity available to risk assets.",
+      read: "Rising proxy often supports risk assets; falling proxy can tighten market breadth.",
+      use: "Compare with equity/credit drawdowns to detect liquidity-led risk events."
+    },
+    zh: {
+      term: "净流动性代理",
+      desc: "常用口径：美联储资产 - TGA - RRP。",
+      why: "它近似反映可流向风险资产的系统流动性。",
+      read: "上行通常支撑风险资产，下行可能对应广度收缩和估值压力。",
+      use: "可与股债回撤联动判断是否为流动性主导的风险事件。"
+    }
   }
 ];
 
@@ -1200,7 +1272,19 @@ function buildGlossaryEntries(model) {
         definition,
         details: `${getLang() === "zh" ? "关键指标" : "Key Indicators"}: ${indicators || "--"} · ${
           getLang() === "zh" ? "更新频率" : "Update"
-        }: ${update || "--"}`
+        }: ${update || "--"}`,
+        why:
+          getLang() === "zh"
+            ? `该维度用于衡量“${name}”对宏观周期与风险偏好的传导影响。`
+            : `This dimension measures how "${name}" transmits into macro cycle and risk appetite.`,
+        read:
+          getLang() === "zh"
+            ? "一般而言，维度分上升代表该块环境改善；分数下降代表该块风险积累。"
+            : "In general, rising dimension score means improving conditions, while falling score means risk build-up.",
+        use:
+          getLang() === "zh"
+            ? "可与加权贡献一起观察，用于解释总分变化与日报结论。"
+            : "Use with weighted contribution to explain headline score changes and daily conclusions."
       };
     });
 
@@ -1211,7 +1295,19 @@ function buildGlossaryEntries(model) {
       title: source,
       weight: "",
       definition: getLang() === "zh" ? "模型使用的主要数据来源。" : "Primary data source used by the model.",
-      details: source
+      details: source,
+      why:
+        getLang() === "zh"
+          ? "稳定、可回溯的数据源可减少模型口径漂移。"
+          : "Stable and backtestable sources reduce methodology drift over time.",
+      read:
+        getLang() === "zh"
+          ? "同一指标建议固定主源，必要时再使用备选源。"
+          : "Keep a fixed primary source per indicator and use fallback sources only when needed.",
+      use:
+        getLang() === "zh"
+          ? "发布报告前应核对数据时间戳与最近更新时间。"
+          : "Validate source timestamps before publishing reports."
     }));
 
   return [...dims, ...sources];
@@ -1228,7 +1324,10 @@ function renderGlossary(model) {
     title: item[getLang()].term,
     weight: "",
     definition: item[getLang()].desc,
-    details: ""
+    details: "",
+    why: item[getLang()].why,
+    read: item[getLang()].read,
+    use: item[getLang()].use
   }));
   const entries = [...buildGlossaryEntries(model), ...staticEntries];
 
@@ -1237,7 +1336,7 @@ function renderGlossary(model) {
     const c = asText(filter?.value) || "all";
     const filtered = entries.filter((entry) => {
       const hitCategory = c === "all" || entry.category === c;
-      const blob = `${entry.title} ${entry.definition} ${entry.details}`.toLowerCase();
+      const blob = `${entry.title} ${entry.definition} ${entry.details} ${entry.why || ""} ${entry.read || ""} ${entry.use || ""}`.toLowerCase();
       return hitCategory && (!q || blob.includes(q));
     });
 
@@ -1248,8 +1347,11 @@ function renderGlossary(model) {
       card.innerHTML = `
         <h3>${escapeHtml(item.title)}</h3>
         ${item.weight ? `<div class="term-weight">${getLang() === "zh" ? "权重" : "Weight"}: ${escapeHtml(item.weight)}</div>` : ""}
-        <p>${escapeHtml(item.definition)}</p>
+        <p><strong>${getLang() === "zh" ? "定义" : "Definition"}:</strong> ${escapeHtml(item.definition)}</p>
         ${item.details ? `<p>${escapeHtml(item.details)}</p>` : ""}
+        ${item.why ? `<p><strong>${getLang() === "zh" ? "为什么重要" : "Why It Matters"}:</strong> ${escapeHtml(item.why)}</p>` : ""}
+        ${item.read ? `<p><strong>${getLang() === "zh" ? "如何解读" : "How To Read"}:</strong> ${escapeHtml(item.read)}</p>` : ""}
+        ${item.use ? `<p><strong>${getLang() === "zh" ? "实务使用" : "Practical Use"}:</strong> ${escapeHtml(item.use)}</p>` : ""}
       `;
       root.appendChild(card);
     });
