@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Macro Risk Monitor | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body data-page="dashboard">
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="index.html">Macro Risk Monitor</a>
+      <nav>
+        <a class="nav-link active" href="index.html">Dashboard</a>
+        <a class="nav-link" href="daily-report.html">Daily Report</a>
+        <a class="nav-link" href="glossary.html">Glossary</a>
+      </nav>
+    </header>
+
+    <main class="page page-dashboard">
+      <section class="panel hero">
+        <div>
+          <p class="eyebrow">Global Macro Crisis Radar</p>
+          <h1>Institutional 14-Dimension Monitoring Dashboard</h1>
+          <p class="subtle">
+            Upload your model workbook to refresh total score, dimension contribution,
+            and warning signals.
+          </p>
+          <div class="upload-wrap">
+            <label for="xlsx-input" class="btn">Load Model (.xlsx)</label>
+            <input id="xlsx-input" type="file" accept=".xlsx" />
+            <span id="file-status" class="subtle">Using built-in sample data</span>
+          </div>
+        </div>
+        <div class="score-card">
+          <p class="score-label">Macro Composite Score</p>
+          <div class="score-value" id="total-score">--</div>
+          <p class="score-meta">
+            As of <span id="as-of">--</span> · <strong id="macro-status">--</strong>
+          </p>
+        </div>
+      </section>
+
+      <section class="grid two-col">
+        <article class="panel">
+          <h2>Triggered Alerts</h2>
+          <ul id="alert-list" class="alerts"></ul>
+        </article>
+
+        <article class="panel">
+          <h2>Top Dimension Contributors</h2>
+          <div id="dimension-bars" class="bars"></div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>Primary Drivers</h2>
+        <div class="grid three-col" id="drivers"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2>Model Core Tables</h2>
+          <p class="subtle">Complete structured data from your 14-dimension model.</p>
+        </div>
+        <div class="grid two-col">
+          <article>
+            <h3>Dimensions</h3>
+            <div id="dimensions-table" class="table-wrap"></div>
+          </article>
+          <article>
+            <h3>Inputs (Latest)</h3>
+            <div id="inputs-table" class="table-wrap"></div>
+          </article>
+        </div>
+        <div class="grid two-col table-group-gap">
+          <article>
+            <h3>Indicators</h3>
+            <div id="indicators-table" class="table-wrap tall"></div>
+          </article>
+          <article>
+            <h3>Scores</h3>
+            <div id="scores-table" class="table-wrap tall"></div>
+          </article>
+        </div>
+        <article class="table-block">
+          <h3>Alerts</h3>
+          <div id="alerts-table" class="table-wrap"></div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2>Workbook Data Explorer</h2>
+          <p class="subtle">
+            Full raw content from every worksheet in the Excel file (all rows and columns).
+          </p>
+        </div>
+        <div id="sheet-tabs" class="sheet-tabs"></div>
+        <div id="sheet-table" class="table-wrap explorer"></div>
+      </section>
+
+      <section class="panel cta-row">
+        <div>
+          <h3>Need Today’s Note?</h3>
+          <p class="subtle">Generate and edit a daily narrative from the current model snapshot.</p>
+        </div>
+        <a class="btn" href="daily-report.html">Open Daily Report</a>
+      </section>
+    </main>
+  </body>
+</html>

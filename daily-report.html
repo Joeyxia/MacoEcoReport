@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Macro Risk Monitor | Daily Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body data-page="daily-report">
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="index.html">Macro Risk Monitor</a>
+      <nav>
+        <a class="nav-link" href="index.html">Dashboard</a>
+        <a class="nav-link active" href="daily-report.html">Daily Report</a>
+        <a class="nav-link" href="glossary.html">Glossary</a>
+      </nav>
+    </header>
+
+    <main class="page page-report">
+      <section class="panel hero compact">
+        <div>
+          <p class="eyebrow">Daily Intelligence Note</p>
+          <h1>Macro Monitoring Daily Report</h1>
+          <p class="subtle">
+            Auto-drafted from the latest dashboard snapshot. Edit as needed, then save.
+          </p>
+        </div>
+        <div class="score-card small">
+          <p class="score-label">Snapshot</p>
+          <div class="score-value" id="report-score">--</div>
+          <p class="score-meta"><span id="report-date">--</span> · <span id="report-status">--</span></p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="report-actions">
+          <button id="generate-report" class="btn">Regenerate Draft</button>
+          <button id="save-report" class="btn ghost">Save</button>
+          <button id="download-report" class="btn ghost">Download .txt</button>
+          <span id="save-status" class="subtle"></span>
+        </div>
+        <textarea id="report-editor" class="report-editor" spellcheck="false"></textarea>
+      </section>
+    </main>
+  </body>
+</html>
