@@ -1310,6 +1310,22 @@ function renderOnlineCheckTable(rows) {
   renderObjectTable("online-check-table", mapped);
 }
 
+function renderIndicatorVerificationTable(rows) {
+  const mapped = (rows || []).map((r) => ({
+    IndicatorCode: r.IndicatorCode,
+    IndicatorName: r.IndicatorName,
+    DimensionID: r.DimensionID,
+    LatestValue: r.LatestValue,
+    ValueDate: r.ValueDate,
+    SourceDate: r.SourceDate,
+    VerifiedOnline: r.VerifiedOnline ? "YES" : "NO",
+    VerificationStatus: r.VerificationStatus,
+    VerificationError: r.VerificationError || "",
+    GeneratedAt: r.GeneratedAt || ""
+  }));
+  renderObjectTable("indicator-verification-table", mapped);
+}
+
 async function renderDailyReport(model) {
   const date = getReportDateFromUrl();
   updateUrlDate(date);
@@ -1331,18 +1347,37 @@ async function renderDailyReport(model) {
   dateEl.textContent = date;
   statusEl.textContent = model.status;
 
-  const existing = await loadReport(date);
+  let existing = await loadReport(date);
+  if (!existing) {
+    const allReports = await listReports();
+    if (allReports.length) {
+      existing = allReports[0];
+    }
+  }
+  const payload = existing?.reportPayload || {};
+  const viewModel = {
+    ...model,
+    ...payload
+  };
   const initial = existing?.text || generateDailyText(model, date, null);
   editor.value = initial;
-  renderDailyReportPreview(model, date);
+  renderDailyReportPreview(viewModel, date);
 
-  renderObjectTable("daily-scores-table", model.tables?.scores || []);
-  renderOnlineCheckTable(model.onlineCheck || []);
+  renderObjectTable("daily-scores-table", viewModel.tables?.scores || model.tables?.scores || []);
+  renderOnlineCheckTable(viewModel.onlineCheck || model.onlineCheck || []);
+  renderIndicatorVerificationTable(viewModel.indicatorDetails || model.indicatorDetails || []);
+  const generatedAtEl = document.getElementById("data-generated-at");
+  if (generatedAtEl) {
+    const ga = viewModel.generatedAt || model.generatedAt;
+    generatedAtEl.textContent = ga
+      ? `${getLang() === "zh" ? "Data Generated At" : "Data Generated At"}: ${ga}`
+      : `${getLang() === "zh" ? "Data Generated At" : "Data Generated At"}: --`;
+  }
   renderReportLinks(await listReports());
 
   regenBtn?.addEventListener("click", () => {
     editor.value = generateDailyText(model, date, null);
-    renderDailyReportPreview(model, date);
+    renderDailyReportPreview(viewModel, date);
     saveStatus.textContent = getLang() === "zh" ? "草稿已重新生成。" : "Draft regenerated.";
   });
 
@@ -1358,6 +1393,7 @@ async function renderDailyReport(model) {
       await saveCurrentModel(targetModel);
       renderOnlineCheckTable(checked.results);
       renderObjectTable("daily-scores-table", targetModel.tables?.scores || []);
+      renderIndicatorVerificationTable(targetModel.indicatorDetails || []);
     }
 
     editor.value = generateDailyText(targetModel, date, summary);

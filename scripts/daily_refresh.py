@@ -4,7 +4,7 @@ import io
 import json
 import math
 import ssl
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -15,6 +15,7 @@ MODEL_PATH = ROOT / "model.xlsx"
 REPORTS_DIR = ROOT / "reports"
 DATA_DIR = ROOT / "data"
 TODAY = date.today().isoformat()
+GENERATED_AT = datetime.utcnow().isoformat(timespec="seconds") + "Z"
 CTX = ssl._create_unverified_context()
 
 
@@ -261,8 +262,12 @@ def run():
 
     # map input values
     input_values = {}
+    input_meta = {}
     for code, r in input_rows.items():
         v = as_number(ws_in.cell(r, 2).value)
+        value_date = serializable(ws_in.cell(r, 3).value)
+        source_date = serializable(ws_in.cell(r, 4).value)
+        input_meta[code] = {"value_date": value_date, "source_date": source_date}
         if v is not None:
             input_values[code] = v
 
@@ -382,6 +387,30 @@ def run():
         reverse=True,
     )
     daily_watched_items = [f"{x['label']}: {x['value']}" for x in key_watch if x.get("value") is not None]
+    updated_set = {x["code"] for x in updated}
+    failed_map = {x["code"]: x.get("error", "") for x in failed}
+    indicator_details = []
+    for code, m in indicators.items():
+        current_value = input_values.get(code)
+        verified = code in updated_set
+        status = "Verified Online" if verified else "Fallback (latest available in model inputs)"
+        indicator_details.append(
+            {
+                "IndicatorCode": code,
+                "IndicatorName": m["IndicatorName"],
+                "DimensionID": m["DimensionID"],
+                "Source": m["Source"],
+                "Series/Code": m["Series"],
+                "LatestValue": current_value,
+                "ValueDate": input_meta.get(code, {}).get("value_date"),
+                "SourceDate": input_meta.get(code, {}).get("source_date"),
+                "VerifiedOnline": verified,
+                "VerificationStatus": status,
+                "VerificationError": failed_map.get(code, ""),
+                "GeneratedAt": GENERATED_AT,
+            }
+        )
+
     all14_dimensions_detailed = [
         {
             "DimensionID": d["id"],
@@ -422,6 +451,7 @@ def run():
         "",
         "Short Summary",
         f"- {short_summary}",
+        f"- Data generated at: {GENERATED_AT}",
         "- Weakest dimensions: " + ", ".join([f"{x['id']} {x['name']} ({x['score']})" for x in weak]),
         "- Strongest dimensions: " + ", ".join([f"{x['id']} {x['name']} ({x['score']})" for x in strong]),
     ]
@@ -470,6 +500,8 @@ def run():
             "keyIndicatorsSnapshot": key_indicators_snapshot,
             "all14DimensionsDetailed": all14_dimensions_detailed,
             "latestReportSummary": short_summary,
+            "indicatorDetails": indicator_details,
+            "generatedAt": GENERATED_AT,
         },
     }
     merged = [today_entry] + [r for r in reports if r.get("date") != TODAY]
@@ -485,12 +517,14 @@ def run():
         "drivers": drivers,
         "keyWatch": key_watch,
         "latestReportSummary": short_summary,
+        "generatedAt": GENERATED_AT,
         "topDimensionContributors": top_dimension_contributors,
         "triggerAlerts": alerts,
         "dailyWatchedItems": daily_watched_items,
         "primaryDrivers": drivers,
         "keyIndicatorsSnapshot": key_indicators_snapshot,
         "all14DimensionsDetailed": all14_dimensions_detailed,
+        "indicatorDetails": indicator_details,
         "tables": {
             "dimensions": sheet_to_dicts(ws_dim),
             "indicators": sheet_to_dicts(ws_ind),

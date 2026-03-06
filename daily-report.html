@@ -33,6 +33,7 @@
           <p class="eyebrow" data-i18n="daily_note">Daily Intelligence Note</p>
           <h1 data-i18n="daily_report_title">Macro Monitoring Daily Report</h1>
           <p class="subtle" data-i18n="daily_report_desc">Auto-drafted from the latest dashboard snapshot. Edit as needed, then save.</p>
+          <p class="subtle"><span id="data-generated-at">--</span></p>
         </div>
         <div class="score-card small">
           <p class="score-label" data-i18n="snapshot">Snapshot</p>
@@ -77,6 +78,11 @@
       <section class="panel">
         <h2 data-i18n="detailed_indicator_scores">Detailed Indicators Score</h2>
         <div id="daily-scores-table" class="table-wrap explorer"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Indicator Verification Status</h2>
+        <div id="indicator-verification-table" class="table-wrap explorer"></div>
       </section>
     </main>
   </body>
