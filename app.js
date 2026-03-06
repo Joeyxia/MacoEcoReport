@@ -3,6 +3,7 @@ const DB_VERSION = 1;
 const STORAGE_KEY = "macro-monitor-model";
 const LANG_KEY = "macro-monitor-lang";
 const DEFAULT_MODEL_FILE = "./model.xlsx";
+const STATIC_REPORT_INDEX = "./reports/index.json";
 
 const i18n = {
   en: {
@@ -351,12 +352,31 @@ async function saveReport(date, text, meta) {
 }
 
 async function loadReport(date) {
-  return dbGet("reports", date);
+  const local = await dbGet("reports", date);
+  if (local) return local;
+  const staticReports = await loadStaticReports();
+  return staticReports.find((r) => r.date === date) || null;
 }
 
 async function listReports() {
   const reports = await dbGetAll("reports");
-  return reports.sort((a, b) => b.date.localeCompare(a.date));
+  const staticReports = await loadStaticReports();
+  const merged = new Map();
+  [...staticReports, ...reports].forEach((r) => {
+    if (r?.date) merged.set(r.date, r);
+  });
+  return [...merged.values()].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+async function loadStaticReports() {
+  try {
+    const res = await fetch(STATIC_REPORT_INDEX, { cache: "no-cache" });
+    if (!res.ok) return [];
+    const payload = await res.json();
+    return Array.isArray(payload?.reports) ? payload.reports : [];
+  } catch {
+    return [];
+  }
 }
 
 function asText(v) {
@@ -429,6 +449,124 @@ function inferStatus(score) {
   return getLang() === "zh" ? "衰退/危机" : "Recession/Crisis";
 }
 
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function computeModelFromTables(tables) {
+  const indicators = tables?.indicators || [];
+  const inputs = tables?.inputs || [];
+  const dimensionsTable = tables?.dimensions || [];
+
+  const inputCodeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
+  const inputValueKey = inputs.length ? keyByIncludes(inputs[0], ["latestvalue", "value", "值"]) : null;
+  const inputMap = new Map();
+  inputs.forEach((row) => {
+    const code = asText(row[inputCodeKey]);
+    const value = asNumber(row[inputValueKey]);
+    if (code && value !== null) inputMap.set(code, value);
+  });
+
+  const dimNameMap = new Map();
+  const dimWeightMap = new Map();
+  dimensionsTable.forEach((row) => {
+    const id = asText(findValue(row, ["dimensionid", "维度id", "id"]));
+    if (!id) return;
+    dimNameMap.set(id, asText(findValue(row, ["dimensionname", "维度名称", "维度"])));
+    dimWeightMap.set(id, asNumber(findValue(row, ["weight", "权重", "%"])) ?? 0);
+  });
+
+  const indicatorScores = [];
+  indicators.forEach((row) => {
+    const code = asText(findValue(row, ["indicatorcode", "code"]));
+    const dim = asText(findValue(row, ["dimensionid", "维度id", "id"]));
+    if (!code || !dim) return;
+
+    const raw = inputMap.get(code);
+    if (raw === undefined || raw === null) return;
+
+    const capLow = asNumber(findValue(row, ["caplow", "低截断"]));
+    const capHigh = asNumber(findValue(row, ["caphigh", "高截断"]));
+    let capped = raw;
+    if (capLow !== null) capped = Math.max(capped, capLow);
+    if (capHigh !== null) capped = Math.min(capped, capHigh);
+
+    const scaleType = asText(findValue(row, ["scaletype"])).toLowerCase();
+    const direction = asText(findValue(row, ["direction"])).toLowerCase();
+    const best = asNumber(findValue(row, ["best"]));
+    const worst = asNumber(findValue(row, ["worst"]));
+    const worstLow = asNumber(findValue(row, ["worstlow"]));
+    const targetLow = asNumber(findValue(row, ["targetlow"]));
+    const targetHigh = asNumber(findValue(row, ["targethigh"]));
+    const worstHigh = asNumber(findValue(row, ["worsthigh"]));
+    const weightWithinDim = asNumber(findValue(row, ["weightwithindim", "权重"])) ?? 0;
+
+    let score = null;
+    if (scaleType.includes("targetband") && worstLow !== null && targetLow !== null && targetHigh !== null && worstHigh !== null) {
+      if (capped >= targetLow && capped <= targetHigh) score = 100;
+      else if (capped < targetLow) score = ((capped - worstLow) / (targetLow - worstLow)) * 100;
+      else score = ((worstHigh - capped) / (worstHigh - targetHigh)) * 100;
+    } else if (direction.includes("higher") && best !== null && worst !== null && best !== worst) {
+      score = ((capped - worst) / (best - worst)) * 100;
+    } else if (direction.includes("lower") && best !== null && worst !== null && worst !== best) {
+      score = ((worst - capped) / (worst - best)) * 100;
+    }
+    if (score === null || !Number.isFinite(score)) return;
+    score = clamp(score, 0, 100);
+
+    indicatorScores.push({
+      IndicatorCode: code,
+      DimensionID: dim,
+      IndicatorName: asText(findValue(row, ["indicatorname", "指标", "name"])),
+      LatestValue: round(raw, 4),
+      CappedValue: round(capped, 4),
+      "Score(0-100)": round(score, 2),
+      WeightWithinDim: round(weightWithinDim, 4),
+      WeightedScore: round(score * weightWithinDim, 4)
+    });
+  });
+
+  const dims = [...new Set(indicatorScores.map((x) => x.DimensionID))];
+  const dimensionScores = dims.map((id) => {
+    const rows = indicatorScores.filter((x) => x.DimensionID === id);
+    const wsum = rows.reduce((a, r) => a + (asNumber(r.WeightWithinDim) ?? 0), 0);
+    const weighted = rows.reduce((a, r) => a + (asNumber(r.WeightedScore) ?? 0), 0);
+    const score = wsum > 0 ? weighted / wsum : 0;
+    const dimWeight = dimWeightMap.get(id) ?? 0;
+    const contribution = (score * dimWeight) / 100;
+    return {
+      id,
+      name: dimNameMap.get(id) || id,
+      score,
+      contribution,
+      dimWeight
+    };
+  });
+
+  const totalScore = dimensionScores.reduce((a, d) => a + d.contribution, 0);
+  return { indicatorScores, dimensionScores, totalScore };
+}
+
+function buildDefaultAlerts(inputRows) {
+  const inputCodeKey = inputRows.length ? keyByIncludes(inputRows[0], ["indicatorcode", "code"]) : null;
+  const inputValueKey = inputRows.length ? keyByIncludes(inputRows[0], ["latestvalue", "value", "值"]) : null;
+  const valueOf = (code) => {
+    const row = inputRows.find((r) => asText(r[inputCodeKey]) === code);
+    return row ? asNumber(row[inputValueKey]) : null;
+  };
+
+  const checks = [
+    { id: "A01", level: "RED", condition: "VIX > 30", triggered: (valueOf("VIX") ?? -Infinity) > 30 },
+    { id: "A02", level: "RED", condition: "MOVE > 140", triggered: (valueOf("MOVE") ?? -Infinity) > 140 },
+    { id: "A03", level: "YELLOW", condition: "HY OAS > 600bps", triggered: (valueOf("HY_OAS") ?? -Infinity) > 600 },
+    { id: "A04", level: "YELLOW", condition: "10Y-3M < -50bps", triggered: (valueOf("YC_10Y3M") ?? Infinity) < -50 },
+    { id: "A05", level: "YELLOW", condition: "Unemployment > 6%", triggered: (valueOf("UNRATE") ?? -Infinity) > 6 },
+    { id: "A06", level: "YELLOW", condition: "Core PCE > 3.5%", triggered: (valueOf("CORE_PCE_YOY") ?? -Infinity) > 3.5 },
+    { id: "A07", level: "YELLOW", condition: "WTI > 100", triggered: (valueOf("WTI") ?? -Infinity) > 100 }
+  ];
+  return checks;
+}
+
 function parseWorkbook(arrayBuffer) {
   const workbook = XLSX.read(arrayBuffer, { type: "array" });
 
@@ -461,39 +599,14 @@ function parseWorkbook(arrayBuffer) {
     if (dateLike) asOf = dateLike;
   });
 
-  const scoreRows = [];
-  tables.scores.forEach((row) => {
-    const nameKey = keyByIncludes(row, ["dimensionname", "dimension", "维度名称", "维度"]);
-    const scoreKey = keyByIncludes(row, ["dimscore", "score", "维度分"]);
-    const contribKey = keyByIncludes(row, ["weightedcontribution", "contribution", "贡献"]);
-    if (!nameKey || !scoreKey) return;
+  const computed = computeModelFromTables(tables);
+  const dimensions = computed.dimensionScores
+    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
+    .map((d) => ({ name: d.name, score: round(d.score, 2), contribution: round(d.contribution, 4), id: d.id }));
+  const totalScore = computed.totalScore || average(dimensions.map((d) => d.score));
+  const alerts = buildDefaultAlerts(tables.inputs || []);
 
-    const name = asText(row[nameKey]);
-    const score = asNumber(row[scoreKey]);
-    if (!name || score === null) return;
-    scoreRows.push({ name, score, contribution: asNumber(row[contribKey]) ?? 0 });
-  });
-
-  const totalRow = scoreRows.find((r) => r.name.toLowerCase() === "total");
-  const dimensions = scoreRows.filter((r) => r.name.toLowerCase() !== "total").slice(0, 14);
-  const totalScore = totalRow ? totalRow.score : average(dimensions.map((d) => d.score));
-
-  const alerts = [];
-  tables.alerts.forEach((row) => {
-    const idKey = keyByIncludes(row, ["alertid", "id"]);
-    const levelKey = keyByIncludes(row, ["level", "等级"]);
-    const condKey = keyByIncludes(row, ["condition", "条件"]);
-    const triggerKey = keyByIncludes(row, ["triggered", "触发"]);
-
-    const id = asText(row[idKey]);
-    const level = asText(row[levelKey]).toUpperCase() || "YELLOW";
-    const condition = asText(row[condKey]);
-    const triggerRaw = asText(row[triggerKey]).toLowerCase();
-    if (!id || !condition) return;
-
-    const triggered = ["yes", "y", "true", "1", "触发"].includes(triggerRaw);
-    alerts.push({ id, level, condition, triggered });
-  });
+  tables.scores = computed.indicatorScores;
 
   const activeAlerts = alerts.filter((a) => a.triggered).length;
   const drivers = buildDrivers(dimensions, activeAlerts, totalScore);

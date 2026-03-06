@@ -1,0 +1,17 @@
+Macro Daily Report (2026-03-07)
+Model As-Of: 2026-03-07
+Public-data refresh updated 25 indicators; 20 require manual/proprietary updates.
+
+Key Indicators To Watch
+- YC_10Y3M: 38
+- VIX: 23.75
+- HY_OAS: 300
+- CORE_CPI_YOY: 2.9493
+- UNRATE: 4.4
+- WTI: 71.13
+- BTC: 68228
+
+Short Summary
+- Yield curve, rates, labor and inflation proxies were refreshed from latest available public sources.
+- Credit and volatility are currently not signaling acute systemic stress from refreshed public indicators.
+- Several thematic/proprietary series (PMI/LEI/EPS/MOVE/EPU/theme panel) still need manual institutional source updates before final IC use.

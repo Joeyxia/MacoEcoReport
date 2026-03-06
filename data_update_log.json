@@ -1,0 +1,214 @@
+{
+  "as_of": "2026-03-07",
+  "updated_count": 25,
+  "failed_count": 20,
+  "updated": [
+    {
+      "code": "YC_10Y3M",
+      "date": "2026-03-04",
+      "value": 38.0
+    },
+    {
+      "code": "SOFR",
+      "date": "2026-03-05",
+      "value": 3.66
+    },
+    {
+      "code": "FED_ASSETS",
+      "date": "2026-03-04",
+      "value": 6.628894
+    },
+    {
+      "code": "NET_LIQ_PROXY",
+      "date": "2026-03-05",
+      "value": -825.426899
+    },
+    {
+      "code": "GDP_QOQ_SAAR",
+      "date": "2025-10-01",
+      "value": 1.4
+    },
+    {
+      "code": "CLAIMS_4WMA",
+      "date": "2026-02-28",
+      "value": 215750.0
+    },
+    {
+      "code": "CORE_CPI_YOY",
+      "date": "2026-01-01",
+      "value": 2.949338
+    },
+    {
+      "code": "CORE_PCE_YOY",
+      "date": "2025-12-01",
+      "value": 2.996876
+    },
+    {
+      "code": "BREAKEVEN_5Y5Y",
+      "date": "2026-03-05",
+      "value": 2.11
+    },
+    {
+      "code": "UNRATE",
+      "date": "2026-02-01",
+      "value": 4.4
+    },
+    {
+      "code": "WAGE_GROWTH",
+      "date": "2026-02-01",
+      "value": 3.839733
+    },
+    {
+      "code": "CC_DELINQ",
+      "date": "2025-10-01",
+      "value": 2.94
+    },
+    {
+      "code": "REAL_DISP_INC",
+      "date": "2025-12-01",
+      "value": 0.919526
+    },
+    {
+      "code": "HY_OAS",
+      "date": "2026-03-05",
+      "value": 3.0
+    },
+    {
+      "code": "MORTGAGE_30Y",
+      "date": "2026-03-05",
+      "value": 6.0
+    },
+    {
+      "code": "HOUSING_STARTS",
+      "date": "2025-12-01",
+      "value": 1.404
+    },
+    {
+      "code": "VIX",
+      "date": "2026-03-05",
+      "value": 23.75
+    },
+    {
+      "code": "DXY",
+      "date": "2026-02-27",
+      "value": 117.8223
+    },
+    {
+      "code": "US_JP_10Y_SPREAD",
+      "date": "2026-03-04",
+      "value": 185.0
+    },
+    {
+      "code": "FCI",
+      "date": "2026-02-27",
+      "value": -0.52365
+    },
+    {
+      "code": "BANK_LENDING",
+      "date": "2026-02-18",
+      "value": 1.785657
+    },
+    {
+      "code": "TED_SPREAD",
+      "date": "2022-01-21",
+      "value": 0.09
+    },
+    {
+      "code": "WTI",
+      "date": "2026-03-02",
+      "value": 71.13
+    },
+    {
+      "code": "BTC",
+      "date": "2026-03-07",
+      "value": 68228.0
+    },
+    {
+      "code": "USDC_MCAP",
+      "date": "2026-03-07",
+      "value": 77.389777
+    }
+  ],
+  "failed": [
+    {
+      "code": "PMI_MAN",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "LEI",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "SPX_FWD_PE",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "EPS_REV_BREADTH",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "EXIST_HOME_SALES",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "MOVE",
+      "error": "no value fetched"
+    },
+    {
+      "code": "SPX_DD_3M",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "CAPITAL_FLOWS",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "DEFICIT_GDP",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "DEBT_GDP",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "INT_REV",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "CRB",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "GPR",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "CB_CONS_CONF",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "CEO_CONF",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "EPU",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "CLOUD_AI_GROWTH",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "AI_CAPEX_GUIDE",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "SEMI_BOOK_BILL",
+      "error": "no public updater mapped"
+    },
+    {
+      "code": "STABLECOIN_DOM",
+      "error": "float() argument must be a string or a real number, not 'dict'"
+    }
+  ]
+}
