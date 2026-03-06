@@ -368,6 +368,33 @@ def run():
         {"label": "WTI", "value": val.get("WTI")},
         {"label": "BTC", "value": val.get("BTC")},
     ]
+    key_indicators_snapshot = [
+        {"title": "10Y-3M利差", "label": "YC_10Y3M", "value": val.get("YC_10Y3M"), "source": "FRED"},
+        {"title": "VIX指数", "label": "VIX", "value": val.get("VIX"), "source": "FRED/CBOE"},
+        {"title": "HY OAS", "label": "HY_OAS", "value": val.get("HY_OAS"), "source": "FRED"},
+        {"title": "核心CPI同比", "label": "CORE_CPI_YOY", "value": val.get("CORE_CPI_YOY"), "source": "FRED/BLS"},
+        {"title": "失业率", "label": "UNRATE", "value": val.get("UNRATE"), "source": "FRED/BLS"},
+        {"title": "WTI油价", "label": "WTI", "value": val.get("WTI"), "source": "FRED"},
+    ]
+    top_dimension_contributors = sorted(
+        [{"name": d["name"], "score": d["score"], "contribution": d["contribution"], "id": d["id"]} for d in dim_summary],
+        key=lambda x: x["contribution"],
+        reverse=True,
+    )
+    daily_watched_items = [f"{x['label']}: {x['value']}" for x in key_watch if x.get("value") is not None]
+    all14_dimensions_detailed = [
+        {
+            "DimensionID": d["id"],
+            "DimensionName": d["name"],
+            "Tier": d["tier"],
+            "Weight(%)": d["weight"],
+            "Definition": d["definition"],
+            "Typical Update": d["update"],
+            "DimScore": d["score"],
+            "WeightedContribution": d["contribution"],
+        }
+        for d in dim_summary
+    ]
 
     # persist workbook
     wb.save(MODEL_PATH)
@@ -434,13 +461,23 @@ def run():
         "date": TODAY,
         "meta": {"score": str(total_score), "status": status},
         "text": report_text,
-        "path": f"reports/{TODAY}.html"
+        "path": f"reports/{TODAY}.html",
+        "reportPayload": {
+            "topDimensionContributors": top_dimension_contributors,
+            "triggerAlerts": alerts,
+            "dailyWatchedItems": daily_watched_items,
+            "primaryDrivers": drivers,
+            "keyIndicatorsSnapshot": key_indicators_snapshot,
+            "all14DimensionsDetailed": all14_dimensions_detailed,
+            "latestReportSummary": short_summary,
+        },
     }
     merged = [today_entry] + [r for r in reports if r.get("date") != TODAY]
     index_path.write_text(json.dumps({"reports": merged}, ensure_ascii=False, indent=2), encoding="utf-8")
 
     snapshot = {
         "asOf": TODAY,
+        "reportDate": TODAY,
         "totalScore": total_score,
         "status": status,
         "alerts": alerts,
@@ -448,6 +485,12 @@ def run():
         "drivers": drivers,
         "keyWatch": key_watch,
         "latestReportSummary": short_summary,
+        "topDimensionContributors": top_dimension_contributors,
+        "triggerAlerts": alerts,
+        "dailyWatchedItems": daily_watched_items,
+        "primaryDrivers": drivers,
+        "keyIndicatorsSnapshot": key_indicators_snapshot,
+        "all14DimensionsDetailed": all14_dimensions_detailed,
         "tables": {
             "dimensions": sheet_to_dicts(ws_dim),
             "indicators": sheet_to_dicts(ws_ind),

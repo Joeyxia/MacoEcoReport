@@ -874,6 +874,21 @@ function renderKeyIndicators(model) {
   const root = document.getElementById("key-indicators-grid");
   if (!root) return;
 
+  if (Array.isArray(model.keyIndicatorsSnapshot) && model.keyIndicatorsSnapshot.length) {
+    root.innerHTML = "";
+    model.keyIndicatorsSnapshot.slice(0, 6).forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "indicator-mini-card";
+      card.innerHTML = `
+        <h3>${escapeHtml(item.title || item.label || "--")}</h3>
+        <div class="indicator-value">${escapeHtml(item.value ?? "--")}</div>
+        <div class="indicator-source">${escapeHtml(item.source || "")}</div>
+      `;
+      root.appendChild(card);
+    });
+    return;
+  }
+
   const indicators = model.tables?.indicators || [];
   const inputs = model.tables?.inputs || [];
   const inputCodeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
@@ -961,7 +976,9 @@ async function renderLatestReportSummary(model) {
 
   if (!watchRoot) return;
   watchRoot.innerHTML = "";
-  const snapshotWatch = (model.keyWatch || []).map((x) => `${x.label}: ${x.value}`);
+  const snapshotWatch = (model.dailyWatchedItems || model.keyWatch || []).map((x) =>
+    typeof x === "string" ? x : `${x.label || x.title}: ${x.value ?? x.text ?? ""}`
+  );
   const items = snapshotWatch.length
     ? snapshotWatch
     : [...activeAlerts.map((a) => `${a.id}: ${a.condition}`), ...weakDims.map((d) => `${d.name}: ${round(d.score, 1)}`)];
@@ -1046,7 +1063,7 @@ function renderDashboard(model) {
   asOf.textContent = model.asOf;
   status.textContent = model.status;
 
-  const active = (model.alerts || []).filter((a) => a.triggered);
+  const active = (model.triggerAlerts || model.alerts || []).filter((a) => a.triggered);
   alertList.innerHTML = "";
   if (!active.length) {
     const li = document.createElement("li");
@@ -1063,8 +1080,11 @@ function renderDashboard(model) {
   }
 
   bars.innerHTML = "";
-  [...(model.dimensions || [])]
-    .sort((a, b) => (b.contribution || 0) - (a.contribution || 0))
+  const topContributors = Array.isArray(model.topDimensionContributors) && model.topDimensionContributors.length
+    ? model.topDimensionContributors
+    : [...(model.dimensions || [])].sort((a, b) => (b.contribution || 0) - (a.contribution || 0));
+
+  [...topContributors]
     .forEach((item) => {
       const row = document.createElement("div");
       row.className = "bar-row";
@@ -1077,16 +1097,16 @@ function renderDashboard(model) {
     });
 
   drivers.innerHTML = "";
-  (model.drivers || []).forEach((item) => {
+  (model.primaryDrivers || model.drivers || []).forEach((item) => {
     const card = document.createElement("article");
     card.className = "driver-card";
-    card.innerHTML = `<h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.text)}</p>`;
+    card.innerHTML = `<h3>${escapeHtml(item.title || "")}</h3><p>${escapeHtml(item.text || item.summary || "")}</p>`;
     drivers.appendChild(card);
   });
 
   renderKeyIndicators(model);
   renderLatestReportSummary(model);
-  renderDimensionLayers(model.tables?.dimensions || [], model);
+  renderDimensionLayers(model.all14DimensionsDetailed || model.tables?.dimensions || [], model);
   renderObjectTable("dimensions-table", model.tables?.dimensions || []);
   renderObjectTable("inputs-table", model.tables?.inputs || []);
   renderObjectTable("indicators-table", model.tables?.indicators || []);

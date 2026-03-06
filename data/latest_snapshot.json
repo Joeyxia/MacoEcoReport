@@ -1,5 +1,6 @@
 {
   "asOf": "2026-03-07",
+  "reportDate": "2026-03-07",
   "totalScore": 68.32,
   "status": "温和扩张",
   "alerts": [
@@ -127,8 +128,8 @@
     },
     {
       "name": "加密与稳定币流动性（主题）",
-      "score": 52.57,
-      "contribution": 0.5257,
+      "score": 52.59,
+      "contribution": 0.5259,
       "id": "D14"
     }
   ],
@@ -173,10 +174,343 @@
     },
     {
       "label": "BTC",
-      "value": 67959.0
+      "value": 68113.0
     }
   ],
   "latestReportSummary": "Macro model updated on 2026-03-07. Public-source updater refreshed 25 indicators; 20 indicators still require manual/proprietary updates. Composite score: 68.32 (温和扩张).",
+  "topDimensionContributors": [
+    {
+      "name": "通胀与价格压力",
+      "score": 87.51,
+      "contribution": 8.751,
+      "id": "D03"
+    },
+    {
+      "name": "就业与居民部门",
+      "score": 83.94,
+      "contribution": 8.3938,
+      "id": "D04"
+    },
+    {
+      "name": "增长与前瞻",
+      "score": 66.41,
+      "contribution": 7.3051,
+      "id": "D02"
+    },
+    {
+      "name": "货币政策与流动性",
+      "score": 48.94,
+      "contribution": 5.8725,
+      "id": "D01"
+    },
+    {
+      "name": "金融条件与信用传导",
+      "score": 91.31,
+      "contribution": 5.4784,
+      "id": "D10"
+    },
+    {
+      "name": "风险偏好与跨资产波动",
+      "score": 81.07,
+      "contribution": 4.8645,
+      "id": "D07"
+    },
+    {
+      "name": "大宗商品与能源/地缘风险",
+      "score": 93.82,
+      "contribution": 4.6912,
+      "id": "D11"
+    },
+    {
+      "name": "企业盈利与信用",
+      "score": 57.63,
+      "contribution": 4.6107,
+      "id": "D05"
+    },
+    {
+      "name": "外部部门与美元条件",
+      "score": 55.9,
+      "contribution": 3.913,
+      "id": "D08"
+    },
+    {
+      "name": "财政政策与债务约束",
+      "score": 48.54,
+      "contribution": 3.8835,
+      "id": "D09"
+    },
+    {
+      "name": "信心与不确定性",
+      "score": 61.95,
+      "contribution": 3.7167,
+      "id": "D12"
+    },
+    {
+      "name": "AI资本开支周期（主题）",
+      "score": 92.86,
+      "contribution": 3.7143,
+      "id": "D13"
+    },
+    {
+      "name": "房地产与利率敏感部门",
+      "score": 43.33,
+      "contribution": 2.5995,
+      "id": "D06"
+    },
+    {
+      "name": "加密与稳定币流动性（主题）",
+      "score": 52.59,
+      "contribution": 0.5259,
+      "id": "D14"
+    }
+  ],
+  "triggerAlerts": [
+    {
+      "id": "A01",
+      "level": "RED",
+      "condition": "VIX > 30",
+      "triggered": false
+    },
+    {
+      "id": "A02",
+      "level": "RED",
+      "condition": "MOVE > 140",
+      "triggered": false
+    },
+    {
+      "id": "A03",
+      "level": "YELLOW",
+      "condition": "HY OAS > 600bps",
+      "triggered": false
+    },
+    {
+      "id": "A04",
+      "level": "YELLOW",
+      "condition": "10Y-3M < -50bps",
+      "triggered": false
+    },
+    {
+      "id": "A05",
+      "level": "YELLOW",
+      "condition": "失业率 > 6%",
+      "triggered": false
+    },
+    {
+      "id": "A06",
+      "level": "YELLOW",
+      "condition": "核心PCE > 3.5%",
+      "triggered": false
+    },
+    {
+      "id": "A07",
+      "level": "YELLOW",
+      "condition": "WTI > 100",
+      "triggered": false
+    }
+  ],
+  "dailyWatchedItems": [
+    "YC_10Y3M: 38.0",
+    "VIX: 23.75",
+    "HY_OAS: 300.0",
+    "CORE_CPI_YOY: 2.9493",
+    "UNRATE: 4.4",
+    "WTI: 71.13",
+    "BTC: 68113.0"
+  ],
+  "primaryDrivers": [
+    {
+      "title": "Primary Support",
+      "text": "大宗商品与能源/地缘风险 is the strongest block (93.82)."
+    },
+    {
+      "title": "Primary Drag",
+      "text": "房地产与利率敏感部门 is the key drag (43.33)."
+    },
+    {
+      "title": "Risk Trigger",
+      "text": "0 alert(s) currently triggered."
+    }
+  ],
+  "keyIndicatorsSnapshot": [
+    {
+      "title": "10Y-3M利差",
+      "label": "YC_10Y3M",
+      "value": 38.0,
+      "source": "FRED"
+    },
+    {
+      "title": "VIX指数",
+      "label": "VIX",
+      "value": 23.75,
+      "source": "FRED/CBOE"
+    },
+    {
+      "title": "HY OAS",
+      "label": "HY_OAS",
+      "value": 300.0,
+      "source": "FRED"
+    },
+    {
+      "title": "核心CPI同比",
+      "label": "CORE_CPI_YOY",
+      "value": 2.9493,
+      "source": "FRED/BLS"
+    },
+    {
+      "title": "失业率",
+      "label": "UNRATE",
+      "value": 4.4,
+      "source": "FRED/BLS"
+    },
+    {
+      "title": "WTI油价",
+      "label": "WTI",
+      "value": 71.13,
+      "source": "FRED"
+    }
+  ],
+  "all14DimensionsDetailed": [
+    {
+      "DimensionID": "D01",
+      "DimensionName": "货币政策与流动性",
+      "Tier": "Core Macro",
+      "Weight(%)": 12.0,
+      "Definition": "利率曲线、短端资金利率、央行资产负债表与净流动性。",
+      "Typical Update": "Daily/Weekly",
+      "DimScore": 48.94,
+      "WeightedContribution": 5.8725
+    },
+    {
+      "DimensionID": "D02",
+      "DimensionName": "增长与前瞻",
+      "Tier": "Core Macro",
+      "Weight(%)": 11.0,
+      "Definition": "GDP/PMI/订单/初请等前瞻增长信号。",
+      "Typical Update": "Weekly/Monthly/Quarterly",
+      "DimScore": 66.41,
+      "WeightedContribution": 7.3051
+    },
+    {
+      "DimensionID": "D03",
+      "DimensionName": "通胀与价格压力",
+      "Tier": "Core Macro",
+      "Weight(%)": 10.0,
+      "Definition": "核心通胀与通胀预期，判断政策约束与利润压力。",
+      "Typical Update": "Monthly",
+      "DimScore": 87.51,
+      "WeightedContribution": 8.751
+    },
+    {
+      "DimensionID": "D04",
+      "DimensionName": "就业与居民部门",
+      "Tier": "Core Macro",
+      "Weight(%)": 10.0,
+      "Definition": "就业、收入与居民信用压力。",
+      "Typical Update": "Monthly/Quarterly",
+      "DimScore": 83.94,
+      "WeightedContribution": 8.3938
+    },
+    {
+      "DimensionID": "D05",
+      "DimensionName": "企业盈利与信用",
+      "Tier": "Core Macro",
+      "Weight(%)": 8.0,
+      "Definition": "盈利预期修正与信用利差/违约压力。",
+      "Typical Update": "Daily/Weekly/Monthly",
+      "DimScore": 57.63,
+      "WeightedContribution": 4.6107
+    },
+    {
+      "DimensionID": "D06",
+      "DimensionName": "房地产与利率敏感部门",
+      "Tier": "Core Macro",
+      "Weight(%)": 6.0,
+      "Definition": "按揭利率、成交与开工，反映利率传导。",
+      "Typical Update": "Weekly/Monthly",
+      "DimScore": 43.33,
+      "WeightedContribution": 2.5995
+    },
+    {
+      "DimensionID": "D07",
+      "DimensionName": "风险偏好与跨资产波动",
+      "Tier": "Market Mapping",
+      "Weight(%)": 6.0,
+      "Definition": "VIX/MOVE/信用利差等市场风险映射。",
+      "Typical Update": "Daily/Weekly",
+      "DimScore": 81.07,
+      "WeightedContribution": 4.8645
+    },
+    {
+      "DimensionID": "D08",
+      "DimensionName": "外部部门与美元条件",
+      "Tier": "Policy & External",
+      "Weight(%)": 7.0,
+      "Definition": "DXY/利差/资本流动等外部融资条件。",
+      "Typical Update": "Daily/Monthly",
+      "DimScore": 55.9,
+      "WeightedContribution": 3.913
+    },
+    {
+      "DimensionID": "D09",
+      "DimensionName": "财政政策与债务约束",
+      "Tier": "Policy & External",
+      "Weight(%)": 8.0,
+      "Definition": "赤字、利息负担与债务路径。",
+      "Typical Update": "Quarterly/Annual",
+      "DimScore": 48.54,
+      "WeightedContribution": 3.8835
+    },
+    {
+      "DimensionID": "D10",
+      "DimensionName": "金融条件与信用传导",
+      "Tier": "Core Macro",
+      "Weight(%)": 6.0,
+      "Definition": "金融条件指数、银行信贷供给与资金面压力。",
+      "Typical Update": "Weekly/Monthly",
+      "DimScore": 91.31,
+      "WeightedContribution": 5.4784
+    },
+    {
+      "DimensionID": "D11",
+      "DimensionName": "大宗商品与能源/地缘风险",
+      "Tier": "External/Commodities",
+      "Weight(%)": 5.0,
+      "Definition": "油价/商品与地缘风险对通胀与增长的冲击。",
+      "Typical Update": "Daily/Monthly",
+      "DimScore": 93.82,
+      "WeightedContribution": 4.6912
+    },
+    {
+      "DimensionID": "D12",
+      "DimensionName": "信心与不确定性",
+      "Tier": "Soft Data",
+      "Weight(%)": 6.0,
+      "Definition": "消费者/企业信心与政策不确定性。",
+      "Typical Update": "Monthly/Quarterly",
+      "DimScore": 61.95,
+      "WeightedContribution": 3.7167
+    },
+    {
+      "DimensionID": "D13",
+      "DimensionName": "AI资本开支周期（主题）",
+      "Tier": "Theme Panel",
+      "Weight(%)": 4.0,
+      "Definition": "云与AI资本开支/营收动能（不应喧宾夺主）。",
+      "Typical Update": "Quarterly",
+      "DimScore": 92.86,
+      "WeightedContribution": 3.7143
+    },
+    {
+      "DimensionID": "D14",
+      "DimensionName": "加密与稳定币流动性（主题）",
+      "Tier": "Theme Panel",
+      "Weight(%)": 1.0,
+      "Definition": "稳定币与链上流动性（低权重主题观察）。",
+      "Typical Update": "Daily/Weekly",
+      "DimScore": 52.59,
+      "WeightedContribution": 0.5259
+    }
+  ],
   "tables": {
     "dimensions": [
       {
@@ -1463,11 +1797,11 @@
       },
       {
         "AsOf（模型更新日期）": "BTC",
-        "2026-03-07": 67959.0
+        "2026-03-07": 68113.0
       },
       {
         "AsOf（模型更新日期）": "USDC_MCAP",
-        "2026-03-07": 77.3824
+        "2026-03-07": 77.2833
       },
       {
         "AsOf（模型更新日期）": "STABLECOIN_DOM",
@@ -1857,19 +2191,19 @@
         "IndicatorCode": "BTC",
         "DimensionID": "D14",
         "IndicatorName": "BTC价格（$）",
-        "LatestValue": 67959.0,
-        "Score(0-100)": 47.96,
+        "LatestValue": 68113.0,
+        "Score(0-100)": 48.11,
         "WeightWithinDim": 0.4,
-        "WeightedScore": 19.1836
+        "WeightedScore": 19.2452
       },
       {
         "IndicatorCode": "USDC_MCAP",
         "DimensionID": "D14",
         "IndicatorName": "USDC市值（$B）",
-        "LatestValue": 77.3824,
-        "Score(0-100)": 57.38,
+        "LatestValue": 77.2833,
+        "Score(0-100)": 57.28,
         "WeightWithinDim": 0.4,
-        "WeightedScore": 22.953
+        "WeightedScore": 22.9133
       },
       {
         "IndicatorCode": "STABLECOIN_DOM",
@@ -2047,12 +2381,12 @@
       },
       {
         "code": "BTC",
-        "value": 67959.0,
+        "value": 68113.0,
         "date": "2026-03-07"
       },
       {
         "code": "USDC_MCAP",
-        "value": 77.382435,
+        "value": 77.283278,
         "date": "2026-03-07"
       }
     ],
