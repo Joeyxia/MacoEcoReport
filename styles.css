@@ -44,9 +44,9 @@ body {
 
 .site-header {
   width: 100%;
-  max-width: 1160px;
+  max-width: none;
   margin: 0 auto;
-  padding: 1.25rem 1rem;
+  padding: 1.25rem 1.2rem;
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 0.8rem;
@@ -89,9 +89,9 @@ nav {
 
 .page {
   width: 100%;
-  max-width: 1160px;
+  max-width: none;
   margin: 0 auto;
-  padding: 0 1rem 2rem;
+  padding: 0 1.2rem 2rem;
   display: grid;
   gap: 1rem;
   animation: rise 500ms ease;
