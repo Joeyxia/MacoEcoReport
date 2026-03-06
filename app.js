@@ -20,6 +20,7 @@ const i18n = {
     triggered_alerts: "Triggered Alerts",
     top_dimension_contributors: "Top Dimension Contributors",
     primary_drivers: "Primary Drivers",
+    key_indicators_overview: "Key Indicators Snapshot",
     dimensions_14_detail: "All 14 Dimensions Detail (from Dimensions Sheet)",
     dimensions_14_detail_desc: "This section shows complete dimension definitions, tiers, weights, and update frequencies.",
     model_core_tables: "Model Core Tables",
@@ -70,6 +71,7 @@ const i18n = {
     triggered_alerts: "触发预警",
     top_dimension_contributors: "维度贡献 Top",
     primary_drivers: "核心驱动",
+    key_indicators_overview: "关键指标概览",
     dimensions_14_detail: "14个维度信息（来自 Dimensions 表）",
     dimensions_14_detail_desc: "展示维度定义、层级、权重和更新频率。",
     model_core_tables: "模型核心数据表",
@@ -563,8 +565,40 @@ function renderWorkbookExplorer(workbook) {
   renderActive();
 }
 
-function renderDimensionCards(rows) {
-  const root = document.getElementById("dimension-cards");
+function scoreTrend(score) {
+  if (score >= 60) return { cls: "trend-up", symbol: "↑" };
+  if (score < 45) return { cls: "trend-down", symbol: "↓" };
+  return { cls: "trend-flat", symbol: "→" };
+}
+
+function parsePercentValue(value) {
+  const text = asText(value).replace("%", "");
+  const n = Number(text);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function findDimensionMetric(model, id, name) {
+  const dim = (model.dimensions || []).find((item) => {
+    const n = item.name.toLowerCase();
+    return (id && n.includes(id.toLowerCase())) || (name && n.includes(name.toLowerCase()));
+  });
+  if (dim) return dim;
+
+  const scoreRow = (model.tables?.scores || []).find((row) => {
+    const rowId = findValue(row, ["dimensionid", "维度id", "id"]).toLowerCase();
+    const rowName = findValue(row, ["dimensionname", "维度名称", "维度"]).toLowerCase();
+    return rowId === id.toLowerCase() || rowName === name.toLowerCase();
+  });
+  if (!scoreRow) return { score: 0, contribution: 0 };
+
+  return {
+    score: asNumber(findValue(scoreRow, ["dimscore", "score", "维度分"])) || 0,
+    contribution: asNumber(findValue(scoreRow, ["weightedcontribution", "contribution", "贡献"])) || 0
+  };
+}
+
+function renderDimensionLayers(rows, model) {
+  const root = document.getElementById("dimension-layers");
   if (!root) return;
 
   const list = (rows || []).slice(0, 14);
@@ -573,26 +607,84 @@ function renderDimensionCards(rows) {
     return;
   }
 
-  const zh = getLang() === "zh";
-  root.innerHTML = "";
+  const grouped = new Map();
   list.forEach((row) => {
-    const id = findValue(row, ["dimensionid", "维度id", "id"]);
-    const name = findValue(row, ["dimensionname", "维度名称", "维度"]);
-    const tier = findValue(row, ["tier", "层级"]);
-    const weight = findValue(row, ["weight", "%", "权重"]);
-    const definition = findValue(row, ["definition", "说明", "定义"]) || "";
-    const update = findValue(row, ["typical update", "frequency", "更新"]);
+    const tier = findValue(row, ["tier", "层级"]) || "Other";
+    if (!grouped.has(tier)) grouped.set(tier, []);
+    grouped.get(tier).push(row);
+  });
 
-    const card = document.createElement("article");
-    card.className = "dimension-card";
-    card.innerHTML = `
-      <h3>${escapeHtml(id)} ${escapeHtml(name)}</h3>
-      <div class="dim-row">
-        <span class="dim-chip">${zh ? "层级" : "Tier"}: ${escapeHtml(tier)}</span>
-        <span class="dim-chip">${zh ? "权重" : "Weight"}: ${escapeHtml(weight)}</span>
-        <span class="dim-chip">${zh ? "更新频率" : "Update"}: ${escapeHtml(update)}</span>
+  root.innerHTML = "";
+  for (const [tier, dims] of grouped.entries()) {
+    const layer = document.createElement("section");
+    layer.className = "layer-block";
+    const totalWeight = dims.reduce((acc, row) => acc + parsePercentValue(findValue(row, ["weight", "权重", "%"])), 0);
+
+    layer.innerHTML = `
+      <div class="layer-header">
+        <div class="layer-title">${escapeHtml(tier)}</div>
+        <div class="layer-weight">${getLang() === "zh" ? "层级权重" : "Layer Weight"}: ${round(totalWeight, 1)}%</div>
       </div>
-      <p>${escapeHtml(definition)}</p>
+      <div class="layer-dimensions"></div>
+    `;
+
+    const container = layer.querySelector(".layer-dimensions");
+    dims.forEach((row) => {
+      const id = findValue(row, ["dimensionid", "维度id", "id"]);
+      const name = findValue(row, ["dimensionname", "维度名称", "维度"]);
+      const weight = findValue(row, ["weight", "权重", "%"]);
+      const definition = findValue(row, ["definition", "说明", "定义"]);
+      const update = findValue(row, ["typical update", "frequency", "更新"]);
+      const metric = findDimensionMetric(model, id, name);
+      const trend = scoreTrend(metric.score || 0);
+
+      const card = document.createElement("article");
+      card.className = "dimension-card";
+      card.innerHTML = `
+        <h3>${escapeHtml(id)} ${escapeHtml(name)}</h3>
+        <div class="dim-row">
+          <span class="dim-chip">${getLang() === "zh" ? "权重" : "Weight"}: ${escapeHtml(weight)}</span>
+          <span class="dim-chip">${getLang() === "zh" ? "更新" : "Update"}: ${escapeHtml(update)}</span>
+        </div>
+        <div class="score-line">
+          <span class="score-pill">${round(metric.score || 0, 1)}/100</span>
+          <span>${getLang() === "zh" ? "贡献" : "Contribution"}: ${round(metric.contribution || 0, 2)}</span>
+          <span class="${trend.cls}">${trend.symbol}</span>
+        </div>
+        <p>${escapeHtml(definition)}</p>
+      `;
+      container.appendChild(card);
+    });
+    root.appendChild(layer);
+  }
+}
+
+function renderKeyIndicators(model) {
+  const root = document.getElementById("key-indicators-grid");
+  if (!root) return;
+
+  const indicators = model.tables?.indicators || [];
+  const inputs = model.tables?.inputs || [];
+  const inputCodeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
+  const inputValueKey = inputs.length ? keyByIncludes(inputs[0], ["latestvalue", "value", "值"]) : null;
+
+  const top = indicators.slice(0, 6).map((row) => {
+    const code = findValue(row, ["indicatorcode", "code"]);
+    const name = findValue(row, ["indicatorname", "指标", "name"]) || code;
+    const source = findValue(row, ["source", "数据源", "主数据源"]);
+    const input = inputs.find((x) => asText(x[inputCodeKey]) === code);
+    const value = input ? asText(input[inputValueKey]) : "";
+    return { code, name, source, value };
+  });
+
+  root.innerHTML = "";
+  top.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "indicator-mini-card";
+    card.innerHTML = `
+      <h3>${escapeHtml(item.name)}</h3>
+      <div class="indicator-value">${escapeHtml(item.value || "--")}</div>
+      <div class="indicator-source">${escapeHtml(item.source || "")}</div>
     `;
     root.appendChild(card);
   });
@@ -654,7 +746,8 @@ function renderDashboard(model) {
     drivers.appendChild(card);
   });
 
-  renderDimensionCards(model.tables?.dimensions || []);
+  renderKeyIndicators(model);
+  renderDimensionLayers(model.tables?.dimensions || [], model);
   renderObjectTable("dimensions-table", model.tables?.dimensions || []);
   renderObjectTable("inputs-table", model.tables?.inputs || []);
   renderObjectTable("indicators-table", model.tables?.indicators || []);
@@ -827,12 +920,21 @@ function renderReportLinks(reports) {
 
   root.innerHTML = "";
   reports.forEach((report) => {
-    const link = document.createElement("a");
-    link.className = "report-link";
-    link.href = `daily-report.html?date=${report.date}`;
-    const score = report.meta?.score ? ` | Score ${report.meta.score}` : "";
-    link.textContent = `${report.date}${score}`;
-    root.appendChild(link);
+    const item = document.createElement("article");
+    item.className = "report-item";
+    const scoreLabel = getLang() === "zh" ? "综合评分" : "Score";
+    const signalLabel = getLang() === "zh" ? "信号" : "Signal";
+    item.innerHTML = `
+      <div class="report-item-main">
+        <div class="report-date">${escapeHtml(report.date)}</div>
+        <div class="badge-row">
+          <span class="badge">${scoreLabel}: ${escapeHtml(report.meta?.score ?? "--")}</span>
+          <span class="badge">${signalLabel}: ${escapeHtml(report.meta?.status ?? "--")}</span>
+        </div>
+      </div>
+      <a class="report-open" href="daily-report.html?date=${encodeURIComponent(report.date)}">${getLang() === "zh" ? "打开" : "Open"}</a>
+    `;
+    root.appendChild(item);
   });
 }
 
