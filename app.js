@@ -339,15 +339,16 @@ function saveModelFallback(model) {
 
 async function loadCurrentModel() {
   const snapshot = await loadStaticSnapshot();
-  if (snapshot) return { ...sampleModel, ...snapshot };
+  if (snapshot) return normalizeModel({ ...sampleModel, ...snapshot });
   const fromDb = await dbGet("model", "current");
-  if (fromDb?.payload) return fromDb.payload;
-  return loadModelFallback();
+  if (fromDb?.payload) return normalizeModel(fromDb.payload);
+  return normalizeModel(loadModelFallback());
 }
 
 async function saveCurrentModel(model) {
-  saveModelFallback(model);
-  await dbPut("model", { id: "current", payload: model, updatedAt: new Date().toISOString() });
+  const normalized = normalizeModel(model);
+  saveModelFallback(normalized);
+  await dbPut("model", { id: "current", payload: normalized, updatedAt: new Date().toISOString() });
 }
 
 async function saveReport(date, text, meta) {
@@ -394,6 +395,44 @@ async function loadStaticSnapshot() {
 
 function asText(v) {
   return v === undefined || v === null ? "" : String(v).trim();
+}
+
+function normalizeInputsTable(rows, fallbackAsOf = "") {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) return [];
+  if (Object.keys(list[0] || {}).some((k) => k.toLowerCase().includes("indicatorcode"))) return list;
+
+  const firstKeys = Object.keys(list[0] || {});
+  if (firstKeys.length !== 2) return list;
+
+  const codeCol = firstKeys[0];
+  const valueCol = firstKeys[1];
+  const headerRow = list.find(
+    (r) =>
+      asText(r[codeCol]).toLowerCase() === "indicatorcode" &&
+      asText(r[valueCol]).toLowerCase().includes("latestvalue")
+  );
+  if (!headerRow) return list;
+
+  const asOfFromCol = /^\d{4}-\d{2}-\d{2}$/.test(asText(valueCol)) ? asText(valueCol) : "";
+  const out = [];
+  list.forEach((r) => {
+    const code = asText(r[codeCol]);
+    if (!/^[A-Z][A-Z0-9_]{1,40}$/i.test(code) || code.toLowerCase() === "indicatorcode") return;
+    out.push({
+      IndicatorCode: code,
+      LatestValue: r[valueCol],
+      ValueDate: asOfFromCol || fallbackAsOf
+    });
+  });
+  return out.length ? out : list;
+}
+
+function normalizeModel(model) {
+  const next = { ...model };
+  next.tables = { ...(model.tables || {}) };
+  next.tables.inputs = normalizeInputsTable(next.tables.inputs || [], next.asOf || "");
+  return next;
 }
 
 function asNumber(v) {
@@ -624,7 +663,7 @@ function parseWorkbook(arrayBuffer) {
   const activeAlerts = alerts.filter((a) => a.triggered).length;
   const drivers = buildDrivers(dimensions, activeAlerts, totalScore);
 
-  return {
+  return normalizeModel({
     asOf: asOf || new Date().toISOString().slice(0, 10),
     totalScore: round(totalScore, 1),
     status: inferStatus(totalScore),
@@ -634,7 +673,7 @@ function parseWorkbook(arrayBuffer) {
     tables,
     workbook: { sheets: workbookSheets },
     onlineCheck: []
-  };
+  });
 }
 
 function average(values) {
