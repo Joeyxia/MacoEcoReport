@@ -6,6 +6,7 @@ const DEFAULT_MODEL_FILE = "./model.xlsx";
 const STATIC_REPORT_INDEX = "./reports/index.json";
 const STATIC_SNAPSHOT = "./data/latest_snapshot.json";
 const STATIC_SUBSCRIBERS = "./data/subscribers.json";
+const SUBSCRIPTION_ISSUE_URL = "https://github.com/Joeyxia/MacoEcoReport/issues/new";
 const API_BASE_KEY = "macro-monitor-api-base";
 const MIGRATED_KEY = "macro-monitor-db-migrated";
 
@@ -68,7 +69,7 @@ const i18n = {
     subscribe_desc: "Subscribe to receive the daily report summary and link after 09:00 China time generation.",
     subscribe_email_label: "Email",
     subscribe_submit: "Subscribe",
-    subscribe_note: "Requires backend API. Run the server to enable direct subscription.",
+    subscribe_note: "If backend is unavailable, subscription will fallback to GitHub request.",
     subscribe_count: "Active Subscribers"
   },
   zh: {
@@ -128,7 +129,7 @@ const i18n = {
     subscribe_desc: "每日北京时间09:00生成报告后，向订阅邮箱发送摘要与报告链接。",
     subscribe_email_label: "邮箱",
     subscribe_submit: "订阅",
-    subscribe_note: "需要后端 API 支持。请先启动服务器后再进行直接订阅。",
+    subscribe_note: "若后端不可用，将自动回退到 GitHub 请求订阅。",
     subscribe_count: "当前有效订阅数"
   }
 };
@@ -1276,6 +1277,19 @@ function isValidEmail(email) {
   return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(asText(email));
 }
 
+function openGithubSubscriptionFallback(email) {
+  const now = new Date().toISOString();
+  const title = `Subscription Request: ${email}`;
+  const body = [
+    "Please add this email to the daily macro report mailing list.",
+    "",
+    `Email: ${email}`,
+    `SubmittedAt: ${now}`
+  ].join("\n");
+  const link = `${SUBSCRIPTION_ISSUE_URL}?labels=subscription&title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+  window.open(link, "_blank", "noopener,noreferrer");
+}
+
 async function setupSubscriptionForm() {
   const form = document.getElementById("subscribe-form");
   const emailInput = document.getElementById("subscribe-email");
@@ -1289,30 +1303,33 @@ async function setupSubscriptionForm() {
   if (form.dataset.bound === "1") return;
   form.dataset.bound = "1";
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const email = asText(emailInput.value).toLowerCase();
     if (!isValidEmail(email)) {
       if (status) status.textContent = getLang() === "zh" ? "请输入有效邮箱地址。" : "Please enter a valid email address.";
       return;
     }
-    apiFetch("/api/subscribers", { method: "POST", body: JSON.stringify({ email }) }).then(async (res) => {
-      if (!res?.ok) {
-        if (status) {
-          status.textContent =
-            getLang() === "zh"
-              ? "订阅失败：请确认后端服务已运行（/api/subscribers）。"
-              : "Subscription failed: backend API is not available (/api/subscribers).";
-        }
+    const base = getApiBase();
+    if (base) {
+      const res = await apiFetch("/api/subscribers", { method: "POST", body: JSON.stringify({ email }) });
+      if (res?.ok) {
+        const list = await loadStaticSubscribers();
+        if (count) count.textContent = `${t("subscribe_count")}: ${list.length}`;
+        if (status) status.textContent = getLang() === "zh" ? "订阅成功，已加入邮件列表。" : "Subscribed successfully.";
+        emailInput.value = "";
         return;
       }
-      const list = await loadStaticSubscribers();
-      if (count) count.textContent = `${t("subscribe_count")}: ${list.length}`;
-      if (status) {
-        status.textContent = getLang() === "zh" ? "订阅成功，已加入邮件列表。" : "Subscribed successfully.";
-      }
-      emailInput.value = "";
-    });
+    }
+
+    openGithubSubscriptionFallback(email);
+    if (status) {
+      status.textContent =
+        getLang() === "zh"
+          ? "后端暂不可用，已跳转到 GitHub 订阅请求页，请提交后完成订阅。"
+          : "Backend unavailable. Redirected to GitHub subscription request page; submit it to complete subscription.";
+    }
+    emailInput.value = "";
   });
 }
 
