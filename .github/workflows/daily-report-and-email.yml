@@ -46,7 +46,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add model.xlsx data/latest_snapshot.json data_update_log.json reports/index.json reports/*.html reports/*.txt data/subscribers.json data/email_dispatch_log.json
+          git add model.xlsx data/latest_snapshot.json data_update_log.json reports/index.json data/subscribers.json
+          git add reports/*.html reports/*.txt 2>/dev/null || true
+          if [ -f data/email_dispatch_log.json ]; then
+            git add data/email_dispatch_log.json
+          fi
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
