@@ -40,6 +40,21 @@ A static bilingual website for your macro monitoring model, ready for GitHub Pag
   - generate `reports/<YYYY-MM-DD>.txt` and `reports/<YYYY-MM-DD>.html`
   - update `reports/index.json` for report links
 
+9. 09:00 China-time automatic generation:
+- GitHub Actions workflow: `.github/workflows/daily-report-and-email.yml`
+- Schedule: `0 1 * * *` (UTC), equals `09:00` Asia/Shanghai daily
+- It automatically:
+  - ingests new subscription requests from GitHub issues label `subscription`
+  - runs `scripts/daily_refresh.py`
+  - sends report summary + link email to all active subscribers
+  - commits updated artifacts back to `main`
+
+10. Email subscription:
+- Dashboard has a subscription form.
+- User enters email and submits.
+- The site opens a pre-filled GitHub issue page; after submission, daily workflow ingests it into `data/subscribers.json`.
+- Email dispatch uses Resend API via `scripts/send_daily_emails.py`.
+
 ## Pages
 
 - `index.html`: dashboard
@@ -51,6 +66,13 @@ A static bilingual website for your macro monitoring model, ready for GitHub Pag
 
 - Default workbook: `model.xlsx`
 - You can upload another `.xlsx` from the dashboard to replace current model data.
+
+## Required GitHub Secrets
+
+Set in repository `Settings -> Secrets and variables -> Actions`:
+
+- `RESEND_API_KEY`: API key for Resend email sending
+- `RESEND_FROM`: sender address, e.g. `Macro Monitor <noreply@your-domain.com>`
 
 ## Run locally
 

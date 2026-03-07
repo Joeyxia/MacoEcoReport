@@ -677,6 +677,21 @@ input[type="file"] {
   flex: 1;
 }
 
+.subscribe-form {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.subscribe-row {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.subscribe-row .search-input {
+  min-width: 240px;
+}
+
 .glossary-card .term-weight {
   font-size: 0.8rem;
   color: var(--ink-soft);

@@ -49,6 +49,15 @@ def fred_yoy(series: str):
     return d, (v / v12 - 1) * 100
 
 
+def first_series_token(raw: str) -> str:
+    text = str(raw or "").upper()
+    for token in text.replace("&", " ").replace("/", " ").replace(",", " ").split():
+        token = token.strip()
+        if token and token[0].isalpha() and all(ch.isalnum() or ch == "_" for ch in token):
+            return token
+    return ""
+
+
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))
 
@@ -164,6 +173,8 @@ def run():
 
     for code in indicators:
         try:
+            source = str(indicators[code].get("Source") or "").lower()
+            series_hint = indicators[code].get("Series")
             d = None
             v = None
             if code == "YC_10Y3M":
@@ -233,6 +244,11 @@ def run():
                 j = fetch_json("https://api.coingecko.com/api/v3/coins/usd-coin")
                 d = TODAY
                 v = float(j["market_data"]["market_cap"]["usd"]) / 1_000_000_000
+            elif "fred" in source:
+                token = first_series_token(series_hint)
+                if not token:
+                    raise ValueError("no FRED series token")
+                d, v = s_last(token)
             else:
                 raise ValueError("manual/proprietary source required")
 

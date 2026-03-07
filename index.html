@@ -134,6 +134,23 @@
         <div id="sheet-table" class="table-wrap explorer"></div>
       </section>
 
+      <section class="panel">
+        <div class="section-head">
+          <h2 data-i18n="subscribe_title">Email Subscription</h2>
+          <p class="subtle" data-i18n="subscribe_desc">Subscribe to receive the daily report summary and link after 09:00 China time generation.</p>
+        </div>
+        <form id="subscribe-form" class="subscribe-form">
+          <label for="subscribe-email" data-i18n="subscribe_email_label">Email</label>
+          <div class="subscribe-row">
+            <input id="subscribe-email" class="search-input" type="email" placeholder="name@example.com" required />
+            <button class="btn" type="submit" data-i18n="subscribe_submit">Subscribe</button>
+          </div>
+        </form>
+        <p id="subscriber-count" class="subtle"></p>
+        <p class="subtle" id="subscribe-status"></p>
+        <p class="subtle" data-i18n="subscribe_note">You will be redirected to a GitHub confirmation page to submit the request.</p>
+      </section>
+
       <section class="panel cta-row">
         <div>
           <h3 data-i18n="need_today_note">Need Today's Note?</h3>

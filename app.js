@@ -5,6 +5,8 @@ const LANG_KEY = "macro-monitor-lang";
 const DEFAULT_MODEL_FILE = "./model.xlsx";
 const STATIC_REPORT_INDEX = "./reports/index.json";
 const STATIC_SNAPSHOT = "./data/latest_snapshot.json";
+const STATIC_SUBSCRIBERS = "./data/subscribers.json";
+const SUBSCRIPTION_ISSUE_URL = "https://github.com/Joeyxia/MacoEcoReport/issues/new";
 
 const i18n = {
   en: {
@@ -60,6 +62,13 @@ const i18n = {
     indicators_page_title: "All Indicators Information (from Indicators Sheet)",
     indicators_page_desc: "Full indicator definitions, scoring settings, data source links, and update frequencies.",
     all_indicators_info: "All Indicators Information"
+    ,
+    subscribe_title: "Email Subscription",
+    subscribe_desc: "Subscribe to receive the daily report summary and link after 09:00 China time generation.",
+    subscribe_email_label: "Email",
+    subscribe_submit: "Subscribe",
+    subscribe_note: "You will be redirected to a GitHub confirmation page to submit the request.",
+    subscribe_count: "Active Subscribers"
   },
   zh: {
     nav_dashboard: "仪表盘",
@@ -113,7 +122,13 @@ const i18n = {
     indicators_eyebrow: "指标信息库",
     indicators_page_title: "全部指标信息（来自 Indicators 表）",
     indicators_page_desc: "完整展示指标定义、评分参数、数据源和更新频率。",
-    all_indicators_info: "全部指标信息"
+    all_indicators_info: "全部指标信息",
+    subscribe_title: "邮件订阅",
+    subscribe_desc: "每日北京时间09:00生成报告后，向订阅邮箱发送摘要与报告链接。",
+    subscribe_email_label: "邮箱",
+    subscribe_submit: "订阅",
+    subscribe_note: "点击后将跳转到 GitHub 确认页面提交订阅请求。",
+    subscribe_count: "当前有效订阅数"
   }
 };
 
@@ -390,6 +405,18 @@ async function loadStaticSnapshot() {
     return await res.json();
   } catch {
     return null;
+  }
+}
+
+async function loadStaticSubscribers() {
+  try {
+    const res = await fetch(STATIC_SUBSCRIBERS, { cache: "no-cache" });
+    if (!res.ok) return [];
+    const payload = await res.json();
+    if (!Array.isArray(payload?.subscribers)) return [];
+    return payload.subscribers.filter((s) => asText(s.status).toLowerCase() === "active");
+  } catch {
+    return [];
   }
 }
 
@@ -1186,6 +1213,51 @@ function renderDashboard(model) {
   renderWorkbookExplorer(model.workbook || {});
 }
 
+function isValidEmail(email) {
+  return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(asText(email));
+}
+
+async function setupSubscriptionForm() {
+  const form = document.getElementById("subscribe-form");
+  const emailInput = document.getElementById("subscribe-email");
+  const status = document.getElementById("subscribe-status");
+  const count = document.getElementById("subscriber-count");
+  if (!form || !emailInput) return;
+
+  const subs = await loadStaticSubscribers();
+  if (count) count.textContent = `${t("subscribe_count")}: ${subs.length}`;
+
+  if (form.dataset.bound === "1") return;
+  form.dataset.bound = "1";
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const email = asText(emailInput.value).toLowerCase();
+    if (!isValidEmail(email)) {
+      if (status) status.textContent = getLang() === "zh" ? "请输入有效邮箱地址。" : "Please enter a valid email address.";
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const title = `Subscription Request: ${email}`;
+    const body = [
+      "Please add this email to the daily macro report mailing list.",
+      "",
+      `Email: ${email}`,
+      `SubmittedAt: ${now}`
+    ].join("\n");
+    const link = `${SUBSCRIPTION_ISSUE_URL}?labels=subscription&title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+    window.open(link, "_blank", "noopener,noreferrer");
+    if (status) {
+      status.textContent =
+        getLang() === "zh"
+          ? "已打开订阅确认页。提交后会自动加入邮件列表。"
+          : "Opened confirmation page. Submit the issue to complete subscription.";
+    }
+    emailInput.value = "";
+  });
+}
+
 function getReportDateFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const d = params.get("date");
@@ -1882,6 +1954,7 @@ async function initDashboard() {
   setupUpload((next) => {
     renderDashboard(next);
   });
+  await setupSubscriptionForm();
 }
 
 async function ensureModelData(model) {
@@ -1907,7 +1980,10 @@ async function init() {
 
   setupLangToggle(async () => {
     const currentModel = await loadCurrentModel();
-    if (page === "dashboard") renderDashboard(currentModel);
+    if (page === "dashboard") {
+      renderDashboard(currentModel);
+      await setupSubscriptionForm();
+    }
     if (page === "daily-report") renderDailyReport(currentModel);
     if (page === "indicators") renderIndicatorsPage(currentModel);
     if (page === "glossary") renderGlossary(currentModel);
