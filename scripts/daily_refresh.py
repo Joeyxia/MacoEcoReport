@@ -4,6 +4,7 @@ import io
 import json
 import math
 import ssl
+import sys
 from datetime import date, datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
@@ -11,6 +12,9 @@ from urllib.request import Request, urlopen
 from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "server"))
+from db import init_db, replace_sheet_rows, save_model_snapshot, upsert_daily_report
+
 MODEL_PATH = ROOT / "model.xlsx"
 REPORTS_DIR = ROOT / "reports"
 DATA_DIR = ROOT / "data"
@@ -495,6 +499,29 @@ def run():
     report_html=f"""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Macro Daily Report {TODAY}</title><link rel='stylesheet' href='../styles.css'></head><body><main class='page'><section class='panel preview-header'><h1>Macro Daily Report ({TODAY})</h1><p>Composite Score: {total_score} ({status})</p><p>{short_summary}</p></section><section class='panel preview-section'><h2>Key Indicators To Watch</h2><ul class='preview-list'>{''.join([f"<li>{i['label']}: {round(i['value'],4)}</li>" for i in key_watch if i['value'] is not None])}</ul></section>{tier_html}</main></body></html>"""
     (REPORTS_DIR / f"{TODAY}.html").write_text(report_html, encoding="utf-8")
 
+    ws_daily = wb["DailyReports"] if "DailyReports" in wb.sheetnames else wb.create_sheet("DailyReports")
+    if ws_daily.max_row < 1 or ws_daily.cell(1, 1).value != "Date":
+        ws_daily.cell(1, 1).value = "Date"
+        ws_daily.cell(1, 2).value = "AsOf"
+        ws_daily.cell(1, 3).value = "TotalScore"
+        ws_daily.cell(1, 4).value = "Status"
+        ws_daily.cell(1, 5).value = "Summary"
+        ws_daily.cell(1, 6).value = "GeneratedAt"
+        ws_daily.cell(1, 7).value = "ReportPath"
+    existing_row = None
+    for rr in range(2, ws_daily.max_row + 1):
+        if str(ws_daily.cell(rr, 1).value or "") == TODAY:
+            existing_row = rr
+            break
+    target_row = existing_row or (ws_daily.max_row + 1)
+    ws_daily.cell(target_row, 1).value = TODAY
+    ws_daily.cell(target_row, 2).value = TODAY
+    ws_daily.cell(target_row, 3).value = total_score
+    ws_daily.cell(target_row, 4).value = status
+    ws_daily.cell(target_row, 5).value = short_summary
+    ws_daily.cell(target_row, 6).value = GENERATED_AT
+    ws_daily.cell(target_row, 7).value = f"reports/{TODAY}.html"
+
     index_path = REPORTS_DIR / "index.json"
     reports = []
     if index_path.exists():
@@ -552,6 +579,36 @@ def run():
     }
     (DATA_DIR / "latest_snapshot.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
     (ROOT / "data_update_log.json").write_text(json.dumps(snapshot["onlineUpdate"], ensure_ascii=False, indent=2), encoding="utf-8")
+
+    init_db()
+    save_model_snapshot(snapshot)
+    replace_sheet_rows("Dimensions", snapshot["tables"]["dimensions"], TODAY)
+    replace_sheet_rows("Indicators", snapshot["tables"]["indicators"], TODAY)
+    replace_sheet_rows("Inputs", snapshot["tables"]["inputs"], TODAY)
+    replace_sheet_rows("Scores", snapshot["tables"]["scores"], TODAY)
+    replace_sheet_rows("Alerts", snapshot["tables"]["alerts"], TODAY)
+    replace_sheet_rows(
+        "DailyReports",
+        [
+            {
+                "Date": TODAY,
+                "AsOf": TODAY,
+                "TotalScore": total_score,
+                "Status": status,
+                "Summary": short_summary,
+                "GeneratedAt": GENERATED_AT,
+                "ReportPath": f"reports/{TODAY}.html",
+            }
+        ],
+        TODAY,
+    )
+    upsert_daily_report(
+        report_date=TODAY,
+        text=report_text,
+        meta={"score": total_score, "status": status, "summary": short_summary},
+        report_path=f"reports/{TODAY}.html",
+        payload=today_entry.get("reportPayload"),
+    )
 
     print(f"DONE as_of={TODAY} updated={len(updated)} failed={len(failed)} total_score={total_score}")
 

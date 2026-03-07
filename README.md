@@ -1,13 +1,13 @@
 # Macro Economic Report Website
 
-A static bilingual website for your macro monitoring model, ready for GitHub Pages.
+Bilingual macro dashboard + daily report system with server and SQLite database.
 
 ## What is implemented
 
-1. Browser database (`IndexedDB`) stores:
-- Parsed model data from Excel (`current model`)
-- Daily reports (date-indexed)
-- Online data check history
+1. Server + Database
+- Backend: Flask (`server/app.py`)
+- Database: SQLite (`data/macro_monitor.db`)
+- All core website data is stored in DB: snapshots, sheet rows, daily reports, checks, subscribers, email dispatch logs.
 
 2. Online data check before final report:
 - In `Daily Report`, click **Generate Final Report**
@@ -39,6 +39,8 @@ A static bilingual website for your macro monitoring model, ready for GitHub Pag
   - generate `data/latest_snapshot.json` for dashboard
   - generate `reports/<YYYY-MM-DD>.txt` and `reports/<YYYY-MM-DD>.html`
   - update `reports/index.json` for report links
+  - append/update `DailyReports` sheet in `model.xlsx`
+  - persist all generated data to SQLite DB (`data/macro_monitor.db`)
 
 9. 09:00 China-time automatic generation:
 - GitHub Actions workflow: `.github/workflows/daily-report-and-email.yml`
@@ -49,11 +51,10 @@ A static bilingual website for your macro monitoring model, ready for GitHub Pag
   - sends report summary + link email to all active subscribers
   - commits updated artifacts back to `main`
 
-10. Email subscription:
-- Dashboard has a subscription form.
-- User enters email and submits.
-- The site opens a pre-filled GitHub issue page; after submission, daily workflow ingests it into `data/subscribers.json`.
-- Email dispatch uses Resend API via `scripts/send_daily_emails.py`.
+10. Email subscription (server + DB):
+- Dashboard subscription form posts directly to backend `/api/subscribers`.
+- Email is stored in DB table `subscribers` and mirrored in `data/subscribers.json` (workflow path).
+- Daily workflow sends summary + report link to active subscribers.
 
 ## Pages
 
@@ -66,6 +67,24 @@ A static bilingual website for your macro monitoring model, ready for GitHub Pag
 
 - Default workbook: `model.xlsx`
 - You can upload another `.xlsx` from the dashboard to replace current model data.
+
+## Run Server Locally
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python3 server/app.py
+```
+
+Then open: `http://127.0.0.1:5000`
+
+The frontend will use backend APIs automatically on localhost.
+
+## Browser DB Migration
+
+- On first load with backend available, frontend migrates existing browser IndexedDB records to backend DB via `/api/migrate`.
+- Migration flag is stored in localStorage key `macro-monitor-db-migrated`.
 
 ## Required GitHub Secrets
 

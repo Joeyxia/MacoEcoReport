@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError
@@ -9,6 +10,9 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "server"))
+from db import add_subscriber, init_db
+
 SUBSCRIBERS_PATH = ROOT / "data" / "subscribers.json"
 EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
 
@@ -60,6 +64,7 @@ def extract_email(*texts):
 
 
 def main():
+  init_db()
   repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
   if not repo or "/" not in repo:
     raise SystemExit("GITHUB_REPOSITORY not found")
@@ -88,6 +93,7 @@ def main():
       api_call(f"{base}/issues/{number}", method="PATCH", payload={"state": "closed"})
       continue
 
+    add_subscriber(email, source="github_issue")
     if email not in existing:
       existing[email] = {"email": email, "createdAt": now, "status": "active"}
       added += 1

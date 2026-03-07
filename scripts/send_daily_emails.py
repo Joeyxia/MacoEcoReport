@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 import json
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "server"))
+from db import init_db, list_active_subscribers, save_email_dispatch_log
+
 SUBSCRIBERS_PATH = ROOT / "data" / "subscribers.json"
 SNAPSHOT_PATH = ROOT / "data" / "latest_snapshot.json"
 REPORTS_INDEX_PATH = ROOT / "reports" / "index.json"
@@ -70,12 +74,15 @@ def build_email_content(snapshot, report_date: str, report_link: str):
 
 
 def main():
+  init_db()
   if not RESEND_API_KEY or not RESEND_FROM:
     print("skip: RESEND_API_KEY or RESEND_FROM not set")
     return
 
-  subscribers = load_json(SUBSCRIBERS_PATH, {"subscribers": []}).get("subscribers", [])
-  recipients = [s.get("email", "").strip().lower() for s in subscribers if s.get("status") == "active" and s.get("email")]
+  db_subs = list_active_subscribers()
+  file_subs = load_json(SUBSCRIBERS_PATH, {"subscribers": []}).get("subscribers", [])
+  subscribers = db_subs or file_subs
+  recipients = [s.get("email", "").strip().lower() for s in subscribers if s.get("email")]
   recipients = sorted(set([x for x in recipients if x]))
   if not recipients:
     print("skip: no active subscribers")
@@ -107,6 +114,7 @@ def main():
     "errors": errors,
   }
   EMAIL_LOG_PATH.write_text(json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
+  save_email_dispatch_log(log)
   print(f"email_dispatch date={report_date} recipients={len(recipients)} sent={sent} failed={failed}")
 
 
