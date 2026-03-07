@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$", re.I)
 
 app = Flask(__name__, static_folder=str(ROOT), static_url_path="")
+init_db()
 
 
 @app.after_request
