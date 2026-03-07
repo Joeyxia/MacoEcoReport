@@ -1,21 +1,34 @@
 #!/usr/bin/env python3
-import json
+import os
 import re
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from db import (
-  add_subscriber,
-  get_daily_report,
-  get_latest_model_snapshot,
-  init_db,
-  list_active_subscribers,
-  list_daily_reports,
-  save_model_snapshot,
-  save_online_check,
-  upsert_daily_report,
-)
+try:
+  from .db import (
+    add_subscriber,
+    get_daily_report,
+    get_latest_model_snapshot,
+    init_db,
+    list_active_subscribers,
+    list_daily_reports,
+    save_model_snapshot,
+    save_online_check,
+    upsert_daily_report,
+  )
+except ImportError:
+  from db import (
+    add_subscriber,
+    get_daily_report,
+    get_latest_model_snapshot,
+    init_db,
+    list_active_subscribers,
+    list_daily_reports,
+    save_model_snapshot,
+    save_online_check,
+    upsert_daily_report,
+  )
 
 ROOT = Path(__file__).resolve().parents[1]
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$", re.I)
@@ -154,7 +167,9 @@ def static_files(path):
 
 def main():
   init_db()
-  app.run(host="127.0.0.1", port=5000, debug=False)
+  host = os.environ.get("HOST", "0.0.0.0")
+  port = int(os.environ.get("PORT", "5000"))
+  app.run(host=host, port=port, debug=False)
 
 
 if __name__ == "__main__":

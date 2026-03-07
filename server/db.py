@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import json
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
-DB_PATH = DATA_DIR / "macro_monitor.db"
+DB_PATH = Path(os.environ.get("MACRO_DB_PATH", str(DATA_DIR / "macro_monitor.db")))
 
 
 def now_iso():
@@ -14,7 +15,7 @@ def now_iso():
 
 
 def get_conn():
-  DATA_DIR.mkdir(parents=True, exist_ok=True)
+  DB_PATH.parent.mkdir(parents=True, exist_ok=True)
   conn = sqlite3.connect(DB_PATH)
   conn.row_factory = sqlite3.Row
   return conn

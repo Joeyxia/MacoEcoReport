@@ -81,6 +81,19 @@ Then open: `http://127.0.0.1:5000`
 
 The frontend will use backend APIs automatically on localhost.
 
+## Deploy Backend (Render Recommended)
+
+1. In Render, create a new **Web Service** from this GitHub repo.
+2. Render will detect `render.yaml`:
+- Start command: `gunicorn server.app:app --bind 0.0.0.0:$PORT`
+- Persistent disk mounted at `/var/data`
+- SQLite path env: `MACRO_DB_PATH=/var/data/macro_monitor.db`
+3. After deploy, verify:
+- `GET https://<your-render-domain>/api/health`
+- `POST https://<your-render-domain>/api/subscribers`
+4. Update frontend API base meta value if your domain is different from:
+- `https://macro-monitor-backend.onrender.com`
+
 ## Browser DB Migration
 
 - On first load with backend available, frontend migrates existing browser IndexedDB records to backend DB via `/api/migrate`.

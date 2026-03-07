@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: macro-monitor-backend
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server.app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: MACRO_DB_PATH
+        value: /var/data/macro_monitor.db
+    disk:
+      name: macro-monitor-disk
+      mountPath: /var/data
+      sizeGB: 1
