@@ -4,8 +4,8 @@
   "updated": [
     {
       "code": "YC_10Y3M",
-      "value": 38.0,
-      "date": "2026-03-04"
+      "value": 43.0,
+      "date": "2026-03-05"
     },
     {
       "code": "SOFR",
@@ -19,8 +19,8 @@
     },
     {
       "code": "NET_LIQ_PROXY",
-      "value": -825.426899,
-      "date": "2026-03-05"
+      "value": -825.425618,
+      "date": "2026-03-06"
     },
     {
       "code": "GDP_QOQ_SAAR",
@@ -44,8 +44,8 @@
     },
     {
       "code": "BREAKEVEN_5Y5Y",
-      "value": 2.11,
-      "date": "2026-03-05"
+      "value": 2.14,
+      "date": "2026-03-06"
     },
     {
       "code": "UNRATE",
@@ -94,8 +94,8 @@
     },
     {
       "code": "US_JP_10Y_SPREAD",
-      "value": 185.0,
-      "date": "2026-03-04"
+      "value": 189.0,
+      "date": "2026-03-05"
     },
     {
       "code": "FCI",
@@ -104,8 +104,8 @@
     },
     {
       "code": "BANK_LENDING",
-      "value": 1.785657,
-      "date": "2026-02-18"
+      "value": 1.946172,
+      "date": "2026-02-25"
     },
     {
       "code": "TED_SPREAD",
@@ -119,12 +119,12 @@
     },
     {
       "code": "BTC",
-      "value": 68260.0,
+      "value": 68294.0,
       "date": "2026-03-07"
     },
     {
       "code": "USDC_MCAP",
-      "value": 77.283278,
+      "value": 77.346068,
       "date": "2026-03-07"
     }
   ],

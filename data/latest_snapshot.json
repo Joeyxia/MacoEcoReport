@@ -1,7 +1,7 @@
 {
   "asOf": "2026-03-07",
   "reportDate": "2026-03-07",
-  "totalScore": 68.32,
+  "totalScore": 68.48,
   "status": "Fallback (latest available in model inputs)",
   "alerts": [
     {
@@ -50,8 +50,8 @@
   "dimensions": [
     {
       "name": "货币政策与流动性",
-      "score": 48.94,
-      "contribution": 5.8725,
+      "score": 49.51,
+      "contribution": 5.9411,
       "id": "D01"
     },
     {
@@ -92,8 +92,8 @@
     },
     {
       "name": "外部部门与美元条件",
-      "score": 55.9,
-      "contribution": 3.913,
+      "score": 56.46,
+      "contribution": 3.9522,
       "id": "D08"
     },
     {
@@ -104,8 +104,8 @@
     },
     {
       "name": "金融条件与信用传导",
-      "score": 91.31,
-      "contribution": 5.4784,
+      "score": 92.11,
+      "contribution": 5.5265,
       "id": "D10"
     },
     {
@@ -128,8 +128,8 @@
     },
     {
       "name": "加密与稳定币流动性（主题）",
-      "score": 52.65,
-      "contribution": 0.5265,
+      "score": 52.69,
+      "contribution": 0.5269,
       "id": "D14"
     }
   ],
@@ -150,7 +150,7 @@
   "keyWatch": [
     {
       "label": "YC_10Y3M",
-      "value": 38.0
+      "value": 43.0
     },
     {
       "label": "VIX",
@@ -174,11 +174,11 @@
     },
     {
       "label": "BTC",
-      "value": 68260.0
+      "value": 68294.0
     }
   ],
-  "latestReportSummary": "Macro model updated on 2026-03-07. Public-source updater refreshed 25 indicators; 20 indicators still require manual/proprietary updates. Composite score: 68.32 (Fallback (latest available in model inputs)).",
-  "generatedAt": "2026-03-06T18:13:56Z",
+  "latestReportSummary": "Macro model updated on 2026-03-07. Public-source updater refreshed 25 indicators; 20 indicators still require manual/proprietary updates. Composite score: 68.48 (Fallback (latest available in model inputs)).",
+  "generatedAt": "2026-03-07T01:53:11Z",
   "topDimensionContributors": [
     {
       "name": "通胀与价格压力",
@@ -200,14 +200,14 @@
     },
     {
       "name": "货币政策与流动性",
-      "score": 48.94,
-      "contribution": 5.8725,
+      "score": 49.51,
+      "contribution": 5.9411,
       "id": "D01"
     },
     {
       "name": "金融条件与信用传导",
-      "score": 91.31,
-      "contribution": 5.4784,
+      "score": 92.11,
+      "contribution": 5.5265,
       "id": "D10"
     },
     {
@@ -230,8 +230,8 @@
     },
     {
       "name": "外部部门与美元条件",
-      "score": 55.9,
-      "contribution": 3.913,
+      "score": 56.46,
+      "contribution": 3.9522,
       "id": "D08"
     },
     {
@@ -260,8 +260,8 @@
     },
     {
       "name": "加密与稳定币流动性（主题）",
-      "score": 52.65,
-      "contribution": 0.5265,
+      "score": 52.69,
+      "contribution": 0.5269,
       "id": "D14"
     }
   ],
@@ -310,13 +310,13 @@
     }
   ],
   "dailyWatchedItems": [
-    "YC_10Y3M: 38.0",
+    "YC_10Y3M: 43.0",
     "VIX: 23.75",
     "HY_OAS: 300.0",
     "CORE_CPI_YOY: 2.9493",
     "UNRATE: 4.4",
     "WTI: 71.13",
-    "BTC: 68260.0"
+    "BTC: 68294.0"
   ],
   "primaryDrivers": [
     {
@@ -336,7 +336,7 @@
     {
       "title": "10Y-3M利差",
       "label": "YC_10Y3M",
-      "value": 38.0,
+      "value": 43.0,
       "source": "FRED"
     },
     {
@@ -378,8 +378,8 @@
       "Weight(%)": 12.0,
       "Definition": "利率曲线、短端资金利率、央行资产负债表与净流动性。",
       "Typical Update": "Daily/Weekly",
-      "DimScore": 48.94,
-      "WeightedContribution": 5.8725
+      "DimScore": 49.51,
+      "WeightedContribution": 5.9411
     },
     {
       "DimensionID": "D02",
@@ -448,8 +448,8 @@
       "Weight(%)": 7.0,
       "Definition": "DXY/利差/资本流动等外部融资条件。",
       "Typical Update": "Daily/Monthly",
-      "DimScore": 55.9,
-      "WeightedContribution": 3.913
+      "DimScore": 56.46,
+      "WeightedContribution": 3.9522
     },
     {
       "DimensionID": "D09",
@@ -468,8 +468,8 @@
       "Weight(%)": 6.0,
       "Definition": "金融条件指数、银行信贷供给与资金面压力。",
       "Typical Update": "Weekly/Monthly",
-      "DimScore": 91.31,
-      "WeightedContribution": 5.4784
+      "DimScore": 92.11,
+      "WeightedContribution": 5.5265
     },
     {
       "DimensionID": "D11",
@@ -508,8 +508,8 @@
       "Weight(%)": 1.0,
       "Definition": "稳定币与链上流动性（低权重主题观察）。",
       "Typical Update": "Daily/Weekly",
-      "DimScore": 52.65,
-      "WeightedContribution": 0.5265
+      "DimScore": 52.69,
+      "WeightedContribution": 0.5269
     }
   ],
   "indicatorDetails": [
@@ -519,13 +519,13 @@
       "DimensionID": "D01",
       "Source": "FRED (H.15)",
       "Series/Code": "DGS10 & DGS3MO",
-      "LatestValue": 38.0,
-      "ValueDate": "2026-03-04",
+      "LatestValue": 43.0,
+      "ValueDate": "2026-03-05",
       "SourceDate": "2026-03-07",
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "SOFR",
@@ -539,7 +539,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "FED_ASSETS",
@@ -553,7 +553,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "NET_LIQ_PROXY",
@@ -561,13 +561,13 @@
       "DimensionID": "D01",
       "Source": "User Calc",
       "Series/Code": "N/A",
-      "LatestValue": -825.4269,
-      "ValueDate": "2026-03-05",
+      "LatestValue": -825.4256,
+      "ValueDate": "2026-03-06",
       "SourceDate": "2026-03-07",
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "GDP_QOQ_SAAR",
@@ -581,7 +581,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "PMI_MAN",
@@ -595,7 +595,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "CLAIMS_4WMA",
@@ -609,7 +609,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "LEI",
@@ -623,7 +623,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "CORE_CPI_YOY",
@@ -637,7 +637,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "CORE_PCE_YOY",
@@ -651,7 +651,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "BREAKEVEN_5Y5Y",
@@ -659,13 +659,13 @@
       "DimensionID": "D03",
       "Source": "FRED",
       "Series/Code": "T5YIFR",
-      "LatestValue": 2.11,
-      "ValueDate": "2026-03-05",
+      "LatestValue": 2.14,
+      "ValueDate": "2026-03-06",
       "SourceDate": "2026-03-07",
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "UNRATE",
@@ -679,7 +679,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "WAGE_GROWTH",
@@ -693,7 +693,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "CC_DELINQ",
@@ -707,7 +707,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "REAL_DISP_INC",
@@ -721,7 +721,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "SPX_FWD_PE",
@@ -735,7 +735,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "EPS_REV_BREADTH",
@@ -749,7 +749,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "HY_OAS",
@@ -763,7 +763,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "MORTGAGE_30Y",
@@ -777,7 +777,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "EXIST_HOME_SALES",
@@ -791,7 +791,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "HOUSING_STARTS",
@@ -805,7 +805,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "VIX",
@@ -819,7 +819,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "MOVE",
@@ -833,7 +833,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "SPX_DD_3M",
@@ -847,7 +847,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "DXY",
@@ -861,7 +861,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "US_JP_10Y_SPREAD",
@@ -869,13 +869,13 @@
       "DimensionID": "D08",
       "Source": "FRED/BOJ",
       "Series/Code": "N/A",
-      "LatestValue": 185.0,
-      "ValueDate": "2026-03-04",
+      "LatestValue": 189.0,
+      "ValueDate": "2026-03-05",
       "SourceDate": "2026-03-07",
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "CAPITAL_FLOWS",
@@ -889,7 +889,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "DEFICIT_GDP",
@@ -903,7 +903,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "DEBT_GDP",
@@ -917,7 +917,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "INT_REV",
@@ -931,7 +931,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "FCI",
@@ -945,7 +945,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "BANK_LENDING",
@@ -953,13 +953,13 @@
       "DimensionID": "D10",
       "Source": "Fed H.8",
       "Series/Code": "H.8",
-      "LatestValue": 1.7857,
-      "ValueDate": "2026-02-18",
+      "LatestValue": 1.9462,
+      "ValueDate": "2026-02-25",
       "SourceDate": "2026-03-07",
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "TED_SPREAD",
@@ -973,7 +973,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "WTI",
@@ -987,7 +987,7 @@
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "CRB",
@@ -1001,7 +1001,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "GPR",
@@ -1015,7 +1015,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "CB_CONS_CONF",
@@ -1029,7 +1029,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "CEO_CONF",
@@ -1043,7 +1043,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "EPU",
@@ -1057,7 +1057,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "CLOUD_AI_GROWTH",
@@ -1071,7 +1071,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "AI_CAPEX_GUIDE",
@@ -1085,7 +1085,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "SEMI_BOOK_BILL",
@@ -1099,7 +1099,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "BTC",
@@ -1107,13 +1107,13 @@
       "DimensionID": "D14",
       "Source": "CoinMarketCap",
       "Series/Code": "BTC",
-      "LatestValue": 68260.0,
+      "LatestValue": 68294.0,
       "ValueDate": "2026-03-07",
       "SourceDate": "2026-03-07",
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "USDC_MCAP",
@@ -1121,13 +1121,13 @@
       "DimensionID": "D14",
       "Source": "CoinMarketCap",
       "Series/Code": "USDC",
-      "LatestValue": 77.2833,
+      "LatestValue": 77.3461,
       "ValueDate": "2026-03-07",
       "SourceDate": "2026-03-07",
       "VerifiedOnline": true,
       "VerificationStatus": "Verified Online",
       "VerificationError": "",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     },
     {
       "IndicatorCode": "STABLECOIN_DOM",
@@ -1141,7 +1141,7 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "GeneratedAt": "2026-03-06T18:13:56Z"
+      "GeneratedAt": "2026-03-07T01:53:11Z"
     }
   ],
   "tables": {
@@ -2262,7 +2262,7 @@
       },
       {
         "AsOf（模型更新日期）": "YC_10Y3M",
-        "2026-03-07": 38.0
+        "2026-03-07": 43.0
       },
       {
         "AsOf（模型更新日期）": "SOFR",
@@ -2274,7 +2274,7 @@
       },
       {
         "AsOf（模型更新日期）": "NET_LIQ_PROXY",
-        "2026-03-07": -825.4269
+        "2026-03-07": -825.4256
       },
       {
         "AsOf（模型更新日期）": "GDP_QOQ_SAAR",
@@ -2302,7 +2302,7 @@
       },
       {
         "AsOf（模型更新日期）": "BREAKEVEN_5Y5Y",
-        "2026-03-07": 2.11
+        "2026-03-07": 2.14
       },
       {
         "AsOf（模型更新日期）": "UNRATE",
@@ -2362,7 +2362,7 @@
       },
       {
         "AsOf（模型更新日期）": "US_JP_10Y_SPREAD",
-        "2026-03-07": 185.0
+        "2026-03-07": 189.0
       },
       {
         "AsOf（模型更新日期）": "CAPITAL_FLOWS",
@@ -2386,7 +2386,7 @@
       },
       {
         "AsOf（模型更新日期）": "BANK_LENDING",
-        "2026-03-07": 1.7857
+        "2026-03-07": 1.9462
       },
       {
         "AsOf（模型更新日期）": "TED_SPREAD",
@@ -2430,11 +2430,11 @@
       },
       {
         "AsOf（模型更新日期）": "BTC",
-        "2026-03-07": 68260.0
+        "2026-03-07": 68294.0
       },
       {
         "AsOf（模型更新日期）": "USDC_MCAP",
-        "2026-03-07": 77.2833
+        "2026-03-07": 77.3461
       },
       {
         "AsOf（模型更新日期）": "STABLECOIN_DOM",
@@ -2446,10 +2446,10 @@
         "IndicatorCode": "YC_10Y3M",
         "DimensionID": "D01",
         "IndicatorName": "10Y-3M利差（bps）",
-        "LatestValue": 38.0,
-        "Score(0-100)": 68.0,
+        "LatestValue": 43.0,
+        "Score(0-100)": 69.43,
         "WeightWithinDim": 0.4,
-        "WeightedScore": 27.2
+        "WeightedScore": 27.7714
       },
       {
         "IndicatorCode": "SOFR",
@@ -2473,7 +2473,7 @@
         "IndicatorCode": "NET_LIQ_PROXY",
         "DimensionID": "D01",
         "IndicatorName": "净流动性代理（自定义）",
-        "LatestValue": -825.4269,
+        "LatestValue": -825.4256,
         "Score(0-100)": 0,
         "WeightWithinDim": 0.2,
         "WeightedScore": 0.0
@@ -2536,7 +2536,7 @@
         "IndicatorCode": "BREAKEVEN_5Y5Y",
         "DimensionID": "D03",
         "IndicatorName": "5Y5Y通胀预期（%）",
-        "LatestValue": 2.11,
+        "LatestValue": 2.14,
         "Score(0-100)": 100,
         "WeightWithinDim": 0.3,
         "WeightedScore": 30.0
@@ -2671,10 +2671,10 @@
         "IndicatorCode": "US_JP_10Y_SPREAD",
         "DimensionID": "D08",
         "IndicatorName": "美日10Y利差（bps）",
-        "LatestValue": 185.0,
-        "Score(0-100)": 74.0,
+        "LatestValue": 189.0,
+        "Score(0-100)": 75.6,
         "WeightWithinDim": 0.35,
-        "WeightedScore": 25.9
+        "WeightedScore": 26.46
       },
       {
         "IndicatorCode": "CAPITAL_FLOWS",
@@ -2725,10 +2725,10 @@
         "IndicatorCode": "BANK_LENDING",
         "DimensionID": "D10",
         "IndicatorName": "银行信贷增速（% YoY）",
-        "LatestValue": 1.7857,
-        "Score(0-100)": 96.94,
+        "LatestValue": 1.9462,
+        "Score(0-100)": 99.23,
         "WeightWithinDim": 0.35,
-        "WeightedScore": 33.9285
+        "WeightedScore": 34.731
       },
       {
         "IndicatorCode": "TED_SPREAD",
@@ -2824,19 +2824,19 @@
         "IndicatorCode": "BTC",
         "DimensionID": "D14",
         "IndicatorName": "BTC价格（$）",
-        "LatestValue": 68260.0,
-        "Score(0-100)": 48.26,
+        "LatestValue": 68294.0,
+        "Score(0-100)": 48.29,
         "WeightWithinDim": 0.4,
-        "WeightedScore": 19.304
+        "WeightedScore": 19.3176
       },
       {
         "IndicatorCode": "USDC_MCAP",
         "DimensionID": "D14",
         "IndicatorName": "USDC市值（$B）",
-        "LatestValue": 77.2833,
-        "Score(0-100)": 57.28,
+        "LatestValue": 77.3461,
+        "Score(0-100)": 57.35,
         "WeightWithinDim": 0.4,
-        "WeightedScore": 22.9133
+        "WeightedScore": 22.9384
       },
       {
         "IndicatorCode": "STABLECOIN_DOM",
@@ -2899,8 +2899,8 @@
     "updated": [
       {
         "code": "YC_10Y3M",
-        "value": 38.0,
-        "date": "2026-03-04"
+        "value": 43.0,
+        "date": "2026-03-05"
       },
       {
         "code": "SOFR",
@@ -2914,8 +2914,8 @@
       },
       {
         "code": "NET_LIQ_PROXY",
-        "value": -825.426899,
-        "date": "2026-03-05"
+        "value": -825.425618,
+        "date": "2026-03-06"
       },
       {
         "code": "GDP_QOQ_SAAR",
@@ -2939,8 +2939,8 @@
       },
       {
         "code": "BREAKEVEN_5Y5Y",
-        "value": 2.11,
-        "date": "2026-03-05"
+        "value": 2.14,
+        "date": "2026-03-06"
       },
       {
         "code": "UNRATE",
@@ -2989,8 +2989,8 @@
       },
       {
         "code": "US_JP_10Y_SPREAD",
-        "value": 185.0,
-        "date": "2026-03-04"
+        "value": 189.0,
+        "date": "2026-03-05"
       },
       {
         "code": "FCI",
@@ -2999,8 +2999,8 @@
       },
       {
         "code": "BANK_LENDING",
-        "value": 1.785657,
-        "date": "2026-02-18"
+        "value": 1.946172,
+        "date": "2026-02-25"
       },
       {
         "code": "TED_SPREAD",
@@ -3014,12 +3014,12 @@
       },
       {
         "code": "BTC",
-        "value": 68260.0,
+        "value": 68294.0,
         "date": "2026-03-07"
       },
       {
         "code": "USDC_MCAP",
-        "value": 77.283278,
+        "value": 77.346068,
         "date": "2026-03-07"
       }
     ],
