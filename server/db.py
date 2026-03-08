@@ -106,6 +106,14 @@ def init_db():
       logged_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_monitor_token_usage_time ON monitor_token_usage(logged_at);
+
+    CREATE TABLE IF NOT EXISTS api_credentials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      service TEXT UNIQUE NOT NULL,
+      api_key TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
     """
   )
   conn.commit()
@@ -317,6 +325,35 @@ def delete_token_usage_by_source(source: str, start_iso: str = "", end_iso: str 
     conn.execute("DELETE FROM monitor_token_usage WHERE source = ?", (source,))
   conn.commit()
   conn.close()
+
+
+def upsert_api_key(service: str, api_key: str):
+  conn = get_conn()
+  ts = now_iso()
+  conn.execute(
+    """
+    INSERT INTO api_credentials (service, api_key, created_at, updated_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(service) DO UPDATE SET
+      api_key=excluded.api_key,
+      updated_at=excluded.updated_at
+    """,
+    (str(service or "").strip().lower(), str(api_key or "").strip(), ts, ts),
+  )
+  conn.commit()
+  conn.close()
+
+
+def get_api_key(service: str):
+  conn = get_conn()
+  row = conn.execute(
+    "SELECT api_key FROM api_credentials WHERE service = ? LIMIT 1",
+    (str(service or "").strip().lower(),),
+  ).fetchone()
+  conn.close()
+  if not row:
+    return ""
+  return str(row["api_key"] or "").strip()
 
 
 def get_page_visit_daily(days: int = 30):

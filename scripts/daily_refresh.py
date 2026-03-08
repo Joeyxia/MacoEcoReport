@@ -10,6 +10,7 @@ import sys
 from math import ceil
 from datetime import date, datetime, timezone
 from pathlib import Path
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from openpyxl import load_workbook
@@ -29,13 +30,15 @@ if not os.environ.get("MACRO_DB_PATH") and ENV_FILE.exists():
     except Exception:
         pass
 sys.path.insert(0, str(ROOT / "server"))
-from db import init_db, log_token_usage, replace_sheet_rows, save_model_snapshot, upsert_daily_report
+from db import get_api_key, init_db, log_token_usage, replace_sheet_rows, save_model_snapshot, upsert_daily_report
 
 MODEL_PATH = ROOT / "model.xlsx"
 REPORTS_DIR = ROOT / "reports"
 DATA_DIR = ROOT / "data"
 CTX = ssl._create_unverified_context()
 UPDATE_LOG_PATH = ROOT / "data_update_log.json"
+FRED_API_BASE = "https://api.stlouisfed.org/fred/series/observations"
+_FRED_KEY_CACHE = None
 
 
 def fetch_text(url: str) -> str:
@@ -48,7 +51,49 @@ def fetch_json(url: str):
     return json.loads(fetch_text(url))
 
 
+def get_fred_api_key():
+    global _FRED_KEY_CACHE
+    if _FRED_KEY_CACHE is not None:
+        return _FRED_KEY_CACHE
+    key = str(os.environ.get("FRED_API_KEY", "")).strip()
+    if key:
+        _FRED_KEY_CACHE = key
+        return _FRED_KEY_CACHE
+    try:
+        key = str(get_api_key("fred") or "").strip()
+    except Exception:
+        key = ""
+    _FRED_KEY_CACHE = key
+    return _FRED_KEY_CACHE
+
+
+def fred_observations(series: str):
+    key = get_fred_api_key()
+    if not key:
+        return []
+    query = urlencode(
+        {
+            "series_id": series,
+            "api_key": key,
+            "file_type": "json",
+            "sort_order": "asc",
+            "observation_start": "1970-01-01",
+        }
+    )
+    data = fetch_json(f"{FRED_API_BASE}?{query}")
+    out = []
+    for row in data.get("observations") or []:
+        d = str(row.get("date") or "")
+        v = str(row.get("value") or "")
+        if d and v and v != ".":
+            out.append((d, float(v)))
+    return out
+
+
 def fred_last(series: str):
+    vals = fred_observations(series)
+    if vals:
+        return vals[-1]
     txt = fetch_text(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}")
     rows = list(csv.reader(io.StringIO(txt)))
     for d, v in reversed(rows[1:]):
@@ -58,9 +103,11 @@ def fred_last(series: str):
 
 
 def fred_yoy(series: str):
-    txt = fetch_text(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}")
-    rows = list(csv.reader(io.StringIO(txt)))[1:]
-    vals = [(d, float(v)) for d, v in rows if v and v != "."]
+    vals = fred_observations(series)
+    if not vals:
+        txt = fetch_text(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}")
+        rows = list(csv.reader(io.StringIO(txt)))[1:]
+        vals = [(d, float(v)) for d, v in rows if v and v != "."]
     if len(vals) < 13:
         raise ValueError(f"Insufficient history for {series}")
     d, v = vals[-1]
