@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexo Monitor | Ops</title>
+    <link rel="stylesheet" href="./monitor.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="./monitor.js"></script>
+  </head>
+  <body data-page="ops">
+    <header class="topbar">
+      <div class="brand">Nexo Monitor</div>
+      <nav>
+        <a href="./dashboard.html" class="active">Ops Dashboard</a>
+        <a href="./subscribers.html">Business</a>
+        <a href="./forms.html">Data Forms</a>
+      </nav>
+      <div class="userbox"><span id="user-email"></span><button id="logout-btn" class="btn ghost">Logout</button></div>
+    </header>
+    <main class="wrap">
+      <section class="grid kpis">
+        <article class="card"><h3>Page Visits (30d)</h3><div id="kpi-visits" class="kpi">--</div></article>
+        <article class="card"><h3>Input Tokens</h3><div id="kpi-input" class="kpi">--</div></article>
+        <article class="card"><h3>Output Tokens</h3><div id="kpi-output" class="kpi">--</div></article>
+        <article class="card"><h3>Total Tokens</h3><div id="kpi-total" class="kpi">--</div></article>
+      </section>
+      <section class="grid two">
+        <article class="card"><h3>Daily Visits</h3><canvas id="visits-chart"></canvas></article>
+        <article class="card"><h3>Daily Token Usage</h3><canvas id="tokens-chart"></canvas></article>
+      </section>
+      <section class="card">
+        <h3>Top Pages</h3>
+        <div id="top-pages"></div>
+      </section>
+    </main>
+  </body>
+</html>

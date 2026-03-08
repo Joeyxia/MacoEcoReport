@@ -4,10 +4,14 @@ import re
 import time
 import json
 import hashlib
+import base64
+import secrets
+import urllib.parse
+import urllib.request
 from threading import Lock
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, redirect, session
 
 try:
   from .db import (
@@ -17,6 +21,11 @@ try:
     init_db,
     list_active_subscribers,
     list_daily_reports,
+    get_page_visit_daily,
+    get_page_visit_by_path,
+    get_token_usage_daily,
+    log_page_event,
+    log_token_usage,
     save_model_snapshot,
     save_online_check,
     upsert_daily_report,
@@ -29,6 +38,11 @@ except ImportError:
     init_db,
     list_active_subscribers,
     list_daily_reports,
+    get_page_visit_daily,
+    get_page_visit_by_path,
+    get_token_usage_daily,
+    log_page_event,
+    log_token_usage,
     save_model_snapshot,
     save_online_check,
     upsert_daily_report,
@@ -37,8 +51,22 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$", re.I)
 CACHE_TTL_SECONDS = int(os.environ.get("API_CACHE_TTL_SECONDS", "90"))
+MONITOR_ALLOWED_EMAILS = {x.strip().lower() for x in str(os.environ.get("MONITOR_ALLOWED_EMAILS", "")).split(",") if x.strip()}
+MONITOR_ALLOWED_DOMAINS = {x.strip().lower() for x in str(os.environ.get("MONITOR_ALLOWED_DOMAINS", "")).split(",") if x.strip()}
+GOOGLE_CLIENT_ID = str(os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")).strip()
+GOOGLE_CLIENT_SECRET = str(os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")).strip()
+GOOGLE_REDIRECT_URI = str(os.environ.get("GOOGLE_OAUTH_REDIRECT_URI", "https://monitor.nexo.hk/monitor-api/auth/google/callback")).strip()
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 app = Flask(__name__, static_folder=str(ROOT), static_url_path="")
+app.secret_key = os.environ.get("MONITOR_SESSION_SECRET") or base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
+app.config.update(
+  SESSION_COOKIE_HTTPONLY=True,
+  SESSION_COOKIE_SAMESITE="Lax",
+  SESSION_COOKIE_SECURE=True,
+)
 init_db()
 _cache = {}
 _cache_lock = Lock()
@@ -176,6 +204,45 @@ def _etag_response(payload, status_code=200):
   return resp
 
 
+def _is_monitor_authorized(email: str):
+  e = str(email or "").strip().lower()
+  if not e:
+    return False
+  if MONITOR_ALLOWED_EMAILS and e in MONITOR_ALLOWED_EMAILS:
+    return True
+  if MONITOR_ALLOWED_DOMAINS:
+    domain = e.split("@", 1)[1] if "@" in e else ""
+    return domain in MONITOR_ALLOWED_DOMAINS
+  return True
+
+
+def _require_monitor_auth():
+  user = session.get("monitor_user") or {}
+  if not user.get("email"):
+    return None, (jsonify({"error": "unauthorized"}), 401)
+  if not _is_monitor_authorized(user.get("email")):
+    return None, (jsonify({"error": "forbidden"}), 403)
+  return user, None
+
+
+def _json_post(url: str, payload: dict, headers=None):
+  data = urllib.parse.urlencode(payload).encode("utf-8")
+  req = urllib.request.Request(url, data=data, method="POST")
+  req.add_header("Content-Type", "application/x-www-form-urlencoded")
+  for k, v in (headers or {}).items():
+    req.add_header(k, v)
+  with urllib.request.urlopen(req, timeout=20) as resp:
+    return json.loads(resp.read().decode("utf-8"))
+
+
+def _json_get(url: str, headers=None):
+  req = urllib.request.Request(url, method="GET")
+  for k, v in (headers or {}).items():
+    req.add_header(k, v)
+  with urllib.request.urlopen(req, timeout=20) as resp:
+    return json.loads(resp.read().decode("utf-8"))
+
+
 @app.after_request
 def set_cors(resp):
   resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -187,6 +254,192 @@ def set_cors(resp):
 @app.route("/api/health", methods=["GET"])
 def health():
   return _etag_response({"ok": True})
+
+
+@app.route("/monitor-api/health", methods=["GET"])
+def monitor_health():
+  return _etag_response(
+    {
+      "ok": True,
+      "oauthConfigured": bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI),
+    }
+  )
+
+
+@app.route("/monitor-api/auth/google/start", methods=["GET"])
+def monitor_google_start():
+  if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET or not GOOGLE_REDIRECT_URI:
+    return jsonify({"error": "oauth_not_configured"}), 503
+  state = secrets.token_urlsafe(24)
+  session["monitor_oauth_state"] = state
+  query = urllib.parse.urlencode(
+    {
+      "client_id": GOOGLE_CLIENT_ID,
+      "redirect_uri": GOOGLE_REDIRECT_URI,
+      "response_type": "code",
+      "scope": "openid email profile",
+      "access_type": "online",
+      "prompt": "select_account",
+      "state": state,
+    }
+  )
+  return redirect(f"{GOOGLE_AUTH_URL}?{query}", code=302)
+
+
+@app.route("/monitor-api/auth/google/callback", methods=["GET"])
+def monitor_google_callback():
+  code = str(request.args.get("code") or "").strip()
+  state = str(request.args.get("state") or "").strip()
+  if not code or not state or state != session.get("monitor_oauth_state"):
+    return redirect("/index.html?auth=failed", code=302)
+  try:
+    token = _json_post(
+      GOOGLE_TOKEN_URL,
+      {
+        "code": code,
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "grant_type": "authorization_code",
+      },
+    )
+    access_token = token.get("access_token")
+    if not access_token:
+      return redirect("/index.html?auth=failed", code=302)
+    userinfo = _json_get(GOOGLE_USERINFO_URL, headers={"Authorization": f"Bearer {access_token}"})
+    email = str(userinfo.get("email") or "").lower().strip()
+    if not email or not _is_monitor_authorized(email):
+      session.pop("monitor_user", None)
+      return redirect("/index.html?auth=forbidden", code=302)
+    session["monitor_user"] = {
+      "email": email,
+      "name": userinfo.get("name") or "",
+      "picture": userinfo.get("picture") or "",
+      "loginAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    return redirect("/dashboard.html", code=302)
+  except Exception:
+    return redirect("/index.html?auth=failed", code=302)
+
+
+@app.route("/monitor-api/auth/me", methods=["GET"])
+def monitor_auth_me():
+  user, err = _require_monitor_auth()
+  if err:
+    return err
+  return _etag_response({"ok": True, "user": user})
+
+
+@app.route("/monitor-api/auth/logout", methods=["POST", "OPTIONS"])
+def monitor_auth_logout():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  session.pop("monitor_user", None)
+  session.pop("monitor_oauth_state", None)
+  return jsonify({"ok": True})
+
+
+@app.route("/monitor-api/track/page", methods=["POST", "OPTIONS"])
+def monitor_track_page():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  payload = request.get_json(silent=True) or {}
+  path = str(payload.get("path") or request.path).strip()
+  referrer = str(payload.get("referrer") or request.headers.get("Referer") or "").strip()
+  user_agent = str(request.headers.get("User-Agent") or "")[:255]
+  ip = str(request.headers.get("X-Forwarded-For") or request.remote_addr or "")[:128]
+  if path:
+    log_page_event(path=path[:500], referrer=referrer[:500], user_agent=user_agent, ip=ip)
+  return jsonify({"ok": True})
+
+
+@app.route("/monitor-api/track/token", methods=["POST", "OPTIONS"])
+def monitor_track_token():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  user, err = _require_monitor_auth()
+  if err:
+    return err
+  payload = request.get_json(silent=True) or {}
+  source = str(payload.get("source") or "unknown")
+  model = str(payload.get("model") or "")
+  input_tokens = int(payload.get("input_tokens") or 0)
+  output_tokens = int(payload.get("output_tokens") or 0)
+  total_tokens = int(payload.get("total_tokens") or (input_tokens + output_tokens))
+  meta = payload.get("meta") or {"user": user.get("email")}
+  log_token_usage(source=source, model=model, input_tokens=input_tokens, output_tokens=output_tokens, total_tokens=total_tokens, meta=meta)
+  return jsonify({"ok": True})
+
+
+@app.route("/monitor-api/ops/overview", methods=["GET"])
+def monitor_ops_overview():
+  _, err = _require_monitor_auth()
+  if err:
+    return err
+  days = int(request.args.get("days", "30"))
+  visits_daily = get_page_visit_daily(days=max(1, min(days, 365)))
+  visits_by_path = get_page_visit_by_path(days=max(1, min(days, 365)), limit=30)
+  tokens_daily = get_token_usage_daily(days=max(1, min(days, 365)))
+  totals = {
+    "pageVisits": sum(int(x.get("visits") or 0) for x in visits_daily),
+    "inputTokens": sum(int(x.get("input_tokens") or 0) for x in tokens_daily),
+    "outputTokens": sum(int(x.get("output_tokens") or 0) for x in tokens_daily),
+    "totalTokens": sum(int(x.get("total_tokens") or 0) for x in tokens_daily),
+  }
+  return _etag_response(
+    {
+      "days": days,
+      "totals": totals,
+      "visitsDaily": visits_daily,
+      "visitsByPath": visits_by_path,
+      "tokensDaily": tokens_daily,
+    }
+  )
+
+
+@app.route("/monitor-api/biz/subscribers", methods=["GET"])
+def monitor_biz_subscribers():
+  _, err = _require_monitor_auth()
+  if err:
+    return err
+  rows = list_active_subscribers()
+  return _etag_response({"count": len(rows), "subscribers": rows})
+
+
+@app.route("/monitor-api/data/forms", methods=["GET"])
+def monitor_data_forms():
+  _, err = _require_monitor_auth()
+  if err:
+    return err
+  model = get_latest_model_snapshot() or {}
+  tables = model.get("tables") or {}
+  forms = [
+    {"name": "dimensions", "label": "Dimensions", "count": len(tables.get("dimensions") or [])},
+    {"name": "indicators", "label": "Indicators", "count": len(tables.get("indicators") or [])},
+    {"name": "inputs", "label": "Inputs", "count": len(tables.get("inputs") or [])},
+    {"name": "scores", "label": "Scores", "count": len(tables.get("scores") or [])},
+    {"name": "alerts", "label": "Alerts", "count": len(tables.get("alerts") or [])},
+    {"name": "daily_reports", "label": "Daily Reports", "count": len(list_daily_reports(limit=500))},
+    {"name": "subscribers", "label": "Subscribers", "count": len(list_active_subscribers())},
+  ]
+  return _etag_response({"forms": forms})
+
+
+@app.route("/monitor-api/data/forms/<name>", methods=["GET"])
+def monitor_data_form_rows(name):
+  _, err = _require_monitor_auth()
+  if err:
+    return err
+  key = str(name or "").strip().lower()
+  model = get_latest_model_snapshot() or {}
+  tables = model.get("tables") or {}
+  if key in {"dimensions", "indicators", "inputs", "scores", "alerts"}:
+    return _etag_response({"name": key, "rows": tables.get(key) or []})
+  if key == "daily_reports":
+    return _etag_response({"name": key, "rows": list_daily_reports(limit=500)})
+  if key == "subscribers":
+    return _etag_response({"name": key, "rows": list_active_subscribers()})
+  return jsonify({"error": "not_found"}), 404
 
 
 @app.route("/api/model/current", methods=["GET", "POST", "OPTIONS"])

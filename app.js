@@ -303,6 +303,22 @@ function getApiBase() {
   return "";
 }
 
+function trackPublicPageView() {
+  const payload = {
+    path: `${window.location.pathname}${window.location.search || ""}`,
+    referrer: document.referrer || ""
+  };
+  const body = JSON.stringify(payload);
+  try {
+    const url = "https://monitor.nexo.hk/monitor-api/track/page";
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+      return;
+    }
+    fetch(url, { method: "POST", mode: "cors", headers: { "Content-Type": "application/json" }, body }).catch(() => {});
+  } catch {}
+}
+
 async function apiFetch(path, options = {}) {
   const base = getApiBase();
   if (!base) return null;
@@ -2441,6 +2457,7 @@ async function ensureModelData(model) {
 }
 
 async function init() {
+  trackPublicPageView();
   setLang(getLang());
   applyI18n();
   setupNavPrefetch();

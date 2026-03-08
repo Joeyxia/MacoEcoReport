@@ -83,6 +83,29 @@ def init_db():
       recipients INTEGER DEFAULT 0,
       payload_json TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS monitor_page_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT,
+      referrer TEXT,
+      user_agent TEXT,
+      ip TEXT,
+      visited_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_monitor_page_events_time ON monitor_page_events(visited_at);
+    CREATE INDEX IF NOT EXISTS idx_monitor_page_events_path ON monitor_page_events(path);
+
+    CREATE TABLE IF NOT EXISTS monitor_token_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source TEXT,
+      model TEXT,
+      input_tokens INTEGER DEFAULT 0,
+      output_tokens INTEGER DEFAULT 0,
+      total_tokens INTEGER DEFAULT 0,
+      meta_json TEXT,
+      logged_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_monitor_token_usage_time ON monitor_token_usage(logged_at);
     """
   )
   conn.commit()
@@ -250,3 +273,81 @@ def save_email_dispatch_log(payload: dict):
   )
   conn.commit()
   conn.close()
+
+
+def log_page_event(path: str, referrer: str = "", user_agent: str = "", ip: str = "", visited_at: str = ""):
+  conn = get_conn()
+  ts = visited_at or now_iso()
+  conn.execute(
+    "INSERT INTO monitor_page_events (path, referrer, user_agent, ip, visited_at) VALUES (?, ?, ?, ?, ?)",
+    (path, referrer, user_agent, ip, ts),
+  )
+  conn.commit()
+  conn.close()
+
+
+def log_token_usage(source: str, model: str = "", input_tokens: int = 0, output_tokens: int = 0, total_tokens: int = 0, meta=None, logged_at: str = ""):
+  conn = get_conn()
+  ts = logged_at or now_iso()
+  payload = json.dumps(meta or {}, ensure_ascii=False)
+  conn.execute(
+    """
+    INSERT INTO monitor_token_usage (source, model, input_tokens, output_tokens, total_tokens, meta_json, logged_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """,
+    (source, model, int(input_tokens or 0), int(output_tokens or 0), int(total_tokens or 0), payload, ts),
+  )
+  conn.commit()
+  conn.close()
+
+
+def get_page_visit_daily(days: int = 30):
+  conn = get_conn()
+  rows = conn.execute(
+    """
+    SELECT substr(visited_at,1,10) AS day, COUNT(*) AS visits
+    FROM monitor_page_events
+    WHERE visited_at >= datetime('now', ?)
+    GROUP BY day
+    ORDER BY day ASC
+    """,
+    (f"-{max(1,int(days))} day",),
+  ).fetchall()
+  conn.close()
+  return [dict(r) for r in rows]
+
+
+def get_page_visit_by_path(days: int = 30, limit: int = 50):
+  conn = get_conn()
+  rows = conn.execute(
+    """
+    SELECT path, COUNT(*) AS visits
+    FROM monitor_page_events
+    WHERE visited_at >= datetime('now', ?)
+    GROUP BY path
+    ORDER BY visits DESC
+    LIMIT ?
+    """,
+    (f"-{max(1,int(days))} day", max(1, int(limit))),
+  ).fetchall()
+  conn.close()
+  return [dict(r) for r in rows]
+
+
+def get_token_usage_daily(days: int = 30):
+  conn = get_conn()
+  rows = conn.execute(
+    """
+    SELECT substr(logged_at,1,10) AS day,
+           SUM(input_tokens) AS input_tokens,
+           SUM(output_tokens) AS output_tokens,
+           SUM(total_tokens) AS total_tokens
+    FROM monitor_token_usage
+    WHERE logged_at >= datetime('now', ?)
+    GROUP BY day
+    ORDER BY day ASC
+    """,
+    (f"-{max(1,int(days))} day",),
+  ).fetchall()
+  conn.close()
+  return [dict(r) for r in rows]
