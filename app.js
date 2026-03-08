@@ -607,36 +607,58 @@ function keyByIncludes(row, includes) {
   return null;
 }
 
+function isIndicatorLikeCode(value) {
+  return /^[A-Z][A-Z0-9_]{1,40}$/i.test(asText(value));
+}
+
 function pickInputCodeKey(inputs) {
   if (!Array.isArray(inputs) || !inputs.length) return null;
   for (const row of inputs) {
     const key = keyByIncludes(row || {}, ["indicatorcode", "code", "指标编码"]);
     if (key) return key;
   }
-  return null;
+  const keys = [...new Set(inputs.flatMap((r) => Object.keys(r || {})))];
+  let best = null;
+  let bestScore = -1;
+  keys.forEach((k) => {
+    let score = 0;
+    inputs.forEach((row) => {
+      const v = asText((row || {})[k]);
+      if (!v) return;
+      if (v.toLowerCase() === "indicatorcode") score += 20;
+      else if (isIndicatorLikeCode(v)) score += 1;
+    });
+    if (score > bestScore) {
+      bestScore = score;
+      best = k;
+    }
+  });
+  return bestScore > 0 ? best : null;
 }
 
 function pickInputValueKey(inputs) {
   if (!Array.isArray(inputs) || !inputs.length) return null;
   const codeKey = pickInputCodeKey(inputs);
-  const sampleRow =
-    (codeKey
-      ? inputs.find((row) => /^[A-Z][A-Z0-9_]{1,40}$/i.test(asText((row || {})[codeKey])))
-      : null) || inputs[0] || {};
-
-  const explicit = keyByIncludes(sampleRow, ["latestvalue", "value", "最新值", "数值"]);
-  if (explicit) return explicit;
-  const keys = Object.keys(sampleRow);
-  const candidates = keys.filter((k) => {
-    const lower = k.toLowerCase();
-    if (codeKey && k === codeKey) return false;
-    if (lower.includes("valuedate") || lower.includes("sourcedate") || lower.includes("date")) return false;
-    return true;
-  });
-  if (candidates.length) return candidates[0];
-  const dateHeader = keys.find((k) => /^\\d{4}-\\d{2}-\\d{2}$/.test(asText(k)));
-  if (dateHeader) return dateHeader;
-  return keys.find((k) => k !== codeKey) || null;
+  const keys = [...new Set(inputs.flatMap((r) => Object.keys(r || {})))];
+  const explicit = keyByIncludes(inputs[0] || {}, ["latestvalue", "value", "最新值", "数值"]);
+  if (explicit && explicit !== codeKey) return explicit;
+  const dateHeader = keys.find((k) => /^\d{4}-\d{2}-\d{2}$/.test(asText(k)));
+  if (dateHeader && dateHeader !== codeKey) return dateHeader;
+  let best = null;
+  let bestScore = -1;
+  keys
+    .filter((k) => k !== codeKey)
+    .forEach((k) => {
+      let score = 0;
+      inputs.forEach((row) => {
+        if (asNumber((row || {})[k]) !== null) score += 1;
+      });
+      if (score > bestScore) {
+        bestScore = score;
+        best = k;
+      }
+    });
+  return best;
 }
 
 function cleanSheetRows(rows) {
@@ -674,7 +696,7 @@ function computeModelFromTables(tables) {
   const dimensionsTable = tables?.dimensions || [];
 
   const inputCodeKey = pickInputCodeKey(inputs);
-  const inputValueKey = inputs.length ? keyByIncludes(inputs[0], ["latestvalue", "value", "值"]) : null;
+  const inputValueKey = pickInputValueKey(inputs);
   const inputMap = new Map();
   inputs.forEach((row) => {
     const code = asText(row[inputCodeKey]);
@@ -764,7 +786,7 @@ function computeModelFromTables(tables) {
 
 function buildDefaultAlerts(inputRows) {
   const inputCodeKey = pickInputCodeKey(inputRows);
-  const inputValueKey = inputRows.length ? keyByIncludes(inputRows[0], ["latestvalue", "value", "值"]) : null;
+  const inputValueKey = pickInputValueKey(inputRows);
   const valueOf = (code) => {
     const row = inputRows.find((r) => asText(r[inputCodeKey]) === code);
     return row ? asNumber(row[inputValueKey]) : null;
