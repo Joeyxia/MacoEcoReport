@@ -3,161 +3,165 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="macro-api-base" content="https://api.nexo.hk" />
-    <title>Macro Risk Monitor | Dashboard</title>
+    <title>Nexo Macro | Landing Preview</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js" defer></script>
-    <script src="app.js?v=20260307d" defer></script>
+    <style>
+      :root {
+        --bg-1: #070b13;
+        --bg-2: #0f1828;
+        --ink: #e8eef8;
+        --soft: #93a7c3;
+        --accent: #38d9ff;
+        --line: rgba(148, 163, 184, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "IBM Plex Sans", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 20%, rgba(56, 217, 255, 0.14), transparent 40%),
+          radial-gradient(circle at 85% 80%, rgba(56, 217, 255, 0.1), transparent 45%),
+          linear-gradient(160deg, var(--bg-1), var(--bg-2));
+        overflow: hidden;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 42px 42px;
+        opacity: 0.18;
+        pointer-events: none;
+        animation: gridDrift 28s linear infinite;
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
+        inset: -20%;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 20% 30%, rgba(56, 217, 255, 0.16), transparent 38%),
+          radial-gradient(circle at 80% 70%, rgba(56, 217, 255, 0.14), transparent 40%);
+        filter: blur(24px);
+        animation: glowMove 16s ease-in-out infinite alternate;
+      }
+
+      .hero {
+        position: relative;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .content {
+        max-width: 980px;
+        text-align: center;
+        animation: rise 0.7s ease-out both;
+      }
+
+      .brand {
+        display: inline-block;
+        margin-bottom: 22px;
+        font-size: 12px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--soft);
+      }
+
+      .slogan {
+        margin: 0;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        font-size: clamp(26px, 4.9vw, 72px);
+        line-height: 1.06;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+      }
+
+      .sub {
+        margin: 18px auto 34px;
+        max-width: 620px;
+        color: var(--soft);
+        font-size: clamp(14px, 2vw, 18px);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 188px;
+        height: 48px;
+        border-radius: 999px;
+        border: 1px solid rgba(56, 217, 255, 0.5);
+        background: linear-gradient(120deg, rgba(56, 217, 255, 0.2), rgba(56, 217, 255, 0.08));
+        color: #d9f7ff;
+        font-weight: 600;
+        text-decoration: none;
+        backdrop-filter: blur(4px);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 30px rgba(56, 217, 255, 0.25);
+        background: linear-gradient(120deg, rgba(56, 217, 255, 0.28), rgba(56, 217, 255, 0.12));
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(14px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes glowMove {
+        from {
+          transform: translate3d(-1.2%, -1%, 0) scale(1);
+          opacity: 0.82;
+        }
+        to {
+          transform: translate3d(1.4%, 1.2%, 0) scale(1.06);
+          opacity: 1;
+        }
+      }
+
+      @keyframes gridDrift {
+        from {
+          transform: translateY(0);
+        }
+        to {
+          transform: translateY(42px);
+        }
+      }
+    </style>
   </head>
-  <body data-page="dashboard">
-    <div class="bg-layer"></div>
-    <header class="site-header">
-      <a class="brand" href="index.html">Macro Risk Monitor</a>
-      <nav>
-        <a class="nav-link active" href="index.html" data-i18n="nav_dashboard">Dashboard</a>
-        <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
-        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
-        <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
-      </nav>
-      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
-    </header>
-
-    <main class="page page-dashboard">
-      <section class="panel hero">
-        <div>
-          <p class="eyebrow" data-i18n="dashboard_eyebrow">Global Macro Crisis Radar</p>
-          <h1 data-i18n="dashboard_title">Institutional 14-Dimension Monitoring Dashboard</h1>
-          <p class="subtle" data-i18n="dashboard_subtitle">
-            Upload your model workbook to refresh total score, dimension contribution, and warning signals.
-          </p>
-          <div class="upload-wrap">
-            <label for="xlsx-input" class="btn" data-i18n="load_model">Load Model (.xlsx)</label>
-            <input id="xlsx-input" type="file" accept=".xlsx" />
-            <span id="file-status" class="subtle" data-i18n="using_sample_data">Using built-in sample data</span>
-          </div>
-        </div>
-        <div class="score-card">
-          <p class="score-label" data-i18n="macro_composite_score">Macro Composite Score</p>
-          <div class="score-value" id="total-score">--</div>
-          <p class="score-meta">
-            <span data-i18n="as_of">As of</span> <span id="as-of">--</span> · <strong id="macro-status">--</strong>
-          </p>
-        </div>
-      </section>
-
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="latest_report_summary">Latest Report Summary</h2>
-          <div id="latest-report-summary" class="summary-panel"></div>
-        </article>
-
-        <article class="panel">
-          <h2 data-i18n="top_dimension_contributors">Top Dimension Contributors</h2>
-          <div id="dimension-bars" class="bars"></div>
-        </article>
-      </section>
-
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="triggered_alerts">Triggered Alerts</h2>
-          <ul id="alert-list" class="alerts"></ul>
-        </article>
-
-        <article class="panel">
-          <h2 data-i18n="daily_watch_items">Daily Watch Items</h2>
-          <div id="daily-watch-items" class="report-links"></div>
-        </article>
-      </section>
-
-      <section class="panel">
-        <h2 data-i18n="primary_drivers">Primary Drivers</h2>
-        <div class="grid three-col" id="drivers"></div>
-      </section>
-
-      <section class="panel">
-        <div class="section-head">
-          <h2 data-i18n="key_indicators_overview">Key Indicators Snapshot</h2>
-        </div>
-        <div id="key-indicators-grid" class="grid three-col"></div>
-      </section>
-
-      <section class="panel">
-        <div class="section-head">
-          <h2 data-i18n="dimensions_14_detail">All 14 Dimensions Detail (from Dimensions Sheet)</h2>
-          <p class="subtle" data-i18n="dimensions_14_detail_desc">This section shows complete dimension definitions, tiers, weights, and update frequencies.</p>
-        </div>
-        <div id="dimension-layers" class="model-layers"></div>
-      </section>
-
-      <section class="panel">
-        <div class="section-head">
-          <h2 data-i18n="model_core_tables">Model Core Tables</h2>
-          <p class="subtle" data-i18n="model_core_tables_desc">Complete structured data from your 14-dimension model.</p>
-        </div>
-        <div class="grid two-col">
-          <article>
-            <h3 data-i18n="dimensions">Dimensions</h3>
-            <div id="dimensions-table" class="table-wrap"></div>
-          </article>
-          <article>
-            <h3 data-i18n="inputs_latest">Inputs (Latest)</h3>
-            <div id="inputs-table" class="table-wrap"></div>
-          </article>
-        </div>
-        <div class="grid two-col table-group-gap">
-          <article>
-            <h3 data-i18n="indicators">Indicators</h3>
-            <div id="indicators-table" class="table-wrap tall"></div>
-          </article>
-          <article>
-            <h3 data-i18n="scores">Scores</h3>
-            <div id="scores-table" class="table-wrap tall"></div>
-          </article>
-        </div>
-        <article class="table-block">
-          <h3 data-i18n="alerts">Alerts</h3>
-          <div id="alerts-table" class="table-wrap"></div>
-        </article>
-      </section>
-
-      <section class="panel">
-        <div class="section-head">
-          <h2 data-i18n="workbook_explorer">Workbook Data Explorer</h2>
-          <p class="subtle" data-i18n="workbook_explorer_desc">Full raw content from every worksheet in the Excel file (all rows and columns).</p>
-        </div>
-        <div id="sheet-tabs" class="sheet-tabs"></div>
-        <div id="sheet-table" class="table-wrap explorer"></div>
-      </section>
-
-      <section class="panel">
-        <div class="section-head">
-          <h2 data-i18n="subscribe_title">Email Subscription</h2>
-          <p class="subtle" data-i18n="subscribe_desc">Subscribe to receive the daily report summary and link after 09:00 China time generation.</p>
-        </div>
-        <form id="subscribe-form" class="subscribe-form">
-          <label for="subscribe-email" data-i18n="subscribe_email_label">Email</label>
-          <div class="subscribe-row">
-            <input id="subscribe-email" class="search-input" type="email" placeholder="name@example.com" required />
-            <button class="btn" type="submit" data-i18n="subscribe_submit">Subscribe</button>
-          </div>
-        </form>
-        <p id="subscriber-count" class="subtle"></p>
-        <p class="subtle" id="subscribe-status"></p>
-        <p class="subtle" data-i18n="subscribe_note">If backend is unavailable, subscription will fallback to GitHub request.</p>
-      </section>
-
-      <section class="panel cta-row">
-        <div>
-          <h3 data-i18n="need_today_note">Need Today's Note?</h3>
-          <p class="subtle" data-i18n="need_today_note_desc">Generate and edit a daily narrative from the current model snapshot.</p>
-        </div>
-        <a class="btn" href="daily-report.html" data-i18n="open_daily_report">Open Daily Report</a>
+  <body>
+    <main class="hero">
+      <section class="content">
+        <span class="brand">Nexo Macro Intelligence</span>
+        <h1 class="slogan">Signal Before the Storm</h1>
+        <p class="sub">Track global macro risk with a 14-dimension monitoring model.</p>
+        <a class="btn" href="dashboard.html">Enter Dashboard</a>
       </section>
     </main>
   </body>
