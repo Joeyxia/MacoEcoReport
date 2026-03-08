@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
+import argparse
 import csv
 import io
 import json
 import math
 import ssl
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -18,8 +19,6 @@ from db import init_db, replace_sheet_rows, save_model_snapshot, upsert_daily_re
 MODEL_PATH = ROOT / "model.xlsx"
 REPORTS_DIR = ROOT / "reports"
 DATA_DIR = ROOT / "data"
-TODAY = date.today().isoformat()
-GENERATED_AT = datetime.utcnow().isoformat(timespec="seconds") + "Z"
 CTX = ssl._create_unverified_context()
 
 
@@ -96,7 +95,6 @@ def sheet_to_dicts(ws):
     for r in ws.iter_rows(values_only=True):
         vals = [serializable(x) for x in r]
         if header is None:
-            # find first complete header row
             if vals and vals[0] and any(vals[1:]):
                 header = vals
             continue
@@ -124,13 +122,19 @@ def status_from_score(score):
     return "衰退/危机"
 
 
-def run():
+def run(mode="full", report_date=None):
+    if mode not in {"full", "fetch-only", "report-only"}:
+        raise ValueError(f"invalid mode: {mode}")
+    today = str(report_date or date.today().isoformat())
+    generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    fetch_enabled = mode in {"full", "fetch-only"}
+    report_enabled = mode in {"full", "report-only"}
+
     wb = load_workbook(MODEL_PATH)
     ws_dim = wb["Dimensions"]
     ws_ind = wb["Indicators"]
     ws_in = wb["Inputs"]
 
-    # load indicators
     indicators = {}
     for r in range(2, ws_ind.max_row + 1):
         code = ws_ind.cell(r, 1).value
@@ -162,8 +166,7 @@ def run():
         if code:
             input_rows[str(code)] = r
 
-    ws_in["B2"] = TODAY
-
+    ws_in["B2"] = today
     cache = {}
 
     def s_last(series):
@@ -175,97 +178,97 @@ def run():
     updated = []
     failed = []
 
-    for code in indicators:
-        try:
-            source = str(indicators[code].get("Source") or "").lower()
-            series_hint = indicators[code].get("Series")
-            d = None
-            v = None
-            if code == "YC_10Y3M":
-                d1, x = s_last("DGS10")
-                d2, y = s_last("DGS3MO")
-                d = max(d1, d2)
-                v = (x - y) * 100
-            elif code == "SOFR":
-                d, v = s_last("SOFR")
-            elif code == "FED_ASSETS":
-                d, x = s_last("WALCL")
-                v = x / 1_000_000
-            elif code == "NET_LIQ_PROXY":
-                d1, a = s_last("WALCL")
-                d2, tga = s_last("WTREGEN")
-                d3, rrp = s_last("RRPONTSYD")
-                d = max(d1, d2, d3)
-                v = (a / 1000 - tga - rrp) / 1000
-            elif code == "GDP_QOQ_SAAR":
-                d, v = s_last("A191RL1Q225SBEA")
-            elif code == "CLAIMS_4WMA":
-                d, v = s_last("IC4WSA")
-            elif code == "CORE_CPI_YOY":
-                d, v = fred_yoy("CPILFESL")
-            elif code == "CORE_PCE_YOY":
-                d, v = fred_yoy("PCEPILFE")
-            elif code == "BREAKEVEN_5Y5Y":
-                d, v = s_last("T5YIFR")
-            elif code == "UNRATE":
-                d, v = s_last("UNRATE")
-            elif code == "WAGE_GROWTH":
-                d, v = fred_yoy("CES0500000003")
-            elif code == "CC_DELINQ":
-                d, v = s_last("DRCCLACBS")
-            elif code == "REAL_DISP_INC":
-                d, v = fred_yoy("DSPIC96")
-            elif code == "HY_OAS":
-                d, x = s_last("BAMLH0A0HYM2")
-                v = x * 100 if x < 50 else x
-            elif code == "MORTGAGE_30Y":
-                d, v = s_last("MORTGAGE30US")
-            elif code == "HOUSING_STARTS":
-                d, x = s_last("HOUST")
-                v = x / 1000
-            elif code == "VIX":
-                d, v = s_last("VIXCLS")
-            elif code == "DXY":
-                d, v = s_last("DTWEXBGS")
-            elif code == "US_JP_10Y_SPREAD":
-                d1, us10 = s_last("DGS10")
-                d2, jp10 = s_last("IRLTLT01JPM156N")
-                d = max(d1, d2)
-                v = (us10 - jp10) * 100
-            elif code == "FCI":
-                d, v = s_last("NFCI")
-            elif code == "BANK_LENDING":
-                d, v = fred_yoy("TOTBKCR")
-            elif code == "TED_SPREAD":
-                d, v = s_last("TEDRATE")
-            elif code == "WTI":
-                d, v = s_last("DCOILWTICO")
-            elif code == "BTC":
-                j = fetch_json("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
-                d = TODAY
-                v = float(j["bitcoin"]["usd"])
-            elif code == "USDC_MCAP":
-                j = fetch_json("https://api.coingecko.com/api/v3/coins/usd-coin")
-                d = TODAY
-                v = float(j["market_data"]["market_cap"]["usd"]) / 1_000_000_000
-            elif "fred" in source:
-                token = first_series_token(series_hint)
-                if not token:
-                    raise ValueError("no FRED series token")
-                d, v = s_last(token)
-            else:
-                raise ValueError("manual/proprietary source required")
+    if fetch_enabled:
+        for code in indicators:
+            try:
+                source = str(indicators[code].get("Source") or "").lower()
+                series_hint = indicators[code].get("Series")
+                d = None
+                v = None
+                if code == "YC_10Y3M":
+                    d1, x = s_last("DGS10")
+                    d2, y = s_last("DGS3MO")
+                    d = max(d1, d2)
+                    v = (x - y) * 100
+                elif code == "SOFR":
+                    d, v = s_last("SOFR")
+                elif code == "FED_ASSETS":
+                    d, x = s_last("WALCL")
+                    v = x / 1_000_000
+                elif code == "NET_LIQ_PROXY":
+                    d1, a = s_last("WALCL")
+                    d2, tga = s_last("WTREGEN")
+                    d3, rrp = s_last("RRPONTSYD")
+                    d = max(d1, d2, d3)
+                    v = (a / 1000 - tga - rrp) / 1000
+                elif code == "GDP_QOQ_SAAR":
+                    d, v = s_last("A191RL1Q225SBEA")
+                elif code == "CLAIMS_4WMA":
+                    d, v = s_last("IC4WSA")
+                elif code == "CORE_CPI_YOY":
+                    d, v = fred_yoy("CPILFESL")
+                elif code == "CORE_PCE_YOY":
+                    d, v = fred_yoy("PCEPILFE")
+                elif code == "BREAKEVEN_5Y5Y":
+                    d, v = s_last("T5YIFR")
+                elif code == "UNRATE":
+                    d, v = s_last("UNRATE")
+                elif code == "WAGE_GROWTH":
+                    d, v = fred_yoy("CES0500000003")
+                elif code == "CC_DELINQ":
+                    d, v = s_last("DRCCLACBS")
+                elif code == "REAL_DISP_INC":
+                    d, v = fred_yoy("DSPIC96")
+                elif code == "HY_OAS":
+                    d, x = s_last("BAMLH0A0HYM2")
+                    v = x * 100 if x < 50 else x
+                elif code == "MORTGAGE_30Y":
+                    d, v = s_last("MORTGAGE30US")
+                elif code == "HOUSING_STARTS":
+                    d, x = s_last("HOUST")
+                    v = x / 1000
+                elif code == "VIX":
+                    d, v = s_last("VIXCLS")
+                elif code == "DXY":
+                    d, v = s_last("DTWEXBGS")
+                elif code == "US_JP_10Y_SPREAD":
+                    d1, us10 = s_last("DGS10")
+                    d2, jp10 = s_last("IRLTLT01JPM156N")
+                    d = max(d1, d2)
+                    v = (us10 - jp10) * 100
+                elif code == "FCI":
+                    d, v = s_last("NFCI")
+                elif code == "BANK_LENDING":
+                    d, v = fred_yoy("TOTBKCR")
+                elif code == "TED_SPREAD":
+                    d, v = s_last("TEDRATE")
+                elif code == "WTI":
+                    d, v = s_last("DCOILWTICO")
+                elif code == "BTC":
+                    j = fetch_json("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+                    d = today
+                    v = float(j["bitcoin"]["usd"])
+                elif code == "USDC_MCAP":
+                    j = fetch_json("https://api.coingecko.com/api/v3/coins/usd-coin")
+                    d = today
+                    v = float(j["market_data"]["market_cap"]["usd"]) / 1_000_000_000
+                elif "fred" in source:
+                    token = first_series_token(series_hint)
+                    if not token:
+                        raise ValueError("no FRED series token")
+                    d, v = s_last(token)
+                else:
+                    raise ValueError("manual/proprietary source required")
 
-            row = input_rows.get(code)
-            if row and v is not None:
-                ws_in.cell(row, 2).value = round(v, 4)
-                ws_in.cell(row, 3).value = d
-                ws_in.cell(row, 4).value = TODAY
-            updated.append({"code": code, "value": round(v, 6), "date": d})
-        except Exception as e:
-            failed.append({"code": code, "error": str(e)[:180]})
+                row = input_rows.get(code)
+                if row and v is not None:
+                    ws_in.cell(row, 2).value = round(v, 4)
+                    ws_in.cell(row, 3).value = d
+                    ws_in.cell(row, 4).value = today
+                updated.append({"code": code, "value": round(v, 6), "date": d})
+            except Exception as e:
+                failed.append({"code": code, "error": str(e)[:180]})
 
-    # read dimensions
     dimensions = []
     for r in range(2, ws_dim.max_row + 1):
         did = ws_dim.cell(r, 1).value
@@ -280,7 +283,6 @@ def run():
             "update": ws_dim.cell(r, 6).value,
         })
 
-    # map input values
     input_values = {}
     input_meta = {}
     for code, r in input_rows.items():
@@ -291,7 +293,6 @@ def run():
         if v is not None:
             input_values[code] = v
 
-    # calculate indicator scores
     indicator_scores = []
     for code, m in indicators.items():
         if code not in input_values:
@@ -340,7 +341,6 @@ def run():
             "WeightedScore": round(score * w, 4),
         })
 
-    # dimension scores
     dim_summary = []
     for d in dimensions:
         rows = [r for r in indicator_scores if str(r["DimensionID"]) == d["id"]]
@@ -360,9 +360,8 @@ def run():
         })
 
     total_score = round(sum(x["contribution"] for x in dim_summary), 2)
-    status = status_from_score(total_score)
+    model_status = status_from_score(total_score)
 
-    # alerts based on updated values
     val = input_values
     alerts = [
         {"id": "A01", "level": "RED", "condition": "VIX > 30", "triggered": (val.get("VIX", -999) > 30)},
@@ -374,7 +373,7 @@ def run():
         {"id": "A07", "level": "YELLOW", "condition": "WTI > 100", "triggered": (val.get("WTI", -999) > 100)},
     ]
 
-    ranked = sorted(dim_summary, key=lambda x: x["score"]) 
+    ranked = sorted(dim_summary, key=lambda x: x["score"])
     weak = ranked[:3]
     strong = list(reversed(ranked[-3:]))
 
@@ -407,13 +406,13 @@ def run():
         reverse=True,
     )
     daily_watched_items = [f"{x['label']}: {x['value']}" for x in key_watch if x.get("value") is not None]
+
     updated_set = {x["code"] for x in updated}
     failed_map = {x["code"]: x.get("error", "") for x in failed}
     indicator_details = []
     for code, m in indicators.items():
-        current_value = input_values.get(code)
         verified = code in updated_set
-        status = "Verified Online" if verified else "Fallback (latest available in model inputs)"
+        verify_status = "Verified Online" if verified else "Fallback (latest available in model inputs)"
         indicator_details.append(
             {
                 "IndicatorCode": code,
@@ -421,13 +420,13 @@ def run():
                 "DimensionID": m["DimensionID"],
                 "Source": m["Source"],
                 "Series/Code": m["Series"],
-                "LatestValue": current_value,
+                "LatestValue": input_values.get(code),
                 "ValueDate": input_meta.get(code, {}).get("value_date"),
                 "SourceDate": input_meta.get(code, {}).get("source_date"),
                 "VerifiedOnline": verified,
-                "VerificationStatus": status,
+                "VerificationStatus": verify_status,
                 "VerificationError": failed_map.get(code, ""),
-                "GeneratedAt": GENERATED_AT,
+                "GeneratedAt": generated_at,
             }
         )
 
@@ -445,59 +444,56 @@ def run():
         for d in dim_summary
     ]
 
-    # persist workbook
     wb.save(MODEL_PATH)
-
     REPORTS_DIR.mkdir(exist_ok=True)
     DATA_DIR.mkdir(exist_ok=True)
 
     short_summary = (
-        f"Macro model updated on {TODAY}. Public-source updater refreshed {len(updated)} indicators; "
+        f"Macro model updated on {today}. Public-source updater refreshed {len(updated)} indicators; "
         f"{len(failed)} indicators still require manual/proprietary updates. "
-        f"Composite score: {total_score} ({status})."
+        f"Composite score: {total_score} ({model_status})."
     )
 
-    report_text_lines = [
-        f"Macro Daily Report ({TODAY})",
-        f"Model As-Of: {TODAY}",
-        f"Composite Score: {total_score} ({status})",
-        "",
-        "Key Indicators To Watch",
-    ]
-    for item in key_watch:
-        if item["value"] is not None:
-            report_text_lines.append(f"- {item['label']}: {round(item['value'],4)}")
-    report_text_lines += [
-        "",
-        "Short Summary",
-        f"- {short_summary}",
-        f"- Data generated at: {GENERATED_AT}",
-        "- Weakest dimensions: " + ", ".join([f"{x['id']} {x['name']} ({x['score']})" for x in weak]),
-        "- Strongest dimensions: " + ", ".join([f"{x['id']} {x['name']} ({x['score']})" for x in strong]),
-    ]
-    report_text = "\n".join(report_text_lines) + "\n"
+    report_text = ""
+    if report_enabled:
+        report_text_lines = [
+            f"Macro Daily Report ({today})",
+            f"Model As-Of: {today}",
+            f"Composite Score: {total_score} ({model_status})",
+            "",
+            "Key Indicators To Watch",
+        ]
+        for item in key_watch:
+            if item["value"] is not None:
+                report_text_lines.append(f"- {item['label']}: {round(item['value'],4)}")
+        report_text_lines += [
+            "",
+            "Short Summary",
+            f"- {short_summary}",
+            f"- Data generated at: {generated_at}",
+            "- Weakest dimensions: " + ", ".join([f"{x['id']} {x['name']} ({x['score']})" for x in weak]),
+            "- Strongest dimensions: " + ", ".join([f"{x['id']} {x['name']} ({x['score']})" for x in strong]),
+        ]
+        report_text = "\n".join(report_text_lines) + "\n"
+        (REPORTS_DIR / f"{today}.txt").write_text(report_text, encoding="utf-8")
 
-    (REPORTS_DIR / f"{TODAY}.txt").write_text(report_text, encoding="utf-8")
+        def render_dim_cards(items):
+            parts = []
+            for d in items:
+                related = [x for x in indicator_scores if str(x["DimensionID"]) == d["id"]][:3]
+                li = "".join([f"<li><strong>{r['IndicatorCode']}</strong>: {r['LatestValue']} | score {r['Score(0-100)']}</li>" for r in related])
+                parts.append(f"<div class='preview-dim-card'><strong>{d['id']} {d['name']}</strong><div>Weight {d['weight']}% | Score {d['score']} | Contribution {d['contribution']}</div><ul>{li}</ul></div>")
+            return "".join(parts)
 
-    def render_dim_cards(items):
-        parts=[]
-        for d in items:
-            related=[x for x in indicator_scores if str(x['DimensionID'])==d['id']][:3]
-            li=''.join([f"<li><strong>{r['IndicatorCode']}</strong>: {r['LatestValue']} | score {r['Score(0-100)']}</li>" for r in related])
-            parts.append(f"<div class='preview-dim-card'><strong>{d['id']} {d['name']}</strong><div>Weight {d['weight']}% | Score {d['score']} | Contribution {d['contribution']}</div><ul>{li}</ul></div>")
-        return ''.join(parts)
+        tiers = {}
+        for d in dim_summary:
+            tiers.setdefault(d["tier"] or "Other", []).append(d)
+        tier_html = ""
+        for tier, items in tiers.items():
+            tier_html += f"<section class='preview-tier'><h2>{tier}</h2>{render_dim_cards(items)}</section>"
 
-    # group by tier
-    tiers={}
-    for d in dim_summary:
-        tiers.setdefault(d['tier'] or 'Other',[]).append(d)
-
-    tier_html=''
-    for tier,items in tiers.items():
-        tier_html += f"<section class='preview-tier'><h2>{tier}</h2>{render_dim_cards(items)}</section>"
-
-    report_html=f"""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Macro Daily Report {TODAY}</title><link rel='stylesheet' href='../styles.css'></head><body><main class='page'><section class='panel preview-header'><h1>Macro Daily Report ({TODAY})</h1><p>Composite Score: {total_score} ({status})</p><p>{short_summary}</p></section><section class='panel preview-section'><h2>Key Indicators To Watch</h2><ul class='preview-list'>{''.join([f"<li>{i['label']}: {round(i['value'],4)}</li>" for i in key_watch if i['value'] is not None])}</ul></section>{tier_html}</main></body></html>"""
-    (REPORTS_DIR / f"{TODAY}.html").write_text(report_html, encoding="utf-8")
+        report_html = f"""<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Macro Daily Report {today}</title><link rel='stylesheet' href='../styles.css'></head><body><main class='page'><section class='panel preview-header'><h1>Macro Daily Report ({today})</h1><p>Composite Score: {total_score} ({model_status})</p><p>{short_summary}</p></section><section class='panel preview-section'><h2>Key Indicators To Watch</h2><ul class='preview-list'>{''.join([f"<li>{i['label']}: {round(i['value'],4)}</li>" for i in key_watch if i['value'] is not None])}</ul></section>{tier_html}</main></body></html>"""
+        (REPORTS_DIR / f"{today}.html").write_text(report_html, encoding="utf-8")
 
     ws_daily = wb["DailyReports"] if "DailyReports" in wb.sheetnames else wb.create_sheet("DailyReports")
     if ws_daily.max_row < 1 or ws_daily.cell(1, 1).value != "Date":
@@ -508,19 +504,20 @@ def run():
         ws_daily.cell(1, 5).value = "Summary"
         ws_daily.cell(1, 6).value = "GeneratedAt"
         ws_daily.cell(1, 7).value = "ReportPath"
+
     existing_row = None
     for rr in range(2, ws_daily.max_row + 1):
-        if str(ws_daily.cell(rr, 1).value or "") == TODAY:
+        if str(ws_daily.cell(rr, 1).value or "") == today:
             existing_row = rr
             break
     target_row = existing_row or (ws_daily.max_row + 1)
-    ws_daily.cell(target_row, 1).value = TODAY
-    ws_daily.cell(target_row, 2).value = TODAY
+    ws_daily.cell(target_row, 1).value = today
+    ws_daily.cell(target_row, 2).value = today
     ws_daily.cell(target_row, 3).value = total_score
-    ws_daily.cell(target_row, 4).value = status
+    ws_daily.cell(target_row, 4).value = model_status
     ws_daily.cell(target_row, 5).value = short_summary
-    ws_daily.cell(target_row, 6).value = GENERATED_AT
-    ws_daily.cell(target_row, 7).value = f"reports/{TODAY}.html"
+    ws_daily.cell(target_row, 6).value = generated_at
+    ws_daily.cell(target_row, 7).value = f"reports/{today}.html"
 
     index_path = REPORTS_DIR / "index.json"
     reports = []
@@ -531,10 +528,10 @@ def run():
             reports = []
 
     today_entry = {
-        "date": TODAY,
-        "meta": {"score": str(total_score), "status": status},
+        "date": today,
+        "meta": {"score": str(total_score), "status": model_status},
         "text": report_text,
-        "path": f"reports/{TODAY}.html",
+        "path": f"reports/{today}.html",
         "reportPayload": {
             "topDimensionContributors": top_dimension_contributors,
             "triggerAlerts": alerts,
@@ -544,23 +541,24 @@ def run():
             "all14DimensionsDetailed": all14_dimensions_detailed,
             "latestReportSummary": short_summary,
             "indicatorDetails": indicator_details,
-            "generatedAt": GENERATED_AT,
+            "generatedAt": generated_at,
         },
     }
-    merged = [today_entry] + [r for r in reports if r.get("date") != TODAY]
-    index_path.write_text(json.dumps({"reports": merged}, ensure_ascii=False, indent=2), encoding="utf-8")
+    if report_enabled:
+        merged = [today_entry] + [r for r in reports if r.get("date") != today]
+        index_path.write_text(json.dumps({"reports": merged}, ensure_ascii=False, indent=2), encoding="utf-8")
 
     snapshot = {
-        "asOf": TODAY,
-        "reportDate": TODAY,
+        "asOf": today,
+        "reportDate": today if report_enabled else "",
         "totalScore": total_score,
-        "status": status,
+        "status": model_status,
         "alerts": alerts,
         "dimensions": [{"name": d["name"], "score": d["score"], "contribution": d["contribution"], "id": d["id"]} for d in dim_summary],
         "drivers": drivers,
         "keyWatch": key_watch,
         "latestReportSummary": short_summary,
-        "generatedAt": GENERATED_AT,
+        "generatedAt": generated_at,
         "topDimensionContributors": top_dimension_contributors,
         "triggerAlerts": alerts,
         "dailyWatchedItems": daily_watched_items,
@@ -575,43 +573,49 @@ def run():
             "scores": indicator_scores,
             "alerts": alerts,
         },
-        "onlineUpdate": {"updated_count": len(updated), "failed_count": len(failed), "updated": updated, "failed": failed}
+        "onlineUpdate": {"updated_count": len(updated), "failed_count": len(failed), "updated": updated, "failed": failed},
     }
     (DATA_DIR / "latest_snapshot.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
     (ROOT / "data_update_log.json").write_text(json.dumps(snapshot["onlineUpdate"], ensure_ascii=False, indent=2), encoding="utf-8")
 
     init_db()
     save_model_snapshot(snapshot)
-    replace_sheet_rows("Dimensions", snapshot["tables"]["dimensions"], TODAY)
-    replace_sheet_rows("Indicators", snapshot["tables"]["indicators"], TODAY)
-    replace_sheet_rows("Inputs", snapshot["tables"]["inputs"], TODAY)
-    replace_sheet_rows("Scores", snapshot["tables"]["scores"], TODAY)
-    replace_sheet_rows("Alerts", snapshot["tables"]["alerts"], TODAY)
+    replace_sheet_rows("Dimensions", snapshot["tables"]["dimensions"], today)
+    replace_sheet_rows("Indicators", snapshot["tables"]["indicators"], today)
+    replace_sheet_rows("Inputs", snapshot["tables"]["inputs"], today)
+    replace_sheet_rows("Scores", snapshot["tables"]["scores"], today)
+    replace_sheet_rows("Alerts", snapshot["tables"]["alerts"], today)
     replace_sheet_rows(
         "DailyReports",
         [
             {
-                "Date": TODAY,
-                "AsOf": TODAY,
+                "Date": today,
+                "AsOf": today,
                 "TotalScore": total_score,
-                "Status": status,
+                "Status": model_status,
                 "Summary": short_summary,
-                "GeneratedAt": GENERATED_AT,
-                "ReportPath": f"reports/{TODAY}.html",
+                "GeneratedAt": generated_at,
+                "ReportPath": f"reports/{today}.html",
             }
         ],
-        TODAY,
-    )
-    upsert_daily_report(
-        report_date=TODAY,
-        text=report_text,
-        meta={"score": total_score, "status": status, "summary": short_summary},
-        report_path=f"reports/{TODAY}.html",
-        payload=today_entry.get("reportPayload"),
+        today,
     )
 
-    print(f"DONE as_of={TODAY} updated={len(updated)} failed={len(failed)} total_score={total_score}")
+    if report_enabled:
+        upsert_daily_report(
+            report_date=today,
+            text=report_text,
+            meta={"score": total_score, "status": model_status, "summary": short_summary},
+            report_path=f"reports/{today}.html",
+            payload=today_entry.get("reportPayload"),
+        )
+
+    print(f"DONE mode={mode} as_of={today} updated={len(updated)} failed={len(failed)} total_score={total_score}")
 
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser(description="Refresh macro data and generate daily report")
+    parser.add_argument("--mode", choices=["full", "fetch-only", "report-only"], default="full")
+    parser.add_argument("--date", default="", help="Date in YYYY-MM-DD")
+    args = parser.parse_args()
+    run(mode=args.mode, report_date=(args.date or None))
