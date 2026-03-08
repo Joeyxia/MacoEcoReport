@@ -200,6 +200,8 @@ def model_current():
   payload = request.get_json(silent=True) or {}
   if not isinstance(payload, dict):
     return jsonify({"error": "invalid_payload"}), 400
+  if not payload:
+    return jsonify({"error": "empty_payload"}), 400
   save_model_snapshot(payload)
   _invalidate_cache("model:", "reports:")
   return jsonify({"ok": True})

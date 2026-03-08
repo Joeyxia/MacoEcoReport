@@ -118,9 +118,16 @@ def save_model_snapshot(payload: dict):
 
 def get_latest_model_snapshot():
   conn = get_conn()
-  row = conn.execute("SELECT payload_json FROM model_snapshots ORDER BY id DESC LIMIT 1").fetchone()
+  rows = conn.execute("SELECT payload_json FROM model_snapshots ORDER BY id DESC LIMIT 50").fetchall()
   conn.close()
-  return json.loads(row["payload_json"]) if row else None
+  for row in rows:
+    try:
+      payload = json.loads(row["payload_json"])
+    except Exception:
+      continue
+    if isinstance(payload, dict) and payload:
+      return payload
+  return None
 
 
 def upsert_daily_report(report_date: str, text: str, meta: dict, report_path: str = "", payload=None):
