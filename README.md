@@ -56,6 +56,18 @@ Bilingual macro dashboard + daily report system with server and SQLite database.
 - Email is stored in DB table `subscribers` and mirrored in `data/subscribers.json` (workflow path).
 - Daily workflow sends summary + report link to active subscribers.
 
+11. Token usage monitoring (including OpenAI conversation usage import):
+- Internal pipeline usage is logged into table `monitor_token_usage` by `scripts/daily_refresh.py`.
+- You can import OpenAI usage (conversation/completions token stats) into the same table:
+```bash
+export OPENAI_ADMIN_API_KEY="<your_openai_admin_key>"
+python3 scripts/import_openai_usage.py --days 2
+```
+- Recommended cron (hourly):
+```bash
+5 * * * * cd /opt/MacoEcoReport && /opt/MacoEcoReport/.venv/bin/python scripts/import_openai_usage.py --days 2 >> /var/log/macro-openai-usage.log 2>&1
+```
+
 ## Pages
 
 - `index.html`: dashboard

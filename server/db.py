@@ -301,6 +301,24 @@ def log_token_usage(source: str, model: str = "", input_tokens: int = 0, output_
   conn.close()
 
 
+def delete_token_usage_by_source(source: str, start_iso: str = "", end_iso: str = ""):
+  conn = get_conn()
+  if start_iso and end_iso:
+    conn.execute(
+      "DELETE FROM monitor_token_usage WHERE source = ? AND logged_at >= ? AND logged_at < ?",
+      (source, start_iso, end_iso),
+    )
+  elif start_iso:
+    conn.execute(
+      "DELETE FROM monitor_token_usage WHERE source = ? AND logged_at >= ?",
+      (source, start_iso),
+    )
+  else:
+    conn.execute("DELETE FROM monitor_token_usage WHERE source = ?", (source,))
+  conn.commit()
+  conn.close()
+
+
 def get_page_visit_daily(days: int = 30):
   conn = get_conn()
   rows = conn.execute(
