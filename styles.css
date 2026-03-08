@@ -358,6 +358,37 @@ input[type="file"] {
   line-height: 1.4;
 }
 
+.skeleton-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+  margin: 0.45rem 0;
+  background: linear-gradient(100deg, rgba(18, 36, 40, 0.08) 20%, rgba(18, 36, 40, 0.14) 38%, rgba(18, 36, 40, 0.08) 56%);
+  background-size: 240% 100%;
+  animation: skeleton-shimmer 1.2s linear infinite;
+}
+
+.skeleton-line.sm {
+  width: 42%;
+}
+
+.skeleton-line.lg {
+  width: 78%;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 .dim-row {
   display: flex;
   gap: 0.5rem;

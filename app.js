@@ -22,6 +22,7 @@ const dashboardTableLoaded = {
   alerts: false
 };
 const dashboardPrefetchedTableRows = {};
+let dashboardPrefetchStarted = false;
 
 const i18n = {
   en: {
@@ -1315,6 +1316,51 @@ function renderDashboard(model) {
   scheduleHeavyDashboardRender(model);
 }
 
+function renderDashboardSkeleton() {
+  const bars = document.getElementById("dimension-bars");
+  const drivers = document.getElementById("drivers");
+  const keyGrid = document.getElementById("key-indicators-grid");
+  const summary = document.getElementById("latest-report-summary");
+  const watch = document.getElementById("daily-watch-items");
+  if (summary) {
+    summary.innerHTML = `
+      <div class="skeleton-line lg"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line"></div>
+    `;
+  }
+  if (watch) {
+    watch.innerHTML = `<div class="skeleton-line"></div><div class="skeleton-line"></div>`;
+  }
+  if (bars) {
+    bars.innerHTML = "";
+    for (let i = 0; i < 4; i += 1) {
+      const row = document.createElement("div");
+      row.className = "bar-row skeleton-card";
+      row.innerHTML = `<div class="skeleton-line"></div><div class="skeleton-line sm"></div>`;
+      bars.appendChild(row);
+    }
+  }
+  if (drivers) {
+    drivers.innerHTML = "";
+    for (let i = 0; i < 3; i += 1) {
+      const card = document.createElement("article");
+      card.className = "driver-card skeleton-card";
+      card.innerHTML = `<div class="skeleton-line"></div><div class="skeleton-line"></div>`;
+      drivers.appendChild(card);
+    }
+  }
+  if (keyGrid) {
+    keyGrid.innerHTML = "";
+    for (let i = 0; i < 3; i += 1) {
+      const card = document.createElement("article");
+      card.className = "indicator-mini-card skeleton-card";
+      card.innerHTML = `<div class="skeleton-line"></div><div class="skeleton-line sm"></div>`;
+      keyGrid.appendChild(card);
+    }
+  }
+}
+
 function scheduleHeavyDashboardRender(model) {
   dashboardHeavyRenderToken += 1;
   const token = dashboardHeavyRenderToken;
@@ -1347,6 +1393,7 @@ function scheduleHeavyDashboardRender(model) {
     setupDashboardSectionTableLazyLoad("indicators", "indicators-table", token);
     setupDashboardSectionTableLazyLoad("scores", "scores-table", token);
     setupDashboardSectionTableLazyLoad("alerts", "alerts-table", token);
+    scheduleDashboardPrefetchTables(token);
     setupDashboardWorkbookLazyLoad(merged, token);
   };
   if (typeof window.requestIdleCallback === "function") {
@@ -1354,6 +1401,40 @@ function scheduleHeavyDashboardRender(model) {
     return;
   }
   window.setTimeout(task, 60);
+}
+
+function scheduleDashboardPrefetchTables(token) {
+  if (dashboardPrefetchStarted) return;
+  dashboardPrefetchStarted = true;
+  const run = async () => {
+    const [scoresRows, alertsRows] = await Promise.all([
+      loadDashboardSingleTable("scores"),
+      loadDashboardSingleTable("alerts")
+    ]);
+    if (token !== dashboardHeavyRenderToken) return;
+    dashboardPrefetchedTableRows.scores = scoresRows;
+    dashboardPrefetchedTableRows.alerts = alertsRows;
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(run, { timeout: 1800 });
+    return;
+  }
+  window.setTimeout(run, 500);
+}
+
+function setupNavPrefetch() {
+  const links = [...document.querySelectorAll("a.nav-link[href]")];
+  const seen = new Set();
+  const prefetch = (href) => {
+    if (!href || seen.has(href) || href.startsWith("http")) return;
+    seen.add(href);
+    fetch(href, { method: "GET", cache: "force-cache" }).catch(() => {});
+  };
+  links.forEach((link) => {
+    const href = link.getAttribute("href");
+    link.addEventListener("mouseenter", () => prefetch(href), { passive: true });
+    link.addEventListener("touchstart", () => prefetch(href), { passive: true });
+  });
 }
 
 function setupDashboardSectionTableLazyLoad(tableName, targetId, token) {
@@ -2247,8 +2328,10 @@ function setupUpload(onLoaded) {
 
 async function initDashboard() {
   const status = document.getElementById("file-status");
+  renderDashboardSkeleton();
   dashboardWorkbookLoaded = false;
   dashboardWorkbookLoading = false;
+  dashboardPrefetchStarted = false;
   dashboardTableObservers.forEach((o) => o.disconnect());
   dashboardTableObservers = [];
   Object.keys(dashboardTableLoaded).forEach((k) => {
@@ -2276,6 +2359,7 @@ async function initDashboard() {
     Object.keys(dashboardTableLoaded).forEach((k) => {
       dashboardTableLoaded[k] = false;
     });
+    dashboardPrefetchStarted = false;
     Object.keys(dashboardPrefetchedTableRows).forEach((k) => {
       delete dashboardPrefetchedTableRows[k];
     });
@@ -2305,6 +2389,7 @@ async function ensureModelData(model) {
 async function init() {
   setLang(getLang());
   applyI18n();
+  setupNavPrefetch();
   await migrateBrowserDataToServer();
 
   const page = document.body.dataset.page;
