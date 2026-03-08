@@ -8,8 +8,17 @@ const api = {
     const r = await fetch(p, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!r.ok) return null;
     return r.json();
+  },
+  del: async (p) => {
+    const r = await fetch(p, { method: 'DELETE', credentials: 'include' });
+    if (!r.ok) return null;
+    return r.json();
   }
 };
+
+const OPS_REFRESH_MS = 60 * 1000;
+let visitsChart = null;
+let tokensChart = null;
 
 function q(id){ return document.getElementById(id); }
 
@@ -61,6 +70,7 @@ async function initLogin(){
 async function initOps(){
   if(!(await requireAuth())) return;
   setupLogout();
+  const renderOps = async () => {
   const data = await api.get('/monitor-api/ops/overview?days=30');
   if(!data) return;
   q('kpi-visits').textContent = data.totals.pageVisits;
@@ -71,21 +81,78 @@ async function initOps(){
 
   const vctx = q('visits-chart');
   if(vctx && window.Chart){
-    new Chart(vctx,{type:'line',data:{labels:(data.visitsDaily||[]).map(x=>x.day),datasets:[{label:'Visits',data:(data.visitsDaily||[]).map(x=>x.visits),borderColor:'#0d7e6b',fill:false}]},options:{responsive:true,maintainAspectRatio:false}});
+    const visitsConfig = {type:'line',data:{labels:(data.visitsDaily||[]).map(x=>x.day),datasets:[{label:'Visits',data:(data.visitsDaily||[]).map(x=>x.visits),borderColor:'#0d7e6b',fill:false}]},options:{responsive:true,maintainAspectRatio:false}};
+    if(visitsChart){
+      visitsChart.data = visitsConfig.data;
+      visitsChart.update();
+    } else {
+      visitsChart = new Chart(vctx, visitsConfig);
+    }
   }
   const tctx = q('tokens-chart');
   if(tctx && window.Chart){
-    new Chart(tctx,{type:'bar',data:{labels:(data.tokensDaily||[]).map(x=>x.day),datasets:[{label:'Input',data:(data.tokensDaily||[]).map(x=>x.input_tokens),backgroundColor:'#6bb8a8'},{label:'Output',data:(data.tokensDaily||[]).map(x=>x.output_tokens),backgroundColor:'#1f8b73'}]},options:{responsive:true,maintainAspectRatio:false}});
+    const tokensConfig = {type:'bar',data:{labels:(data.tokensDaily||[]).map(x=>x.day),datasets:[{label:'Input',data:(data.tokensDaily||[]).map(x=>x.input_tokens),backgroundColor:'#6bb8a8'},{label:'Output',data:(data.tokensDaily||[]).map(x=>x.output_tokens),backgroundColor:'#1f8b73'}]},options:{responsive:true,maintainAspectRatio:false}};
+    if(tokensChart){
+      tokensChart.data = tokensConfig.data;
+      tokensChart.update();
+    } else {
+      tokensChart = new Chart(tctx, tokensConfig);
+    }
   }
+  };
+
+  await renderOps();
+  setInterval(renderOps, OPS_REFRESH_MS);
 }
 
 async function initSubscribers(){
   if(!(await requireAuth())) return;
   setupLogout();
-  const data = await api.get('/monitor-api/biz/subscribers');
-  if(!data) return;
-  q('sub-count').textContent = `Active subscribers: ${data.count}`;
-  q('sub-table').innerHTML = tableFromRows(data.subscribers || []);
+  const render = async () => {
+    const data = await api.get('/monitor-api/biz/subscribers');
+    if(!data) return;
+    q('sub-count').textContent = `Active subscribers: ${data.count}`;
+    const rows = data.subscribers || [];
+    const header = `
+      <tr>
+        <th>订阅时间</th>
+        <th>订阅邮箱地址</th>
+        <th>订阅成功邮件是否发送</th>
+        <th>当日日报是否发送</th>
+        <th>删除邮箱地址</th>
+      </tr>`;
+    const body = rows.map((r)=>{
+      const createdAt = String(r.created_at || '').replace('T',' ').replace('Z','');
+      const welcome = r.welcome_email_sent ? '是' : '否';
+      const daily = r.daily_report_sent_today ? '是' : '否';
+      const email = String(r.email || '');
+      return `<tr>
+        <td>${createdAt}</td>
+        <td>${email}</td>
+        <td>${welcome}</td>
+        <td>${daily}</td>
+        <td><button class="btn ghost sub-delete-btn" data-email="${email}">删除</button></td>
+      </tr>`;
+    }).join('');
+    q('sub-table').innerHTML = `<div class="table"><table><thead>${header}</thead><tbody>${body}</tbody></table></div>`;
+    q('sub-table').querySelectorAll('.sub-delete-btn').forEach((btn)=>{
+      btn.addEventListener('click', async()=>{
+        const email = btn.getAttribute('data-email') || '';
+        if(!email) return;
+        const ok = window.confirm(`确认删除订阅邮箱 ${email} 吗？`);
+        if(!ok) return;
+        btn.disabled = true;
+        const res = await api.del(`/monitor-api/biz/subscribers/${encodeURIComponent(email)}`);
+        btn.disabled = false;
+        if(!res?.ok){
+          window.alert('删除失败，请重试。');
+          return;
+        }
+        await render();
+      });
+    });
+  };
+  await render();
 }
 
 async function initForms(){

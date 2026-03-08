@@ -280,6 +280,17 @@ def add_subscriber(email: str, source: str = "web"):
   conn.close()
 
 
+def deactivate_subscriber(email: str):
+  conn = get_conn()
+  ts = now_iso()
+  conn.execute(
+    "UPDATE subscribers SET status='inactive', updated_at=? WHERE email=?",
+    (ts, str(email or "").strip().lower()),
+  )
+  conn.commit()
+  conn.close()
+
+
 def list_active_subscribers():
   conn = get_conn()
   rows = conn.execute("SELECT email, created_at, updated_at FROM subscribers WHERE status='active' ORDER BY created_at ASC").fetchall()

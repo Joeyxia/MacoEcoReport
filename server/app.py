@@ -17,6 +17,7 @@ from flask import Flask, jsonify, request, send_from_directory, redirect, sessio
 try:
   from .db import (
     add_subscriber,
+    deactivate_subscriber,
     get_daily_report,
     get_latest_model_snapshot,
     init_db,
@@ -38,6 +39,7 @@ try:
 except ImportError:
   from db import (
     add_subscriber,
+    deactivate_subscriber,
     get_daily_report,
     get_latest_model_snapshot,
     init_db,
@@ -487,6 +489,20 @@ def monitor_biz_subscribers():
   cn_today = (datetime.now(timezone.utc) + timedelta(hours=8)).date().isoformat()
   rows = list_active_subscribers_with_status(report_date=cn_today)
   return _etag_response({"count": len(rows), "subscribers": rows})
+
+
+@app.route("/monitor-api/biz/subscribers/<path:email>", methods=["DELETE", "OPTIONS"])
+def monitor_biz_subscriber_delete(email):
+  if request.method == "OPTIONS":
+    return ("", 204)
+  _, err = _require_monitor_auth()
+  if err:
+    return err
+  target = str(email or "").strip().lower()
+  if not EMAIL_RE.match(target):
+    return jsonify({"error": "invalid_email"}), 400
+  deactivate_subscriber(target)
+  return jsonify({"ok": True, "email": target})
 
 
 @app.route("/monitor-api/data/forms", methods=["GET"])
