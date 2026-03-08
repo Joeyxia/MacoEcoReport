@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js" defer></script>
-    <script src="app.js?v=20260308i" defer></script>
+    <script src="app.js?v=20260308k" defer></script>
   </head>
   <body data-page="dashboard">
     <div class="bg-layer"></div>
@@ -24,6 +24,7 @@
         <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
         <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
         <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
+        <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
       </nav>
       <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
     </header>
@@ -133,23 +134,6 @@
         </div>
         <div id="sheet-tabs" class="sheet-tabs"></div>
         <div id="sheet-table" class="table-wrap explorer"></div>
-      </section>
-
-      <section class="panel">
-        <div class="section-head">
-          <h2 data-i18n="subscribe_title">Email Subscription</h2>
-          <p class="subtle" data-i18n="subscribe_desc">Subscribe to receive the daily report summary and link after 09:00 China time generation.</p>
-        </div>
-        <form id="subscribe-form" class="subscribe-form">
-          <label for="subscribe-email" data-i18n="subscribe_email_label">Email</label>
-          <div class="subscribe-row">
-            <input id="subscribe-email" class="search-input" type="email" placeholder="name@example.com" required />
-            <button class="btn" type="submit" data-i18n="subscribe_submit">Subscribe</button>
-          </div>
-        </form>
-        <p id="subscriber-count" class="subtle"></p>
-        <p class="subtle" id="subscribe-status"></p>
-        <p class="subtle" data-i18n="subscribe_note">If backend is unavailable, subscription will fallback to GitHub request.</p>
       </section>
 
       <section class="panel">

@@ -30,6 +30,7 @@ const i18n = {
     nav_daily_report: "Daily Report",
     nav_indicators: "Indicators",
     nav_glossary: "Glossary",
+    nav_subscribe: "Subscribe",
     dashboard_eyebrow: "Global Macro Crisis Radar",
     dashboard_title: "Institutional 14-Dimension Monitoring Dashboard",
     dashboard_subtitle: "Upload your model workbook to refresh total score, dimension contribution, and warning signals.",
@@ -95,6 +96,7 @@ const i18n = {
     nav_daily_report: "每日报告",
     nav_indicators: "指标库",
     nav_glossary: "术语表",
+    nav_subscribe: "订阅",
     dashboard_eyebrow: "全球宏观危机雷达",
     dashboard_title: "14维机构级宏观监控仪表盘",
     dashboard_subtitle: "上传模型工作簿后，可刷新总分、维度贡献和预警信号。",
@@ -2526,12 +2528,14 @@ async function init() {
     if (page === "daily-report") renderDailyReport(currentModel);
     if (page === "indicators") renderIndicatorsPage(currentModel);
     if (page === "glossary") renderGlossary(currentModel);
+    if (page === "subscribe") await setupSubscriptionForm();
   });
 
   if (page === "dashboard") await initDashboard();
   if (page === "daily-report") await renderDailyReport(model);
   if (page === "indicators") renderIndicatorsPage(model);
   if (page === "glossary") renderGlossary(model);
+  if (page === "subscribe") await setupSubscriptionForm();
 }
 
 document.addEventListener("DOMContentLoaded", init);

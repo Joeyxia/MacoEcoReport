@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="macro-api-base" content="https://api.nexo.hk" />
-    <title>Macro Risk Monitor | Indicators</title>
+    <title>Macro Risk Monitor | Subscribe</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -14,34 +14,36 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="app.js?v=20260308k" defer></script>
   </head>
-  <body data-page="indicators">
+  <body data-page="subscribe">
     <div class="bg-layer"></div>
     <header class="site-header">
       <a class="brand" href="index.html">Macro Risk Monitor</a>
       <nav>
         <a class="nav-link" href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
         <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
-        <a class="nav-link active" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
+        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
         <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
-        <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
+        <a class="nav-link active" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
       </nav>
       <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
     </header>
 
-    <main class="page page-indicators">
-      <section class="panel hero compact">
-        <div>
-          <p class="eyebrow" data-i18n="indicators_eyebrow">Indicator Library</p>
-          <h1 data-i18n="indicators_page_title">All Indicators Information (from Indicators Sheet)</h1>
-          <p class="subtle" data-i18n="indicators_page_desc">
-            Full indicator definitions, scoring settings, data source links, and update frequencies.
-          </p>
-        </div>
-      </section>
-
+    <main class="page">
       <section class="panel">
-        <h2 data-i18n="all_indicators_info">All Indicators Information</h2>
-        <div id="indicators-page-table" class="table-wrap explorer"></div>
+        <div class="section-head">
+          <h1 data-i18n="subscribe_title">Email Subscription</h1>
+          <p class="subtle" data-i18n="subscribe_desc">Subscribe to receive the daily report summary and link after 09:00 China time generation.</p>
+        </div>
+        <form id="subscribe-form" class="subscribe-form">
+          <label for="subscribe-email" data-i18n="subscribe_email_label">Email</label>
+          <div class="subscribe-row">
+            <input id="subscribe-email" class="search-input" type="email" placeholder="name@example.com" required />
+            <button class="btn" type="submit" data-i18n="subscribe_submit">Subscribe</button>
+          </div>
+        </form>
+        <p id="subscriber-count" class="subtle"></p>
+        <p class="subtle" id="subscribe-status"></p>
+        <p class="subtle" data-i18n="subscribe_note">If backend is unavailable, subscription will fallback to GitHub request.</p>
       </section>
     </main>
   </body>
