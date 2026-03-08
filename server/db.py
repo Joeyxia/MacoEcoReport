@@ -93,6 +93,18 @@ def init_db():
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_email_event_unique ON email_event_logs(email, event_type);
 
+    CREATE TABLE IF NOT EXISTS email_delivery_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      report_date TEXT,
+      email_type TEXT NOT NULL,
+      status TEXT NOT NULL,
+      detail TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_email_delivery_unique ON email_delivery_logs(email, report_date, email_type);
+
     CREATE TABLE IF NOT EXISTS monitor_page_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       path TEXT,
@@ -275,6 +287,61 @@ def list_active_subscribers():
   return [dict(r) for r in rows]
 
 
+def list_active_subscribers_with_status(report_date: str = ""):
+  conn = get_conn()
+  rows = conn.execute(
+    "SELECT email, created_at, updated_at FROM subscribers WHERE status='active' ORDER BY created_at ASC"
+  ).fetchall()
+  out = []
+  for r in rows:
+    email = str(r["email"] or "").strip().lower()
+    welcome_row = conn.execute(
+      "SELECT created_at FROM email_event_logs WHERE email = ? AND event_type = 'welcome_sent' LIMIT 1",
+      (email,),
+    ).fetchone()
+    latest_daily = conn.execute(
+      """
+      SELECT report_date, email_type, status, detail, updated_at
+      FROM email_delivery_logs
+      WHERE email = ? AND email_type = 'daily_report'
+      ORDER BY report_date DESC, id DESC
+      LIMIT 1
+      """,
+      (email,),
+    ).fetchone()
+    today_row = None
+    if report_date:
+      today_row = conn.execute(
+        """
+        SELECT report_date, email_type, status, detail, updated_at
+        FROM email_delivery_logs
+        WHERE email = ? AND report_date = ?
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (email, report_date),
+      ).fetchone()
+    out.append(
+      {
+        "email": email,
+        "created_at": r["created_at"],
+        "updated_at": r["updated_at"],
+        "welcome_email_sent": bool(welcome_row),
+        "welcome_sent_at": welcome_row["created_at"] if welcome_row else "",
+        "daily_report_sent_today": bool(today_row and today_row["email_type"] == "daily_report" and today_row["status"] == "sent"),
+        "today_email_type": today_row["email_type"] if today_row else "",
+        "today_email_status": today_row["status"] if today_row else "",
+        "today_email_detail": today_row["detail"] if today_row else "",
+        "today_email_updated_at": today_row["updated_at"] if today_row else "",
+        "latest_daily_report_date": latest_daily["report_date"] if latest_daily else "",
+        "latest_daily_report_status": latest_daily["status"] if latest_daily else "",
+        "latest_daily_report_updated_at": latest_daily["updated_at"] if latest_daily else "",
+      }
+    )
+  conn.close()
+  return out
+
+
 def save_email_dispatch_log(payload: dict):
   conn = get_conn()
   conn.execute(
@@ -315,6 +382,32 @@ def save_email_event(email: str, event_type: str, payload=None):
       str(email or "").strip().lower(),
       str(event_type or "").strip().lower(),
       json.dumps(payload or {}, ensure_ascii=False),
+      ts,
+    ),
+  )
+  conn.commit()
+  conn.close()
+
+
+def upsert_email_delivery(email: str, report_date: str, email_type: str, status: str, detail: str = ""):
+  conn = get_conn()
+  ts = now_iso()
+  conn.execute(
+    """
+    INSERT INTO email_delivery_logs (email, report_date, email_type, status, detail, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(email, report_date, email_type) DO UPDATE SET
+      status=excluded.status,
+      detail=excluded.detail,
+      updated_at=excluded.updated_at
+    """,
+    (
+      str(email or "").strip().lower(),
+      str(report_date or "").strip(),
+      str(email_type or "").strip().lower(),
+      str(status or "").strip().lower(),
+      str(detail or "")[:500],
+      ts,
       ts,
     ),
   )

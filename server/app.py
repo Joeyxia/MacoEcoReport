@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 from threading import Lock
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 
 from flask import Flask, jsonify, request, send_from_directory, redirect, session
 
@@ -20,6 +21,7 @@ try:
     get_latest_model_snapshot,
     init_db,
     list_active_subscribers,
+    list_active_subscribers_with_status,
     list_daily_reports,
     get_page_visit_daily,
     get_page_visit_by_path,
@@ -40,6 +42,7 @@ except ImportError:
     get_latest_model_snapshot,
     init_db,
     list_active_subscribers,
+    list_active_subscribers_with_status,
     list_daily_reports,
     get_page_visit_daily,
     get_page_visit_by_path,
@@ -481,7 +484,8 @@ def monitor_biz_subscribers():
   _, err = _require_monitor_auth()
   if err:
     return err
-  rows = list_active_subscribers()
+  cn_today = (datetime.now(timezone.utc) + timedelta(hours=8)).date().isoformat()
+  rows = list_active_subscribers_with_status(report_date=cn_today)
   return _etag_response({"count": len(rows), "subscribers": rows})
 
 

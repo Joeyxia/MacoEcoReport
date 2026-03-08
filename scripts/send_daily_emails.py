@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "server"))
-from db import init_db, list_active_subscribers, save_email_dispatch_log
+from db import init_db, list_active_subscribers, save_email_dispatch_log, upsert_email_delivery
 from mailer import send_email
 
 SUBSCRIBERS_PATH = ROOT / "data" / "subscribers.json"
@@ -127,9 +127,24 @@ def main():
     try:
       send_email(email, subject, html)
       sent += 1
+      upsert_email_delivery(
+        email=email,
+        report_date=(report_date if is_success else cn_today),
+        email_type=email_type,
+        status="sent",
+        detail="",
+      )
     except Exception as e:
       failed += 1
-      errors.append({"email": email, "error": str(e)[:240]})
+      err = str(e)[:240]
+      errors.append({"email": email, "error": err})
+      upsert_email_delivery(
+        email=email,
+        report_date=(report_date if is_success else cn_today),
+        email_type=email_type,
+        status="failed",
+        detail=err,
+      )
 
   log = {
     "date": report_date if is_success else cn_today,
