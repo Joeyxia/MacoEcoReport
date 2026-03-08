@@ -14,17 +14,18 @@
     <script defer src="./monitor.js"></script>
   </head>
   <body data-page="forms">
-    <header class="topbar">
-      <div class="brand">Nexo Monitor</div>
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="./dashboard.html">Nexo Monitor</a>
       <nav>
-        <a href="./dashboard.html">Ops Dashboard</a>
-        <a href="./subscribers.html">Business</a>
-        <a href="./forms.html" class="active">Data Forms</a>
+        <a href="./dashboard.html" class="nav-link">Ops Dashboard</a>
+        <a href="./subscribers.html" class="nav-link">Business</a>
+        <a href="./forms.html" class="nav-link active">Data Forms</a>
       </nav>
       <div class="userbox"><span id="user-email"></span><button id="logout-btn" class="btn ghost">Logout</button></div>
     </header>
-    <main class="wrap">
-      <section class="card">
+    <main class="page wrap">
+      <section class="panel">
         <h2>Data Form Directory</h2>
         <div id="forms-list" class="list"></div>
       </section>
