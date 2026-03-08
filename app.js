@@ -31,6 +31,7 @@ const i18n = {
     nav_indicators: "Indicators",
     nav_glossary: "Glossary",
     nav_subscribe: "Subscribe",
+    nav_openrouter: "OpenRouter",
     dashboard_eyebrow: "Global Macro Crisis Radar",
     dashboard_title: "Institutional 14-Dimension Monitoring Dashboard",
     dashboard_subtitle: "Upload your model workbook to refresh total score, dimension contribution, and warning signals.",
@@ -89,7 +90,13 @@ const i18n = {
     ai_data_assistant_title: "AI Data Assistant",
     ai_data_assistant_desc: "Ask natural-language questions about data freshness, failed indicators, and update status.",
     ai_data_assistant_placeholder: "e.g. Which indicators failed online verification today and what should I replace them with?",
-    ai_data_assistant_submit: "Ask AI"
+    ai_data_assistant_submit: "Ask AI",
+    openrouter_title: "OpenRouter Rankings",
+    openrouter_desc: "Live snapshot from openrouter.ai/rankings, including top models and top apps.",
+    openrouter_models: "Top Models",
+    openrouter_apps: "Top Apps",
+    openrouter_updated: "Fetched At",
+    openrouter_source: "Source"
   },
   zh: {
     nav_dashboard: "仪表盘",
@@ -97,6 +104,7 @@ const i18n = {
     nav_indicators: "指标库",
     nav_glossary: "术语表",
     nav_subscribe: "订阅",
+    nav_openrouter: "OpenRouter",
     dashboard_eyebrow: "全球宏观危机雷达",
     dashboard_title: "14维机构级宏观监控仪表盘",
     dashboard_subtitle: "上传模型工作簿后，可刷新总分、维度贡献和预警信号。",
@@ -154,7 +162,13 @@ const i18n = {
     ai_data_assistant_title: "AI 数据助手",
     ai_data_assistant_desc: "可以直接询问数据新鲜度、失败指标和更新状态。",
     ai_data_assistant_placeholder: "例如：今天哪些指标在线校验失败？分别建议替代数据源是什么？",
-    ai_data_assistant_submit: "AI 查询"
+    ai_data_assistant_submit: "AI 查询",
+    openrouter_title: "OpenRouter 排行",
+    openrouter_desc: "来自 openrouter.ai/rankings 的实时快照，展示 Top Models 与 Top Apps。",
+    openrouter_models: "热门模型",
+    openrouter_apps: "热门应用",
+    openrouter_updated: "抓取时间",
+    openrouter_source: "来源"
   }
 };
 
@@ -2421,6 +2435,68 @@ function renderIndicatorsPage(model) {
   renderObjectTable("indicators-page-table", model.tables?.indicators || []);
 }
 
+async function renderOpenRouterPage() {
+  renderTableLoading("openrouter-models");
+  renderTableLoading("openrouter-apps");
+  const updated = document.getElementById("openrouter-updated");
+  const source = document.getElementById("openrouter-source");
+
+  const payload = await apiFetch("/api/openrouter/rankings");
+  if (!payload?.ok) {
+    const msg = getLang() === "zh" ? "暂时无法获取 OpenRouter 排行数据。" : "Unable to fetch OpenRouter rankings for now.";
+    renderObjectTable("openrouter-models", []);
+    renderObjectTable("openrouter-apps", []);
+    const m = document.getElementById("openrouter-models");
+    const a = document.getElementById("openrouter-apps");
+    if (m) m.innerHTML = `<p class="table-empty">${escapeHtml(msg)}</p>`;
+    if (a) a.innerHTML = `<p class="table-empty">${escapeHtml(msg)}</p>`;
+    return;
+  }
+
+  if (updated) updated.textContent = `${t("openrouter_updated")}: ${asText(payload.fetchedAt) || "--"}`;
+  if (source) {
+    const url = asText(payload.sourceUrl) || "https://openrouter.ai/rankings";
+    source.innerHTML = `${escapeHtml(t("openrouter_source"))}: <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`;
+  }
+
+  const zh = getLang() === "zh";
+  const modelRows = (payload.models || []).map((x) =>
+    zh
+      ? {
+          排名: x.rank,
+          模型: x.name,
+          提供方: x.creator || "--",
+          用量: x.tokens || "--",
+          占比: x.share || "--"
+        }
+      : {
+          Rank: x.rank,
+          Model: x.name,
+          Provider: x.creator || "--",
+          Tokens: x.tokens || "--",
+          Share: x.share || "--"
+        }
+  );
+  const appRows = (payload.apps || []).map((x) =>
+    zh
+      ? {
+          排名: x.rank,
+          应用: x.name,
+          发布方: x.creator || "--",
+          用量: x.tokens || "--"
+        }
+      : {
+          Rank: x.rank,
+          App: x.name,
+          Creator: x.creator || "--",
+          Tokens: x.tokens || "--"
+        }
+  );
+
+  renderObjectTable("openrouter-models", modelRows);
+  renderObjectTable("openrouter-apps", appRows);
+}
+
 async function loadDefaultWorkbook() {
   const response = await fetch(DEFAULT_MODEL_FILE, { cache: "no-cache" });
   if (!response.ok) throw new Error(`Unable to fetch ${DEFAULT_MODEL_FILE}`);
@@ -2529,6 +2605,7 @@ async function init() {
     if (page === "indicators") renderIndicatorsPage(currentModel);
     if (page === "glossary") renderGlossary(currentModel);
     if (page === "subscribe") await setupSubscriptionForm();
+    if (page === "openrouter") await renderOpenRouterPage();
   });
 
   if (page === "dashboard") await initDashboard();
@@ -2536,6 +2613,7 @@ async function init() {
   if (page === "indicators") renderIndicatorsPage(model);
   if (page === "glossary") renderGlossary(model);
   if (page === "subscribe") await setupSubscriptionForm();
+  if (page === "openrouter") await renderOpenRouterPage();
 }
 
 document.addEventListener("DOMContentLoaded", init);

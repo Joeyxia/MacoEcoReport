@@ -3,6 +3,7 @@ import os
 import re
 import time
 import json
+import html
 import hashlib
 import base64
 import secrets
@@ -226,6 +227,83 @@ def _estimate_tokens_from_bytes(raw: bytes) -> int:
   if not raw:
     return 0
   return max(1, (len(raw) + 3) // 4)
+
+
+def _normalize_openrouter_text(raw_html: str):
+  content = re.sub(r"<script[\s\S]*?</script>", " ", raw_html, flags=re.I)
+  content = re.sub(r"<style[\s\S]*?</style>", " ", content, flags=re.I)
+  content = re.sub(r"<[^>]+>", "\n", content)
+  content = html.unescape(content)
+  lines = [x.strip() for x in content.splitlines() if x and x.strip()]
+  return lines
+
+
+def _parse_openrouter_section(lines, start_label: str, stop_labels):
+  out = []
+  start = -1
+  for i, line in enumerate(lines):
+    if line.lower() == start_label.lower():
+      start = i + 1
+      break
+  if start < 0:
+    return out
+
+  i = start
+  while i < len(lines):
+    line = lines[i]
+    if any(line.lower() == s.lower() for s in stop_labels):
+      break
+    m = re.match(r"^(\d+)\.$", line)
+    if not m:
+      i += 1
+      continue
+    rank = int(m.group(1))
+    item = {"rank": rank, "name": "", "creator": "", "tokens": "", "share": ""}
+    i += 1
+    while i < len(lines):
+      current = lines[i]
+      if re.match(r"^\d+\.$", current) or any(current.lower() == s.lower() for s in stop_labels):
+        break
+      low = current.lower()
+      if not item["name"]:
+        item["name"] = current
+      elif low.startswith("by "):
+        item["creator"] = current[3:].strip()
+      elif "token" in low and not item["tokens"]:
+        item["tokens"] = current
+      elif re.match(r"^\d+(\.\d+)?%$", current) and not item["share"]:
+        item["share"] = current
+      i += 1
+    if item["name"]:
+      out.append(item)
+    if len(out) >= 50:
+      break
+  return out
+
+
+def _fetch_openrouter_rankings():
+  url = "https://openrouter.ai/rankings"
+  req = urllib.request.Request(
+    url,
+    headers={
+      "User-Agent": "Mozilla/5.0 (NexoMacroMonitor; +https://nexo.hk)",
+      "Accept": "text/html,application/xhtml+xml",
+    },
+    method="GET",
+  )
+  with urllib.request.urlopen(req, timeout=30) as resp:
+    raw = resp.read().decode("utf-8", errors="ignore")
+
+  lines = _normalize_openrouter_text(raw)
+  models = _parse_openrouter_section(lines, "Top Models", ("Top Apps", "Top Prompts", "Top Providers"))
+  apps = _parse_openrouter_section(lines, "Top Apps", ("Top Prompts", "Top Providers", "API", "Developer Docs"))
+  return {
+    "ok": True,
+    "sourceUrl": url,
+    "fetchedAt": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    "models": models,
+    "apps": apps,
+  }
 
 
 def _should_autotrack_token() -> bool:
@@ -844,6 +922,24 @@ def ai_data_query():
     )
   except Exception as e:
     return jsonify({"error": "openai_request_failed", "detail": str(e)[:260]}), 502
+
+
+@app.route("/api/openrouter/rankings", methods=["GET"])
+def openrouter_rankings():
+  cache_key = "openrouter:rankings"
+  cached = _cache_get(cache_key)
+  if cached:
+    return _etag_response(cached)
+  try:
+    payload = _fetch_openrouter_rankings()
+    return _etag_response(_cache_set(cache_key, payload))
+  except Exception as e:
+    stale = _cache_get(cache_key)
+    if stale:
+      stale = dict(stale)
+      stale["warning"] = f"stale_cache: {str(e)[:120]}"
+      return _etag_response(stale)
+    return jsonify({"ok": False, "error": "openrouter_fetch_failed", "detail": str(e)[:180]}), 502
 
 
 @app.route("/api/migrate", methods=["POST", "OPTIONS"])
