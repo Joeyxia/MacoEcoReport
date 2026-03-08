@@ -41,10 +41,14 @@ Bilingual macro dashboard + daily report system with server and SQLite database.
   - update `reports/index.json` for report links
   - append/update `DailyReports` sheet in `model.xlsx`
   - persist all generated data to SQLite DB (`data/macro_monitor.db`)
+  - optional strict gate: `python3 scripts/daily_refresh.py --mode full --strict-freshness`
+    - if online-fetchable indicators are not freshly verified (based on `Frequency`), report generation fails
 
 9. 09:00 China-time automatic generation:
 - GitHub Actions workflow: `.github/workflows/daily-report-and-email.yml`
-- Schedule: `0 1 * * *` (UTC), equals `09:00` Asia/Shanghai daily
+- Schedule:
+  - `0 0 * * *` (UTC): `08:00` Asia/Shanghai fetch-only warmup
+  - `0 1 * * *` (UTC): `09:00` Asia/Shanghai full run with strict freshness gate
 - It automatically:
   - ingests new subscription requests from GitHub issues label `subscription`
   - runs `scripts/daily_refresh.py`

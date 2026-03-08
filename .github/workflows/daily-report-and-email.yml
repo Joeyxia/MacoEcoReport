@@ -2,6 +2,7 @@ name: Daily Report And Email
 
 on:
   schedule:
+    - cron: "0 0 * * *" # 08:00 China time (UTC+8), fetch-only warmup
     - cron: "0 1 * * *" # 09:00 China time (UTC+8)
   workflow_dispatch:
 
@@ -32,10 +33,37 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python scripts/process_subscription_issues.py
 
+      - name: Decide run mode by schedule
+        id: plan
+        run: |
+          EVENT="${{ github.event_name }}"
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            echo "strict=1" >> "$GITHUB_OUTPUT"
+            echo "send_email=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          HOUR_UTC="$(date -u +%H)"
+          if [ "$HOUR_UTC" = "00" ]; then
+            echo "mode=fetch-only" >> "$GITHUB_OUTPUT"
+            echo "strict=0" >> "$GITHUB_OUTPUT"
+            echo "send_email=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            echo "strict=1" >> "$GITHUB_OUTPUT"
+            echo "send_email=1" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Refresh data and generate daily report
-        run: python scripts/daily_refresh.py
+        run: |
+          if [ "${{ steps.plan.outputs.strict }}" = "1" ]; then
+            python scripts/daily_refresh.py --mode "${{ steps.plan.outputs.mode }}" --strict-freshness
+          else
+            python scripts/daily_refresh.py --mode "${{ steps.plan.outputs.mode }}"
+          fi
 
       - name: Send daily emails
+        if: steps.plan.outputs.send_email == '1'
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM: ${{ secrets.RESEND_FROM }}

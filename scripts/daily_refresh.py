@@ -138,6 +138,81 @@ def status_from_score(score):
     return "衰退/危机"
 
 
+def parse_date_safe(raw):
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    # Handle common formats found in workbook/API payloads.
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y-%m", "%Y/%m"):
+        try:
+            d = datetime.strptime(s, fmt).date()
+            if fmt in ("%Y-%m", "%Y/%m"):
+                d = d.replace(day=1)
+            return d
+        except Exception:
+            continue
+    try:
+        # ISO datetime support.
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).date()
+    except Exception:
+        return None
+
+
+def max_age_days_by_frequency(raw_freq):
+    f = str(raw_freq or "").strip().lower()
+    if "day" in f or "daily" in f:
+        return 3
+    if "week" in f or "weekly" in f:
+        return 10
+    if "month" in f or "monthly" in f:
+        return 45
+    if "quarter" in f or "quarterly" in f:
+        return 120
+    if "year" in f or "annual" in f:
+        return 400
+    # Unknown cadence defaults to monthly tolerance.
+    return 45
+
+
+def is_online_fetchable(indicator):
+    code = str(indicator.get("IndicatorCode") or "")
+    source = str(indicator.get("Source") or "").lower()
+    series_hint = indicator.get("Series")
+    if code in {
+        "YC_10Y3M",
+        "SOFR",
+        "FED_ASSETS",
+        "NET_LIQ_PROXY",
+        "GDP_QOQ_SAAR",
+        "CLAIMS_4WMA",
+        "CORE_CPI_YOY",
+        "CORE_PCE_YOY",
+        "BREAKEVEN_5Y5Y",
+        "UNRATE",
+        "WAGE_GROWTH",
+        "CC_DELINQ",
+        "REAL_DISP_INC",
+        "HY_OAS",
+        "MORTGAGE_30Y",
+        "HOUSING_STARTS",
+        "VIX",
+        "DXY",
+        "US_JP_10Y_SPREAD",
+        "FCI",
+        "BANK_LENDING",
+        "TED_SPREAD",
+        "WTI",
+        "BTC",
+        "USDC_MCAP",
+    }:
+        return True
+    if "fred" in source and first_series_token(series_hint):
+        return True
+    return False
+
+
 def load_last_online_update():
     if not UPDATE_LOG_PATH.exists():
         return {"updated_count": 0, "failed_count": 0, "updated": [], "failed": []}
@@ -155,7 +230,7 @@ def load_last_online_update():
     }
 
 
-def run(mode="full", report_date=None):
+def run(mode="full", report_date=None, strict_freshness=False):
     if mode not in {"full", "fetch-only", "report-only"}:
         raise ValueError(f"invalid mode: {mode}")
     today = str(report_date or date.today().isoformat())
@@ -174,9 +249,11 @@ def run(mode="full", report_date=None):
         if not code:
             continue
         indicators[str(code)] = {
+            "IndicatorCode": str(code),
             "row": r,
             "DimensionID": ws_ind.cell(r, 2).value,
             "IndicatorName": ws_ind.cell(r, 3).value,
+            "Frequency": ws_ind.cell(r, 5).value,
             "Source": ws_ind.cell(r, 6).value,
             "SourceURL": ws_ind.cell(r, 7).value,
             "Series": ws_ind.cell(r, 8).value,
@@ -442,6 +519,43 @@ def run(mode="full", report_date=None):
 
     updated_set = {x["code"] for x in updated}
     failed_map = {x["code"]: x.get("error", "") for x in failed}
+    today_date = parse_date_safe(today)
+    freshness_checks = []
+    freshness_failures = []
+    online_fetchable_total = 0
+    online_verified_count = 0
+
+    for code, m in indicators.items():
+        online_fetchable = is_online_fetchable(m)
+        if online_fetchable:
+            online_fetchable_total += 1
+        verified = code in updated_set
+        if verified:
+            online_verified_count += 1
+        value_date = input_meta.get(code, {}).get("value_date")
+        parsed_value_date = parse_date_safe(value_date)
+        max_age_days = max_age_days_by_frequency(m.get("Frequency"))
+        age_days = None
+        if parsed_value_date and today_date:
+            age_days = max(0, (today_date - parsed_value_date).days)
+        stale = age_days is None or age_days > max_age_days
+        must_pass = bool(online_fetchable)
+        passed = (verified and not stale) if must_pass else True
+        item = {
+            "IndicatorCode": code,
+            "Frequency": m.get("Frequency"),
+            "OnlineFetchable": online_fetchable,
+            "VerifiedOnline": verified,
+            "ValueDate": value_date,
+            "AgeDays": age_days,
+            "MaxAllowedAgeDays": max_age_days,
+            "Passed": passed,
+            "Error": failed_map.get(code, ""),
+        }
+        freshness_checks.append(item)
+        if must_pass and not passed:
+            freshness_failures.append(item)
+
     indicator_details = []
     for code, m in indicators.items():
         verified = code in updated_set
@@ -459,6 +573,9 @@ def run(mode="full", report_date=None):
                 "VerifiedOnline": verified,
                 "VerificationStatus": verify_status,
                 "VerificationError": failed_map.get(code, ""),
+                "FreshnessAgeDays": next((x.get("AgeDays") for x in freshness_checks if x["IndicatorCode"] == code), None),
+                "FreshnessMaxAgeDays": next((x.get("MaxAllowedAgeDays") for x in freshness_checks if x["IndicatorCode"] == code), None),
+                "FreshnessPassed": next((x.get("Passed") for x in freshness_checks if x["IndicatorCode"] == code), None),
                 "GeneratedAt": generated_at,
             }
         )
@@ -492,8 +609,20 @@ def run(mode="full", report_date=None):
     short_summary = (
         f"Macro model updated on {today}. Public-source updater refreshed {summary_updated_count} indicators; "
         f"{summary_failed_count} indicators still require manual/proprietary updates. "
+        f"Online freshness pass: {online_verified_count}/{online_fetchable_total}. "
         f"Composite score: {total_score} ({model_status})."
     )
+
+    if strict_freshness and freshness_failures:
+        preview = ", ".join(
+            [
+                f"{x['IndicatorCode']}[verified={x['VerifiedOnline']},age={x['AgeDays']},max={x['MaxAllowedAgeDays']}]"
+                for x in freshness_failures[:12]
+            ]
+        )
+        raise RuntimeError(
+            f"strict_freshness_failed count={len(freshness_failures)} online_verified={online_verified_count}/{online_fetchable_total} failures={preview}"
+        )
 
     report_text = ""
     if report_enabled:
@@ -615,6 +744,13 @@ def run(mode="full", report_date=None):
             "alerts": alerts,
         },
         "onlineUpdate": {"updated_count": len(updated), "failed_count": len(failed), "updated": updated, "failed": failed},
+        "freshness": {
+            "strict": bool(strict_freshness),
+            "online_fetchable_total": online_fetchable_total,
+            "online_verified_count": online_verified_count,
+            "failed_count": len(freshness_failures),
+            "checks": freshness_checks,
+        },
     }
     (DATA_DIR / "latest_snapshot.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
     (ROOT / "data_update_log.json").write_text(json.dumps(snapshot["onlineUpdate"], ensure_ascii=False, indent=2), encoding="utf-8")
@@ -678,5 +814,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Refresh macro data and generate daily report")
     parser.add_argument("--mode", choices=["full", "fetch-only", "report-only"], default="full")
     parser.add_argument("--date", default="", help="Date in YYYY-MM-DD")
+    parser.add_argument("--strict-freshness", action="store_true", help="Fail run if online-fetchable indicators are not freshly verified.")
     args = parser.parse_args()
-    run(mode=args.mode, report_date=(args.date or None))
+    run(mode=args.mode, report_date=(args.date or None), strict_freshness=bool(args.strict_freshness))
