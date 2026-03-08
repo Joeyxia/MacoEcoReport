@@ -17,7 +17,7 @@ const api = {
 };
 
 const OPS_REFRESH_MS = 60 * 1000;
-const OPS_WINDOW_MINUTES = 180;
+const OPS_WINDOW_MINUTES = 1440;
 let visitsChart = null;
 let tokensChart = null;
 
