@@ -20,6 +20,7 @@ MODEL_PATH = ROOT / "model.xlsx"
 REPORTS_DIR = ROOT / "reports"
 DATA_DIR = ROOT / "data"
 CTX = ssl._create_unverified_context()
+UPDATE_LOG_PATH = ROOT / "data_update_log.json"
 
 
 def fetch_text(url: str) -> str:
@@ -120,6 +121,23 @@ def status_from_score(score):
     if score >= 30:
         return "防御区"
     return "衰退/危机"
+
+
+def load_last_online_update():
+    if not UPDATE_LOG_PATH.exists():
+        return {"updated_count": 0, "failed_count": 0, "updated": [], "failed": []}
+    try:
+        payload = json.loads(UPDATE_LOG_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"updated_count": 0, "failed_count": 0, "updated": [], "failed": []}
+    if not isinstance(payload, dict):
+        return {"updated_count": 0, "failed_count": 0, "updated": [], "failed": []}
+    return {
+        "updated_count": int(payload.get("updated_count") or 0),
+        "failed_count": int(payload.get("failed_count") or 0),
+        "updated": payload.get("updated") or [],
+        "failed": payload.get("failed") or [],
+    }
 
 
 def run(mode="full", report_date=None):
@@ -448,9 +466,17 @@ def run(mode="full", report_date=None):
     REPORTS_DIR.mkdir(exist_ok=True)
     DATA_DIR.mkdir(exist_ok=True)
 
+    summary_updated_count = len(updated)
+    summary_failed_count = len(failed)
+    if not fetch_enabled:
+        last_update = load_last_online_update()
+        if last_update["updated_count"] or last_update["failed_count"]:
+            summary_updated_count = last_update["updated_count"]
+            summary_failed_count = last_update["failed_count"]
+
     short_summary = (
-        f"Macro model updated on {today}. Public-source updater refreshed {len(updated)} indicators; "
-        f"{len(failed)} indicators still require manual/proprietary updates. "
+        f"Macro model updated on {today}. Public-source updater refreshed {summary_updated_count} indicators; "
+        f"{summary_failed_count} indicators still require manual/proprietary updates. "
         f"Composite score: {total_score} ({model_status})."
     )
 
