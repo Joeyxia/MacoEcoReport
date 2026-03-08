@@ -9,6 +9,7 @@ const STATIC_SUBSCRIBERS = "./data/subscribers.json";
 const SUBSCRIPTION_ISSUE_URL = "https://github.com/Joeyxia/MacoEcoReport/issues/new";
 const API_BASE_KEY = "macro-monitor-api-base";
 const MIGRATED_KEY = "macro-monitor-db-migrated";
+let dashboardHeavyRenderToken = 0;
 
 const i18n = {
   en: {
@@ -1269,13 +1270,27 @@ function renderDashboard(model) {
 
   renderKeyIndicators(model);
   renderLatestReportSummary(model);
-  renderDimensionLayers(model.all14DimensionsDetailed || model.tables?.dimensions || [], model);
-  renderObjectTable("dimensions-table", model.tables?.dimensions || []);
-  renderObjectTable("inputs-table", model.tables?.inputs || []);
-  renderObjectTable("indicators-table", model.tables?.indicators || []);
-  renderObjectTable("scores-table", model.tables?.scores || []);
-  renderObjectTable("alerts-table", model.tables?.alerts || []);
-  renderWorkbookExplorer(model.workbook || {});
+  scheduleHeavyDashboardRender(model);
+}
+
+function scheduleHeavyDashboardRender(model) {
+  dashboardHeavyRenderToken += 1;
+  const token = dashboardHeavyRenderToken;
+  const task = () => {
+    if (token !== dashboardHeavyRenderToken) return;
+    renderDimensionLayers(model.all14DimensionsDetailed || model.tables?.dimensions || [], model);
+    renderObjectTable("dimensions-table", model.tables?.dimensions || []);
+    renderObjectTable("inputs-table", model.tables?.inputs || []);
+    renderObjectTable("indicators-table", model.tables?.indicators || []);
+    renderObjectTable("scores-table", model.tables?.scores || []);
+    renderObjectTable("alerts-table", model.tables?.alerts || []);
+    renderWorkbookExplorer(model.workbook || {});
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(task, { timeout: 900 });
+    return;
+  }
+  window.setTimeout(task, 60);
 }
 
 function renderDashboardSummary(summary) {

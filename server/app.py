@@ -2,6 +2,8 @@
 import os
 import re
 import time
+import json
+import hashlib
 from threading import Lock
 from pathlib import Path
 
@@ -100,6 +102,22 @@ def _build_model_summary(model, latest_report=None):
   }
 
 
+def _etag_response(payload, status_code=200):
+  body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+  etag = hashlib.sha1(body.encode("utf-8")).hexdigest()
+  inm = request.headers.get("If-None-Match", "").strip().strip('"')
+  if inm and inm == etag:
+    resp = app.response_class(status=304)
+    resp.headers["ETag"] = f'"{etag}"'
+    resp.headers["Cache-Control"] = "public, max-age=30"
+    return resp
+  resp = jsonify(payload)
+  resp.status_code = status_code
+  resp.headers["ETag"] = f'"{etag}"'
+  resp.headers["Cache-Control"] = "public, max-age=30"
+  return resp
+
+
 @app.after_request
 def set_cors(resp):
   resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -110,7 +128,7 @@ def set_cors(resp):
 
 @app.route("/api/health", methods=["GET"])
 def health():
-  return jsonify({"ok": True})
+  return _etag_response({"ok": True})
 
 
 @app.route("/api/model/current", methods=["GET", "POST", "OPTIONS"])
@@ -123,7 +141,7 @@ def model_current():
       row = _cache_set("model:current", get_latest_model_snapshot())
     if not row:
       return jsonify({"error": "not_found"}), 404
-    return jsonify(row)
+    return _etag_response(row)
 
   payload = request.get_json(silent=True) or {}
   if not isinstance(payload, dict):
@@ -137,7 +155,7 @@ def model_current():
 def model_summary():
   cached = _cache_get("model:summary")
   if cached is not None:
-    return jsonify(cached)
+    return _etag_response(cached)
   model = _cache_get("model:current")
   if model is None:
     model = _cache_set("model:current", get_latest_model_snapshot())
@@ -148,7 +166,7 @@ def model_summary():
     reports = _cache_set("reports:1", list_daily_reports(limit=1))
   latest = reports[0] if reports else None
   summary = _build_model_summary(model, latest_report=latest)
-  return jsonify(_cache_set("model:summary", summary))
+  return _etag_response(_cache_set("model:summary", summary))
 
 
 @app.route("/api/reports", methods=["GET", "POST", "OPTIONS"])
@@ -165,7 +183,7 @@ def reports():
     rows = _cache_get(cache_key)
     if rows is None:
       rows = _cache_set(cache_key, list_daily_reports(limit=limit))
-    return jsonify({"reports": rows})
+    return _etag_response({"reports": rows})
 
   payload = request.get_json(silent=True) or {}
   date = str(payload.get("date") or "").strip()
@@ -188,7 +206,7 @@ def report_by_date(report_date):
     row = _cache_set(cache_key, get_daily_report(report_date))
   if not row:
     return jsonify({"error": "not_found"}), 404
-  return jsonify(row)
+  return _etag_response(row)
 
 
 @app.route("/api/subscribers", methods=["GET", "POST", "OPTIONS"])
@@ -197,7 +215,7 @@ def subscribers():
     return ("", 204)
   if request.method == "GET":
     rows = list_active_subscribers()
-    return jsonify({"count": len(rows), "subscribers": rows})
+    return _etag_response({"count": len(rows), "subscribers": rows})
 
   payload = request.get_json(silent=True) or {}
   email = str(payload.get("email") or "").strip().lower()
