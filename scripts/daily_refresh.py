@@ -4,6 +4,7 @@ import csv
 import io
 import json
 import math
+import os
 import ssl
 import sys
 from math import ceil
@@ -14,6 +15,19 @@ from urllib.request import Request, urlopen
 from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[1]
+ENV_FILE = Path("/etc/macro-monitor.env")
+if not os.environ.get("MACRO_DB_PATH") and ENV_FILE.exists():
+    try:
+        for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            if k.strip() == "MACRO_DB_PATH" and v.strip():
+                os.environ["MACRO_DB_PATH"] = v.strip()
+                break
+    except Exception:
+        pass
 sys.path.insert(0, str(ROOT / "server"))
 from db import init_db, log_token_usage, replace_sheet_rows, save_model_snapshot, upsert_daily_report
 
