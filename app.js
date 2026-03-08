@@ -379,9 +379,12 @@ function saveModelFallback(model) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(model));
 }
 
-async function loadCurrentModel() {
-  const fromApi = await apiFetch("/api/model/current");
+async function loadCurrentModel(options = {}) {
+  const view = asText(options.view).toLowerCase();
+  const query = view === "core" ? "?view=core" : "";
+  const fromApi = await apiFetch(`/api/model/current${query}`);
   if (fromApi) return normalizeModel({ ...sampleModel, ...fromApi });
+  if (view === "core") return normalizeModel({ ...sampleModel, ...loadModelFallback() });
   const snapshot = await loadStaticSnapshot();
   if (snapshot) return normalizeModel({ ...sampleModel, ...snapshot });
   const fromDb = await dbGet("model", "current");
@@ -2120,20 +2123,36 @@ async function initDashboard() {
   const status = document.getElementById("file-status");
   const summary = await loadDashboardSummary();
   if (summary) renderDashboardSummary(summary);
-  let model = await loadCurrentModel();
-  renderDashboard(model);
-  if (!model?.tables?.dimensions?.length) {
-    try {
-      const buffer = await loadDefaultWorkbook();
-      model = parseWorkbook(buffer);
-      await saveCurrentModel(model);
-      renderDashboard(model);
-      if (status) status.textContent = "Auto-loaded: model.xlsx";
-    } catch {
-      if (status) status.textContent = getLang() === "zh" ? "使用本地缓存/样例数据。" : "Using saved/sample data.";
+  const coreModel = await loadCurrentModel({ view: "core" });
+  if (!summary) renderDashboardSummary(coreModel);
+  if (status) status.textContent = getLang() === "zh" ? "核心数据已加载，正在补全明细..." : "Core data loaded, hydrating details...";
+
+  const hydrateFullModel = async () => {
+    let model = await loadCurrentModel();
+    renderDashboard(model);
+    if (!model?.tables?.dimensions?.length) {
+      try {
+        const buffer = await loadDefaultWorkbook();
+        model = parseWorkbook(buffer);
+        await saveCurrentModel(model);
+        renderDashboard(model);
+        if (status) status.textContent = "Auto-loaded: model.xlsx";
+      } catch {
+        if (status) status.textContent = getLang() === "zh" ? "使用本地缓存/样例数据。" : "Using saved/sample data.";
+      }
+      return;
     }
-  } else if (status) {
-    status.textContent = getLang() === "zh" ? "已加载最新快照数据" : "Loaded latest snapshot data";
+    if (status) status.textContent = getLang() === "zh" ? "已加载最新快照数据" : "Loaded latest snapshot data";
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(() => {
+      hydrateFullModel();
+    }, { timeout: 1200 });
+  } else {
+    window.setTimeout(() => {
+      hydrateFullModel();
+    }, 120);
   }
 
   setupUpload((next) => {

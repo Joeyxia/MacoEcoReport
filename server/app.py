@@ -102,6 +102,25 @@ def _build_model_summary(model, latest_report=None):
   }
 
 
+def _build_model_core(model):
+  if not isinstance(model, dict):
+    return {"error": "not_found"}
+  return {
+    "asOf": model.get("asOf") or "",
+    "totalScore": model.get("totalScore") or 0,
+    "status": model.get("status") or "",
+    "alerts": model.get("triggerAlerts") or model.get("alerts") or [],
+    "dimensions": model.get("dimensions") or [],
+    "drivers": model.get("primaryDrivers") or model.get("drivers") or [],
+    "keyIndicatorsSnapshot": model.get("keyIndicatorsSnapshot") or [],
+    "topDimensionContributors": model.get("topDimensionContributors") or [],
+    "dailyWatchedItems": model.get("dailyWatchedItems") or model.get("keyWatch") or [],
+    "latestReportSummary": model.get("latestReportSummary") or "",
+    "reportDate": model.get("reportDate") or "",
+    "generatedAt": model.get("generatedAt") or "",
+  }
+
+
 def _etag_response(payload, status_code=200):
   body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
   etag = hashlib.sha1(body.encode("utf-8")).hexdigest()
@@ -136,11 +155,18 @@ def model_current():
   if request.method == "OPTIONS":
     return ("", 204)
   if request.method == "GET":
+    view = str(request.args.get("view") or "full").strip().lower()
     row = _cache_get("model:current")
     if row is None:
       row = _cache_set("model:current", get_latest_model_snapshot())
     if not row:
       return jsonify({"error": "not_found"}), 404
+    if view == "core":
+      core_key = "model:current:core"
+      core = _cache_get(core_key)
+      if core is None:
+        core = _cache_set(core_key, _build_model_core(row))
+      return _etag_response(core)
     return _etag_response(row)
 
   payload = request.get_json(silent=True) or {}
