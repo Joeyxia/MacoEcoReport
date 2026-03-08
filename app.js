@@ -84,7 +84,11 @@ const i18n = {
     subscribe_email_label: "Email",
     subscribe_submit: "Subscribe",
     subscribe_note: "If backend is unavailable, subscription will fallback to GitHub request.",
-    subscribe_count: "Active Subscribers"
+    subscribe_count: "Active Subscribers",
+    ai_data_assistant_title: "AI Data Assistant",
+    ai_data_assistant_desc: "Ask natural-language questions about data freshness, failed indicators, and update status.",
+    ai_data_assistant_placeholder: "e.g. Which indicators failed online verification today and what should I replace them with?",
+    ai_data_assistant_submit: "Ask AI"
   },
   zh: {
     nav_dashboard: "仪表盘",
@@ -144,7 +148,11 @@ const i18n = {
     subscribe_email_label: "邮箱",
     subscribe_submit: "订阅",
     subscribe_note: "若后端不可用，将自动回退到 GitHub 请求订阅。",
-    subscribe_count: "当前有效订阅数"
+    subscribe_count: "当前有效订阅数",
+    ai_data_assistant_title: "AI 数据助手",
+    ai_data_assistant_desc: "可以直接询问数据新鲜度、失败指标和更新状态。",
+    ai_data_assistant_placeholder: "例如：今天哪些指标在线校验失败？分别建议替代数据源是什么？",
+    ai_data_assistant_submit: "AI 查询"
   }
 };
 
@@ -287,6 +295,11 @@ function applyI18n() {
     const key = node.getAttribute("data-i18n");
     const value = t(key);
     if (value) node.textContent = value;
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+    const key = node.getAttribute("data-i18n-placeholder");
+    const value = t(key);
+    if (value) node.setAttribute("placeholder", value);
   });
 
   const toggle = document.getElementById("lang-toggle");
@@ -1717,6 +1730,43 @@ async function setupSubscriptionForm() {
   });
 }
 
+async function setupAiDataAssistant(model) {
+  const input = document.getElementById("ai-query-input");
+  const submit = document.getElementById("ai-query-submit");
+  const status = document.getElementById("ai-query-status");
+  const output = document.getElementById("ai-query-output");
+  if (!input || !submit || !output) return;
+  if (submit.dataset.bound === "1") return;
+  submit.dataset.bound = "1";
+
+  submit.addEventListener("click", async () => {
+    const question = asText(input.value);
+    if (!question) {
+      if (status) status.textContent = getLang() === "zh" ? "请输入你的问题。" : "Please enter your question.";
+      return;
+    }
+    if (status) status.textContent = getLang() === "zh" ? "AI 正在分析..." : "AI is analyzing...";
+    output.innerHTML = "";
+    submit.disabled = true;
+    const res = await apiFetch("/api/ai/data-query", {
+      method: "POST",
+      body: JSON.stringify({ question, lang: getLang(), asOf: model?.asOf || "" })
+    });
+    submit.disabled = false;
+    if (!res?.ok) {
+      const msg = res?.error || "request_failed";
+      if (status) status.textContent = `${getLang() === "zh" ? "查询失败" : "Query failed"}: ${msg}`;
+      return;
+    }
+    const meta = `${res.model || "--"} · asOf ${res.asOf || "--"} · ${res.generatedAt || "--"}`;
+    output.innerHTML = `
+      <div class="summary-line">${escapeHtml(meta)}</div>
+      <div class="summary-line">${escapeHtml(res.answer || "")}</div>
+    `;
+    if (status) status.textContent = getLang() === "zh" ? "查询完成。" : "Done.";
+  });
+}
+
 function getReportDateFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const d = params.get("date");
@@ -2440,6 +2490,7 @@ async function initDashboard() {
     renderDashboard(next);
   });
   await setupSubscriptionForm();
+  await setupAiDataAssistant(coreModel);
 }
 
 async function ensureModelData(model) {

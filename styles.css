@@ -309,6 +309,21 @@ input[type="file"] {
   gap: 0.5rem;
 }
 
+.ai-query-wrap {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.ai-query-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.ai-answer {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
 .summary-line {
   color: var(--ink-soft);
   line-height: 1.45;

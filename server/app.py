@@ -59,6 +59,9 @@ GOOGLE_REDIRECT_URI = str(os.environ.get("GOOGLE_OAUTH_REDIRECT_URI", "https://m
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+OPENAI_API_KEY = str(os.environ.get("OPENAI_API_KEY", "")).strip()
+OPENAI_MODEL = str(os.environ.get("OPENAI_MODEL", "gpt-5.4")).strip()
+OPENAI_BASE_URL = str(os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")).strip().rstrip("/")
 
 app = Flask(__name__, static_folder=str(ROOT), static_url_path="")
 app.secret_key = os.environ.get("MONITOR_SESSION_SECRET") or base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
@@ -241,6 +244,43 @@ def _json_get(url: str, headers=None):
     req.add_header(k, v)
   with urllib.request.urlopen(req, timeout=20) as resp:
     return json.loads(resp.read().decode("utf-8"))
+
+
+def _json_post_json(url: str, payload: dict, headers=None):
+  data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+  req = urllib.request.Request(url, data=data, method="POST")
+  req.add_header("Content-Type", "application/json")
+  for k, v in (headers or {}).items():
+    req.add_header(k, v)
+  with urllib.request.urlopen(req, timeout=60) as resp:
+    return json.loads(resp.read().decode("utf-8"))
+
+
+def _extract_chat_text(resp: dict):
+  if not isinstance(resp, dict):
+    return ""
+  choices = resp.get("choices") or []
+  if not choices:
+    return ""
+  msg = choices[0].get("message") or {}
+  return str(msg.get("content") or "").strip()
+
+
+def _build_ai_context(model: dict):
+  details = model.get("indicatorDetails") or []
+  failed = [d for d in details if not d.get("VerifiedOnline")]
+  return {
+    "asOf": model.get("asOf") or "",
+    "reportDate": model.get("reportDate") or "",
+    "generatedAt": model.get("generatedAt") or "",
+    "totalScore": model.get("totalScore") or 0,
+    "status": model.get("status") or "",
+    "onlineUpdate": model.get("onlineUpdate") or {},
+    "freshness": model.get("freshness") or {},
+    "topDimensionContributors": model.get("topDimensionContributors") or [],
+    "keyIndicatorsSnapshot": model.get("keyIndicatorsSnapshot") or [],
+    "failedIndicators": failed[:80],
+  }
 
 
 @app.after_request
@@ -604,6 +644,89 @@ def checks():
     return jsonify({"error": "missing_checkedAt"}), 400
   save_online_check(checked_at, summary, rows)
   return jsonify({"ok": True})
+
+
+@app.route("/api/ai/data-query", methods=["POST", "OPTIONS"])
+def ai_data_query():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  if not OPENAI_API_KEY:
+    return jsonify({"error": "openai_not_configured"}), 503
+  payload = request.get_json(silent=True) or {}
+  question = str(payload.get("question") or "").strip()
+  lang = str(payload.get("lang") or "zh").strip().lower()
+  if not question:
+    return jsonify({"error": "missing_question"}), 400
+  if len(question) > 1600:
+    return jsonify({"error": "question_too_long"}), 400
+
+  model = _cache_get("model:current")
+  if model is None:
+    model = _cache_set("model:current", get_latest_model_snapshot())
+  if not model:
+    return jsonify({"error": "model_not_found"}), 404
+
+  context_payload = _build_ai_context(model)
+  system_text = (
+    "You are a macro monitoring data assistant. "
+    "Answer ONLY based on the provided JSON context. "
+    "If data is missing, say it clearly. "
+    "For questions about freshness, use ValueDate/VerificationStatus/Freshness fields and explain exact dates. "
+    "Keep response concise and actionable."
+  )
+  if lang.startswith("zh"):
+    system_text += " Respond in Chinese."
+  else:
+    system_text += " Respond in English."
+
+  user_text = (
+    f"Question:\n{question}\n\n"
+    f"Context JSON:\n{json.dumps(context_payload, ensure_ascii=False)}"
+  )
+  req_body = {
+    "model": OPENAI_MODEL,
+    "temperature": 0.2,
+    "messages": [
+      {"role": "system", "content": system_text},
+      {"role": "user", "content": user_text},
+    ],
+  }
+  try:
+    resp = _json_post_json(
+      f"{OPENAI_BASE_URL}/chat/completions",
+      req_body,
+      headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+    )
+    text = _extract_chat_text(resp)
+    usage = resp.get("usage") or {}
+    input_tokens = int(usage.get("prompt_tokens") or 0)
+    output_tokens = int(usage.get("completion_tokens") or 0)
+    total_tokens = int(usage.get("total_tokens") or (input_tokens + output_tokens))
+    if total_tokens > 0:
+      log_token_usage(
+        source="ai_data_query",
+        model=OPENAI_MODEL,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
+        meta={"lang": lang, "question": question[:240]},
+      )
+    return jsonify(
+      {
+        "ok": True,
+        "answer": text,
+        "model": OPENAI_MODEL,
+        "asOf": context_payload.get("asOf"),
+        "generatedAt": context_payload.get("generatedAt"),
+        "usage": {
+          "input_tokens": input_tokens,
+          "output_tokens": output_tokens,
+          "total_tokens": total_tokens,
+        },
+      }
+    )
+  except Exception as e:
+    return jsonify({"error": "openai_request_failed", "detail": str(e)[:260]}), 502
 
 
 @app.route("/api/migrate", methods=["POST", "OPTIONS"])
