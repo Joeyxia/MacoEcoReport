@@ -121,6 +121,34 @@ def _build_model_core(model):
   }
 
 
+def _build_model_tables(model):
+  if not isinstance(model, dict):
+    return {"error": "not_found"}
+  tables = model.get("tables") or {}
+  return {
+    "asOf": model.get("asOf") or "",
+    "tables": {
+      "dimensions": tables.get("dimensions") or [],
+      "inputs": tables.get("inputs") or [],
+      "indicators": tables.get("indicators") or [],
+      "scores": tables.get("scores") or [],
+      "alerts": tables.get("alerts") or [],
+    },
+  }
+
+
+def _build_model_workbook(model):
+  if not isinstance(model, dict):
+    return {"error": "not_found"}
+  workbook = model.get("workbook") or {}
+  return {
+    "asOf": model.get("asOf") or "",
+    "workbook": {
+      "sheets": workbook.get("sheets") or [],
+    },
+  }
+
+
 def _etag_response(payload, status_code=200):
   body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
   etag = hashlib.sha1(body.encode("utf-8")).hexdigest()
@@ -193,6 +221,34 @@ def model_summary():
   latest = reports[0] if reports else None
   summary = _build_model_summary(model, latest_report=latest)
   return _etag_response(_cache_set("model:summary", summary))
+
+
+@app.route("/api/model/tables", methods=["GET"])
+def model_tables():
+  cached = _cache_get("model:tables")
+  if cached is not None:
+    return _etag_response(cached)
+  model = _cache_get("model:current")
+  if model is None:
+    model = _cache_set("model:current", get_latest_model_snapshot())
+  if not model:
+    return jsonify({"error": "not_found"}), 404
+  tables_payload = _cache_set("model:tables", _build_model_tables(model))
+  return _etag_response(tables_payload)
+
+
+@app.route("/api/model/workbook", methods=["GET"])
+def model_workbook():
+  cached = _cache_get("model:workbook")
+  if cached is not None:
+    return _etag_response(cached)
+  model = _cache_get("model:current")
+  if model is None:
+    model = _cache_set("model:current", get_latest_model_snapshot())
+  if not model:
+    return jsonify({"error": "not_found"}), 404
+  workbook_payload = _cache_set("model:workbook", _build_model_workbook(model))
+  return _etag_response(workbook_payload)
 
 
 @app.route("/api/reports", methods=["GET", "POST", "OPTIONS"])

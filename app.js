@@ -10,6 +10,9 @@ const SUBSCRIPTION_ISSUE_URL = "https://github.com/Joeyxia/MacoEcoReport/issues/
 const API_BASE_KEY = "macro-monitor-api-base";
 const MIGRATED_KEY = "macro-monitor-db-migrated";
 let dashboardHeavyRenderToken = 0;
+let dashboardWorkbookObserver = null;
+let dashboardWorkbookLoaded = false;
+let dashboardWorkbookLoading = false;
 
 const i18n = {
   en: {
@@ -395,6 +398,20 @@ async function loadCurrentModel(options = {}) {
 async function loadDashboardSummary() {
   const fromApi = await apiFetch("/api/model/summary");
   return fromApi && !fromApi.error ? fromApi : null;
+}
+
+async function loadDashboardTables() {
+  const fromApi = await apiFetch("/api/model/tables");
+  if (fromApi && fromApi.tables) return fromApi.tables;
+  const fallback = await loadCurrentModel();
+  return fallback?.tables || {};
+}
+
+async function loadDashboardWorkbook() {
+  const fromApi = await apiFetch("/api/model/workbook");
+  if (fromApi?.workbook) return fromApi.workbook;
+  const fallback = await loadCurrentModel();
+  return fallback?.workbook || { sheets: [] };
 }
 
 async function saveCurrentModel(model) {
@@ -1279,21 +1296,69 @@ function renderDashboard(model) {
 function scheduleHeavyDashboardRender(model) {
   dashboardHeavyRenderToken += 1;
   const token = dashboardHeavyRenderToken;
-  const task = () => {
+  const task = async () => {
     if (token !== dashboardHeavyRenderToken) return;
-    renderDimensionLayers(model.all14DimensionsDetailed || model.tables?.dimensions || [], model);
-    renderObjectTable("dimensions-table", model.tables?.dimensions || []);
-    renderObjectTable("inputs-table", model.tables?.inputs || []);
-    renderObjectTable("indicators-table", model.tables?.indicators || []);
-    renderObjectTable("scores-table", model.tables?.scores || []);
-    renderObjectTable("alerts-table", model.tables?.alerts || []);
-    renderWorkbookExplorer(model.workbook || {});
+    const tables = await loadDashboardTables();
+    if (token !== dashboardHeavyRenderToken) return;
+    const merged = normalizeModel({
+      ...model,
+      tables: {
+        ...(model.tables || {}),
+        ...(tables || {})
+      }
+    });
+    renderDimensionLayers(merged.all14DimensionsDetailed || merged.tables?.dimensions || [], merged);
+    renderObjectTable("dimensions-table", merged.tables?.dimensions || []);
+    renderObjectTable("inputs-table", merged.tables?.inputs || []);
+    renderObjectTable("indicators-table", merged.tables?.indicators || []);
+    renderObjectTable("scores-table", merged.tables?.scores || []);
+    renderObjectTable("alerts-table", merged.tables?.alerts || []);
+    setupDashboardWorkbookLazyLoad(merged, token);
   };
   if (typeof window.requestIdleCallback === "function") {
     window.requestIdleCallback(task, { timeout: 900 });
     return;
   }
   window.setTimeout(task, 60);
+}
+
+function setupDashboardWorkbookLazyLoad(model, token) {
+  const tabs = document.getElementById("sheet-tabs");
+  const table = document.getElementById("sheet-table");
+  if (!tabs || !table) return;
+  if (!dashboardWorkbookLoaded) {
+    tabs.innerHTML = "";
+    table.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "滚动到此区域后加载工作簿明细..." : "Workbook details load when this section enters view..."}</p>`;
+  }
+  const loadWorkbook = async () => {
+    if (dashboardWorkbookLoaded || dashboardWorkbookLoading) return;
+    dashboardWorkbookLoading = true;
+    try {
+      const workbook = await loadDashboardWorkbook();
+      if (token !== dashboardHeavyRenderToken) return;
+      const merged = { ...model, workbook };
+      renderWorkbookExplorer(merged.workbook || {});
+      dashboardWorkbookLoaded = true;
+      if (dashboardWorkbookObserver) dashboardWorkbookObserver.disconnect();
+    } finally {
+      dashboardWorkbookLoading = false;
+    }
+  };
+
+  if (!("IntersectionObserver" in window)) {
+    window.setTimeout(loadWorkbook, 1200);
+    return;
+  }
+
+  if (dashboardWorkbookObserver) dashboardWorkbookObserver.disconnect();
+  dashboardWorkbookObserver = new IntersectionObserver(
+    (entries) => {
+      const hit = entries.some((entry) => entry.isIntersecting);
+      if (hit) loadWorkbook();
+    },
+    { rootMargin: "300px 0px" }
+  );
+  dashboardWorkbookObserver.observe(table);
 }
 
 function renderDashboardSummary(summary) {
@@ -2121,41 +2186,26 @@ function setupUpload(onLoaded) {
 
 async function initDashboard() {
   const status = document.getElementById("file-status");
+  dashboardWorkbookLoaded = false;
+  dashboardWorkbookLoading = false;
+  if (dashboardWorkbookObserver) {
+    dashboardWorkbookObserver.disconnect();
+    dashboardWorkbookObserver = null;
+  }
   const summary = await loadDashboardSummary();
   if (summary) renderDashboardSummary(summary);
   const coreModel = await loadCurrentModel({ view: "core" });
   if (!summary) renderDashboardSummary(coreModel);
+  renderDashboard(coreModel);
   if (status) status.textContent = getLang() === "zh" ? "核心数据已加载，正在补全明细..." : "Core data loaded, hydrating details...";
 
-  const hydrateFullModel = async () => {
-    let model = await loadCurrentModel();
-    renderDashboard(model);
-    if (!model?.tables?.dimensions?.length) {
-      try {
-        const buffer = await loadDefaultWorkbook();
-        model = parseWorkbook(buffer);
-        await saveCurrentModel(model);
-        renderDashboard(model);
-        if (status) status.textContent = "Auto-loaded: model.xlsx";
-      } catch {
-        if (status) status.textContent = getLang() === "zh" ? "使用本地缓存/样例数据。" : "Using saved/sample data.";
-      }
-      return;
-    }
-    if (status) status.textContent = getLang() === "zh" ? "已加载最新快照数据" : "Loaded latest snapshot data";
-  };
-
-  if (typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback(() => {
-      hydrateFullModel();
-    }, { timeout: 1200 });
-  } else {
-    window.setTimeout(() => {
-      hydrateFullModel();
-    }, 120);
-  }
-
   setupUpload((next) => {
+    dashboardWorkbookLoaded = false;
+    dashboardWorkbookLoading = false;
+    if (dashboardWorkbookObserver) {
+      dashboardWorkbookObserver.disconnect();
+      dashboardWorkbookObserver = null;
+    }
     renderDashboard(next);
   });
   await setupSubscriptionForm();
