@@ -262,10 +262,10 @@ body[data-page="login"] .muted {
 
 body[data-page="login"] .btn {
   min-width: 188px;
-  min-height: 48px;
-  font-size: 35px;
-  line-height: 1.24;
-  padding: 8px 26px;
+  height: 48px;
+  font-size: 16px;
+  line-height: normal;
+  padding: 0 20px;
 }
 
 body[data-page="login"] #login-status {
@@ -278,17 +278,17 @@ body[data-page="login"] #login-status {
   margin: 0;
   font-family: "Space Grotesk", sans-serif;
   font-weight: 700;
-  font-size: clamp(44px, 6.2vw, 100px);
-  line-height: 1.08;
+  font-size: clamp(26px, 4.9vw, 72px);
+  line-height: 1.06;
   letter-spacing: -0.02em;
 }
 
 .sub {
   margin: 0;
-  max-width: 760px;
+  max-width: 620px;
   color: var(--soft-dark);
-  font-size: clamp(32px, 2.2vw, 44px);
-  line-height: 1.6;
+  font-size: clamp(14px, 2vw, 18px);
+  line-height: normal;
 }
 
 .subtle-note {
@@ -475,15 +475,15 @@ canvas {
   }
   body[data-page="login"] .btn {
     min-width: 0;
-    width: 100%;
-    font-size: 30px;
+    width: 188px;
+    font-size: 16px;
   }
   .slogan {
-    font-size: clamp(40px, 10.5vw, 64px);
-    white-space: normal;
+    font-size: clamp(26px, 9vw, 40px);
+    line-height: 1.06;
   }
   .sub {
-    font-size: clamp(24px, 6vw, 32px);
+    font-size: clamp(14px, 4.5vw, 18px);
   }
   .userbox {
     width: 100%;
