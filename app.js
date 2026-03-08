@@ -607,13 +607,26 @@ function keyByIncludes(row, includes) {
   return null;
 }
 
+function pickInputCodeKey(inputs) {
+  if (!Array.isArray(inputs) || !inputs.length) return null;
+  for (const row of inputs) {
+    const key = keyByIncludes(row || {}, ["indicatorcode", "code", "指标编码"]);
+    if (key) return key;
+  }
+  return null;
+}
+
 function pickInputValueKey(inputs) {
   if (!Array.isArray(inputs) || !inputs.length) return null;
-  const first = inputs[0] || {};
-  const explicit = keyByIncludes(first, ["latestvalue", "value", "最新值", "数值"]);
+  const codeKey = pickInputCodeKey(inputs);
+  const sampleRow =
+    (codeKey
+      ? inputs.find((row) => /^[A-Z][A-Z0-9_]{1,40}$/i.test(asText((row || {})[codeKey])))
+      : null) || inputs[0] || {};
+
+  const explicit = keyByIncludes(sampleRow, ["latestvalue", "value", "最新值", "数值"]);
   if (explicit) return explicit;
-  const codeKey = keyByIncludes(first, ["indicatorcode", "code", "指标编码"]);
-  const keys = Object.keys(first);
+  const keys = Object.keys(sampleRow);
   const candidates = keys.filter((k) => {
     const lower = k.toLowerCase();
     if (codeKey && k === codeKey) return false;
@@ -660,7 +673,7 @@ function computeModelFromTables(tables) {
   const inputs = tables?.inputs || [];
   const dimensionsTable = tables?.dimensions || [];
 
-  const inputCodeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
+  const inputCodeKey = pickInputCodeKey(inputs);
   const inputValueKey = inputs.length ? keyByIncludes(inputs[0], ["latestvalue", "value", "值"]) : null;
   const inputMap = new Map();
   inputs.forEach((row) => {
@@ -750,7 +763,7 @@ function computeModelFromTables(tables) {
 }
 
 function buildDefaultAlerts(inputRows) {
-  const inputCodeKey = inputRows.length ? keyByIncludes(inputRows[0], ["indicatorcode", "code"]) : null;
+  const inputCodeKey = pickInputCodeKey(inputRows);
   const inputValueKey = inputRows.length ? keyByIncludes(inputRows[0], ["latestvalue", "value", "值"]) : null;
   const valueOf = (code) => {
     const row = inputRows.find((r) => asText(r[inputCodeKey]) === code);
@@ -1024,7 +1037,7 @@ function renderDimensionLayers(rows, model) {
   const payloadIndicators = Array.isArray(model.indicatorDetails) ? model.indicatorDetails : [];
   const tableIndicators = model.tables?.indicators || [];
   const tableInputs = model.tables?.inputs || [];
-  const inputCodeKey = tableInputs.length ? keyByIncludes(tableInputs[0], ["indicatorcode", "code"]) : null;
+  const inputCodeKey = pickInputCodeKey(tableInputs);
   const inputValKey = pickInputValueKey(tableInputs);
 
   for (const [tier, dims] of grouped.entries()) {
@@ -1118,7 +1131,7 @@ function renderKeyIndicators(model) {
 
   const indicators = model.tables?.indicators || [];
   const inputs = model.tables?.inputs || [];
-  const inputCodeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
+  const inputCodeKey = pickInputCodeKey(inputs);
   const inputValueKey = pickInputValueKey(inputs);
 
   const top = indicators.slice(0, 6).map((row) => {
@@ -1154,7 +1167,7 @@ function buildDimensionBundles(model) {
 
   const indicators = model.tables?.indicators || [];
   const inputs = model.tables?.inputs || [];
-  const inputCodeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
+  const inputCodeKey = pickInputCodeKey(inputs);
   const inputValKey = pickInputValueKey(inputs);
 
   return dims.map((dim) => {
@@ -1747,7 +1760,7 @@ async function fetchFredLatestValue(seriesCode) {
 }
 
 function findInputRowByCode(inputs, code) {
-  const codeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
+  const codeKey = pickInputCodeKey(inputs);
   if (!codeKey) return null;
   return inputs.find((row) => asText(row[codeKey]) === code) || null;
 }
