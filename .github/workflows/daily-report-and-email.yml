@@ -55,6 +55,8 @@ jobs:
           fi
 
       - name: Refresh data and generate daily report
+        id: refresh
+        continue-on-error: true
         run: |
           if [ "${{ steps.plan.outputs.strict }}" = "1" ]; then
             python scripts/daily_refresh.py --mode "${{ steps.plan.outputs.mode }}" --strict-freshness
@@ -67,7 +69,8 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM: ${{ secrets.RESEND_FROM }}
-          PAGES_BASE_URL: "https://joeyxia.github.io/MacoEcoReport"
+          PAGES_BASE_URL: "https://nexo.hk"
+          REFRESH_STATUS: ${{ steps.refresh.outcome }}
         run: python scripts/send_daily_emails.py
 
       - name: Commit and push updates

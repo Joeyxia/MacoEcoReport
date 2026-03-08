@@ -24,8 +24,10 @@ try:
     get_page_visit_daily,
     get_page_visit_by_path,
     get_token_usage_daily,
+    has_email_event,
     log_page_event,
     log_token_usage,
+    save_email_event,
     save_model_snapshot,
     save_online_check,
     upsert_daily_report,
@@ -41,8 +43,10 @@ except ImportError:
     get_page_visit_daily,
     get_page_visit_by_path,
     get_token_usage_daily,
+    has_email_event,
     log_page_event,
     log_token_usage,
+    save_email_event,
     save_model_snapshot,
     save_online_check,
     upsert_daily_report,
@@ -62,6 +66,8 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 OPENAI_API_KEY = str(os.environ.get("OPENAI_API_KEY", "")).strip()
 OPENAI_MODEL = str(os.environ.get("OPENAI_MODEL", "gpt-5.4")).strip()
 OPENAI_BASE_URL = str(os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")).strip().rstrip("/")
+RESEND_API_KEY = str(os.environ.get("RESEND_API_KEY", "")).strip()
+RESEND_FROM = str(os.environ.get("RESEND_FROM", "")).strip()
 
 app = Flask(__name__, static_folder=str(ROOT), static_url_path="")
 app.secret_key = os.environ.get("MONITOR_SESSION_SECRET") or base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
@@ -264,6 +270,65 @@ def _extract_chat_text(resp: dict):
     return ""
   msg = choices[0].get("message") or {}
   return str(msg.get("content") or "").strip()
+
+
+def _resend_send(to_email: str, subject: str, html: str):
+  if not RESEND_API_KEY or not RESEND_FROM:
+    return None
+  payload = {
+    "from": RESEND_FROM,
+    "to": [to_email],
+    "subject": subject,
+    "html": html,
+  }
+  req = urllib.request.Request(
+    "https://api.resend.com/emails",
+    data=json.dumps(payload).encode("utf-8"),
+    headers={
+      "Authorization": f"Bearer {RESEND_API_KEY}",
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "User-Agent": "macro-monitor-backend",
+    },
+    method="POST",
+  )
+  with urllib.request.urlopen(req, timeout=30) as resp:
+    return json.loads(resp.read().decode("utf-8"))
+
+
+def _send_welcome_email_if_needed(email: str):
+  e = str(email or "").strip().lower()
+  if not e:
+    return {"sent": False, "reason": "empty_email"}
+  if has_email_event(e, "welcome_sent"):
+    return {"sent": False, "reason": "already_sent"}
+  if not RESEND_API_KEY or not RESEND_FROM:
+    return {"sent": False, "reason": "resend_not_configured"}
+  subject = "Welcome to Nexo Marco Intelligence | 欢迎订阅 Nexo Marco Intelligence"
+  html = f"""
+  <div style="font-family:Arial,sans-serif;line-height:1.6;color:#10242b">
+    <h2 style="margin:0 0 8px 0;">Welcome to Nexo Marco Intelligence</h2>
+    <p style="margin:0 0 10px 0;">Thanks for subscribing, {e}.</p>
+    <p style="margin:0 0 10px 0;">
+      Nexo Marco Intelligence is a macro risk monitoring platform using a 14-dimension model to track global financial risk signals.
+    </p>
+    <p style="margin:0 0 14px 0;">
+      You will receive the daily report every day around 09:00 China time (UTC+8).
+    </p>
+    <hr style="border:none;border-top:1px solid #dfe7ea;margin:14px 0;" />
+    <h2 style="margin:0 0 8px 0;">欢迎订阅 Nexo Marco Intelligence</h2>
+    <p style="margin:0 0 10px 0;">感谢订阅，{e}。</p>
+    <p style="margin:0 0 10px 0;">
+      Nexo Marco Intelligence 是一个基于 14 维模型的宏观风险监控平台，用于跟踪全球金融风险信号。
+    </p>
+    <p style="margin:0;">
+      你将在每天中国时间早上 09:00 左右收到当日的每日报告。
+    </p>
+  </div>
+  """
+  _resend_send(e, subject, html)
+  save_email_event(e, "welcome_sent", {"subject": subject})
+  return {"sent": True}
 
 
 def _build_ai_context(model: dict):
@@ -629,7 +694,8 @@ def subscribers():
   if not EMAIL_RE.match(email):
     return jsonify({"error": "invalid_email"}), 400
   add_subscriber(email, source="web")
-  return jsonify({"ok": True, "email": email})
+  welcome = _send_welcome_email_if_needed(email)
+  return jsonify({"ok": True, "email": email, "welcome": welcome})
 
 
 @app.route("/api/checks", methods=["POST", "OPTIONS"])

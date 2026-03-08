@@ -84,6 +84,15 @@ def init_db():
       payload_json TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS email_event_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      payload_json TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_email_event_unique ON email_event_logs(email, event_type);
+
     CREATE TABLE IF NOT EXISTS monitor_page_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       path TEXT,
@@ -277,6 +286,36 @@ def save_email_dispatch_log(payload: dict):
       int(payload.get("failed", 0)),
       int(payload.get("recipients", 0)),
       json.dumps(payload, ensure_ascii=False),
+    ),
+  )
+  conn.commit()
+  conn.close()
+
+
+def has_email_event(email: str, event_type: str):
+  conn = get_conn()
+  row = conn.execute(
+    "SELECT 1 AS ok FROM email_event_logs WHERE email = ? AND event_type = ? LIMIT 1",
+    (str(email or "").strip().lower(), str(event_type or "").strip().lower()),
+  ).fetchone()
+  conn.close()
+  return bool(row)
+
+
+def save_email_event(email: str, event_type: str, payload=None):
+  conn = get_conn()
+  ts = now_iso()
+  conn.execute(
+    """
+    INSERT INTO email_event_logs (email, event_type, payload_json, created_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(email, event_type) DO NOTHING
+    """,
+    (
+      str(email or "").strip().lower(),
+      str(event_type or "").strip().lower(),
+      json.dumps(payload or {}, ensure_ascii=False),
+      ts,
     ),
   )
   conn.commit()
