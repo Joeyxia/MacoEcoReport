@@ -607,6 +607,25 @@ function keyByIncludes(row, includes) {
   return null;
 }
 
+function pickInputValueKey(inputs) {
+  if (!Array.isArray(inputs) || !inputs.length) return null;
+  const first = inputs[0] || {};
+  const explicit = keyByIncludes(first, ["latestvalue", "value", "最新值", "数值"]);
+  if (explicit) return explicit;
+  const codeKey = keyByIncludes(first, ["indicatorcode", "code", "指标编码"]);
+  const keys = Object.keys(first);
+  const candidates = keys.filter((k) => {
+    const lower = k.toLowerCase();
+    if (codeKey && k === codeKey) return false;
+    if (lower.includes("valuedate") || lower.includes("sourcedate") || lower.includes("date")) return false;
+    return true;
+  });
+  if (candidates.length) return candidates[0];
+  const dateHeader = keys.find((k) => /^\\d{4}-\\d{2}-\\d{2}$/.test(asText(k)));
+  if (dateHeader) return dateHeader;
+  return keys.find((k) => k !== codeKey) || null;
+}
+
 function cleanSheetRows(rows) {
   const cleaned = (rows || []).map((row) => row.map((cell) => asText(cell)));
   const nonEmpty = cleaned.filter((row) => row.some((cell) => cell !== ""));
@@ -1006,7 +1025,7 @@ function renderDimensionLayers(rows, model) {
   const tableIndicators = model.tables?.indicators || [];
   const tableInputs = model.tables?.inputs || [];
   const inputCodeKey = tableInputs.length ? keyByIncludes(tableInputs[0], ["indicatorcode", "code"]) : null;
-  const inputValKey = tableInputs.length ? keyByIncludes(tableInputs[0], ["latestvalue", "value", "值"]) : null;
+  const inputValKey = pickInputValueKey(tableInputs);
 
   for (const [tier, dims] of grouped.entries()) {
     const layer = document.createElement("section");
@@ -1100,7 +1119,7 @@ function renderKeyIndicators(model) {
   const indicators = model.tables?.indicators || [];
   const inputs = model.tables?.inputs || [];
   const inputCodeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
-  const inputValueKey = inputs.length ? keyByIncludes(inputs[0], ["latestvalue", "value", "值"]) : null;
+  const inputValueKey = pickInputValueKey(inputs);
 
   const top = indicators.slice(0, 6).map((row) => {
     const code = findValue(row, ["indicatorcode", "code"]);
@@ -1136,7 +1155,7 @@ function buildDimensionBundles(model) {
   const indicators = model.tables?.indicators || [];
   const inputs = model.tables?.inputs || [];
   const inputCodeKey = inputs.length ? keyByIncludes(inputs[0], ["indicatorcode", "code"]) : null;
-  const inputValKey = inputs.length ? keyByIncludes(inputs[0], ["latestvalue", "value", "值"]) : null;
+  const inputValKey = pickInputValueKey(inputs);
 
   return dims.map((dim) => {
     const id = findValue(dim, ["dimensionid", "维度id", "id"]);
@@ -1741,7 +1760,7 @@ async function runOnlineDataCheck(model) {
   const sourceKey = indicators.length ? keyByIncludes(indicators[0], ["sourceurl", "source", "数据源"]) : null;
   const seriesKey = indicators.length ? keyByIncludes(indicators[0], ["series/code", "series", "code", "建议系列"]) : null;
   const indCodeKey = indicators.length ? keyByIncludes(indicators[0], ["indicatorcode", "code"]) : null;
-  const valueKey = inputs.length ? keyByIncludes(inputs[0], ["latestvalue", "value", "值"]) : null;
+  const valueKey = pickInputValueKey(inputs);
   const valueDateKey = inputs.length ? keyByIncludes(inputs[0], ["valuedate", "date", "日期"]) : null;
 
   let checked = 0;
