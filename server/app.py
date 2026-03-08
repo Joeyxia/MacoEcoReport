@@ -25,8 +25,10 @@ try:
     list_active_subscribers_with_status,
     list_daily_reports,
     get_page_visit_daily,
+    get_page_visit_minute,
     get_page_visit_by_path,
     get_token_usage_daily,
+    get_token_usage_minute,
     has_email_event,
     log_page_event,
     log_token_usage,
@@ -47,8 +49,10 @@ except ImportError:
     list_active_subscribers_with_status,
     list_daily_reports,
     get_page_visit_daily,
+    get_page_visit_minute,
     get_page_visit_by_path,
     get_token_usage_daily,
+    get_token_usage_minute,
     has_email_event,
     log_page_event,
     log_token_usage,
@@ -461,19 +465,26 @@ def monitor_ops_overview():
   if err:
     return err
   days = int(request.args.get("days", "30"))
+  minutes = int(request.args.get("minutes", "180"))
+  minutes = max(5, min(minutes, 24 * 60))
   visits_daily = get_page_visit_daily(days=max(1, min(days, 365)))
+  visits_minute = get_page_visit_minute(minutes=minutes)
   visits_by_path = get_page_visit_by_path(days=max(1, min(days, 365)), limit=30)
   tokens_daily = get_token_usage_daily(days=max(1, min(days, 365)))
+  tokens_minute = get_token_usage_minute(minutes=minutes)
   totals = {
-    "pageVisits": sum(int(x.get("visits") or 0) for x in visits_daily),
-    "inputTokens": sum(int(x.get("input_tokens") or 0) for x in tokens_daily),
-    "outputTokens": sum(int(x.get("output_tokens") or 0) for x in tokens_daily),
-    "totalTokens": sum(int(x.get("total_tokens") or 0) for x in tokens_daily),
+    "pageVisits": sum(int(x.get("visits") or 0) for x in visits_minute),
+    "inputTokens": sum(int(x.get("input_tokens") or 0) for x in tokens_minute),
+    "outputTokens": sum(int(x.get("output_tokens") or 0) for x in tokens_minute),
+    "totalTokens": sum(int(x.get("total_tokens") or 0) for x in tokens_minute),
   }
   return _etag_response(
     {
       "days": days,
+      "minutes": minutes,
       "totals": totals,
+      "visitsMinute": visits_minute,
+      "tokensMinute": tokens_minute,
       "visitsDaily": visits_daily,
       "visitsByPath": visits_by_path,
       "tokensDaily": tokens_daily,

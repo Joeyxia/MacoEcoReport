@@ -17,6 +17,7 @@ const api = {
 };
 
 const OPS_REFRESH_MS = 60 * 1000;
+const OPS_WINDOW_MINUTES = 180;
 let visitsChart = null;
 let tokensChart = null;
 
@@ -71,17 +72,20 @@ async function initOps(){
   if(!(await requireAuth())) return;
   setupLogout();
   const renderOps = async () => {
-  const data = await api.get('/monitor-api/ops/overview?days=30');
+  const data = await api.get(`/monitor-api/ops/overview?days=30&minutes=${OPS_WINDOW_MINUTES}`);
   if(!data) return;
   q('kpi-visits').textContent = data.totals.pageVisits;
   q('kpi-input').textContent = data.totals.inputTokens;
   q('kpi-output').textContent = data.totals.outputTokens;
   q('kpi-total').textContent = data.totals.totalTokens;
+  if(q('ops-window-label')) q('ops-window-label').textContent = `${data.minutes || OPS_WINDOW_MINUTES}m`;
   q('top-pages').innerHTML = tableFromRows(data.visitsByPath || []);
 
   const vctx = q('visits-chart');
   if(vctx && window.Chart){
-    const visitsConfig = {type:'line',data:{labels:(data.visitsDaily||[]).map(x=>x.day),datasets:[{label:'Visits',data:(data.visitsDaily||[]).map(x=>x.visits),borderColor:'#0d7e6b',fill:false}]},options:{responsive:true,maintainAspectRatio:false}};
+    const visitsSeries = (data.visitsMinute && data.visitsMinute.length) ? data.visitsMinute : (data.visitsDaily || []);
+    const visitsLabels = visitsSeries.map(x => (x.minute || x.day || '').slice(11, 16) || (x.minute || x.day || ''));
+    const visitsConfig = {type:'line',data:{labels:visitsLabels,datasets:[{label:'Visits',data:visitsSeries.map(x=>x.visits),borderColor:'#0d7e6b',fill:false}]},options:{responsive:true,maintainAspectRatio:false}};
     if(visitsChart){
       visitsChart.data = visitsConfig.data;
       visitsChart.update();
@@ -91,7 +95,9 @@ async function initOps(){
   }
   const tctx = q('tokens-chart');
   if(tctx && window.Chart){
-    const tokensConfig = {type:'bar',data:{labels:(data.tokensDaily||[]).map(x=>x.day),datasets:[{label:'Input',data:(data.tokensDaily||[]).map(x=>x.input_tokens),backgroundColor:'#6bb8a8'},{label:'Output',data:(data.tokensDaily||[]).map(x=>x.output_tokens),backgroundColor:'#1f8b73'}]},options:{responsive:true,maintainAspectRatio:false}};
+    const tokenSeries = (data.tokensMinute && data.tokensMinute.length) ? data.tokensMinute : (data.tokensDaily || []);
+    const tokenLabels = tokenSeries.map(x => (x.minute || x.day || '').slice(11, 16) || (x.minute || x.day || ''));
+    const tokensConfig = {type:'bar',data:{labels:tokenLabels,datasets:[{label:'Input',data:tokenSeries.map(x=>x.input_tokens),backgroundColor:'#6bb8a8'},{label:'Output',data:tokenSeries.map(x=>x.output_tokens),backgroundColor:'#1f8b73'}]},options:{responsive:true,maintainAspectRatio:false}};
     if(tokensChart){
       tokensChart.data = tokensConfig.data;
       tokensChart.update();

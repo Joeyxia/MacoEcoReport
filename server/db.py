@@ -505,11 +505,28 @@ def get_page_visit_daily(days: int = 30):
     """
     SELECT substr(visited_at,1,10) AS day, COUNT(*) AS visits
     FROM monitor_page_events
-    WHERE visited_at >= datetime('now', ?)
+    WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
     GROUP BY day
     ORDER BY day ASC
     """,
     (f"-{max(1,int(days))} day",),
+  ).fetchall()
+  conn.close()
+  return [dict(r) for r in rows]
+
+
+def get_page_visit_minute(minutes: int = 180):
+  conn = get_conn()
+  rows = conn.execute(
+    """
+    SELECT strftime('%Y-%m-%d %H:%M', datetime(replace(replace(visited_at, 'T', ' '), 'Z', ''))) AS minute,
+           COUNT(*) AS visits
+    FROM monitor_page_events
+    WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
+    GROUP BY minute
+    ORDER BY minute ASC
+    """,
+    (f"-{max(1,int(minutes))} minute",),
   ).fetchall()
   conn.close()
   return [dict(r) for r in rows]
@@ -521,7 +538,7 @@ def get_page_visit_by_path(days: int = 30, limit: int = 50):
     """
     SELECT path, COUNT(*) AS visits
     FROM monitor_page_events
-    WHERE visited_at >= datetime('now', ?)
+    WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
     GROUP BY path
     ORDER BY visits DESC
     LIMIT ?
@@ -541,11 +558,30 @@ def get_token_usage_daily(days: int = 30):
            SUM(output_tokens) AS output_tokens,
            SUM(total_tokens) AS total_tokens
     FROM monitor_token_usage
-    WHERE logged_at >= datetime('now', ?)
+    WHERE datetime(replace(replace(logged_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
     GROUP BY day
     ORDER BY day ASC
     """,
     (f"-{max(1,int(days))} day",),
+  ).fetchall()
+  conn.close()
+  return [dict(r) for r in rows]
+
+
+def get_token_usage_minute(minutes: int = 180):
+  conn = get_conn()
+  rows = conn.execute(
+    """
+    SELECT strftime('%Y-%m-%d %H:%M', datetime(replace(replace(logged_at, 'T', ' '), 'Z', ''))) AS minute,
+           SUM(input_tokens) AS input_tokens,
+           SUM(output_tokens) AS output_tokens,
+           SUM(total_tokens) AS total_tokens
+    FROM monitor_token_usage
+    WHERE datetime(replace(replace(logged_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
+    GROUP BY minute
+    ORDER BY minute ASC
+    """,
+    (f"-{max(1,int(minutes))} minute",),
   ).fetchall()
   conn.close()
   return [dict(r) for r in rows]
