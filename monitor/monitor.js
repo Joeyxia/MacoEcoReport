@@ -83,8 +83,8 @@ async function initOps(){
 
   const vctx = q('visits-chart');
   if(vctx && window.Chart){
-    const visitsSeries = (data.visitsMinute && data.visitsMinute.length) ? data.visitsMinute : (data.visitsDaily || []);
-    const visitsLabels = visitsSeries.map(x => (x.minute || x.day || '').slice(11, 16) || (x.minute || x.day || ''));
+    const visitsSeries = data.visitsMinute || [];
+    const visitsLabels = visitsSeries.map(x => (x.minute || '').slice(11, 16) || (x.minute || ''));
     const visitsConfig = {type:'line',data:{labels:visitsLabels,datasets:[{label:'Visits',data:visitsSeries.map(x=>x.visits),borderColor:'#0d7e6b',fill:false}]},options:{responsive:true,maintainAspectRatio:false}};
     if(visitsChart){
       visitsChart.data = visitsConfig.data;
@@ -95,8 +95,8 @@ async function initOps(){
   }
   const tctx = q('tokens-chart');
   if(tctx && window.Chart){
-    const tokenSeries = (data.tokensMinute && data.tokensMinute.length) ? data.tokensMinute : (data.tokensDaily || []);
-    const tokenLabels = tokenSeries.map(x => (x.minute || x.day || '').slice(11, 16) || (x.minute || x.day || ''));
+    const tokenSeries = data.tokensMinute || [];
+    const tokenLabels = tokenSeries.map(x => (x.minute || '').slice(11, 16) || (x.minute || ''));
     const tokensConfig = {type:'bar',data:{labels:tokenLabels,datasets:[{label:'Input',data:tokenSeries.map(x=>x.input_tokens),backgroundColor:'#6bb8a8'},{label:'Output',data:tokenSeries.map(x=>x.output_tokens),backgroundColor:'#1f8b73'}]},options:{responsive:true,maintainAspectRatio:false}};
     if(tokensChart){
       tokensChart.data = tokensConfig.data;
