@@ -6,6 +6,7 @@ import json
 import math
 import ssl
 import sys
+from math import ceil
 from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
@@ -14,7 +15,7 @@ from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "server"))
-from db import init_db, replace_sheet_rows, save_model_snapshot, upsert_daily_report
+from db import init_db, log_token_usage, replace_sheet_rows, save_model_snapshot, upsert_daily_report
 
 MODEL_PATH = ROOT / "model.xlsx"
 REPORTS_DIR = ROOT / "reports"
@@ -634,6 +635,26 @@ def run(mode="full", report_date=None):
             meta={"score": total_score, "status": model_status, "summary": short_summary},
             report_path=f"reports/{today}.html",
             payload=today_entry.get("reportPayload"),
+        )
+        # Track estimated token usage for the daily generation pipeline.
+        # Approximation rule: 1 token ~= 4 characters.
+        token_input_text = json.dumps(snapshot, ensure_ascii=False)
+        token_output_text = report_text or ""
+        est_input_tokens = max(1, ceil(len(token_input_text) / 4))
+        est_output_tokens = max(1, ceil(len(token_output_text) / 4))
+        log_token_usage(
+            source="daily_refresh",
+            model="internal-estimation",
+            input_tokens=est_input_tokens,
+            output_tokens=est_output_tokens,
+            total_tokens=est_input_tokens + est_output_tokens,
+            meta={
+                "asOf": today,
+                "generatedAt": generated_at,
+                "mode": mode,
+                "type": "estimated",
+            },
+            logged_at=generated_at,
         )
 
     print(f"DONE mode={mode} as_of={today} updated={len(updated)} failed={len(failed)} total_score={total_score}")
