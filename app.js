@@ -13,6 +13,15 @@ let dashboardHeavyRenderToken = 0;
 let dashboardWorkbookObserver = null;
 let dashboardWorkbookLoaded = false;
 let dashboardWorkbookLoading = false;
+let dashboardTableObservers = [];
+const dashboardTableLoaded = {
+  dimensions: false,
+  inputs: false,
+  indicators: false,
+  scores: false,
+  alerts: false
+};
+const dashboardPrefetchedTableRows = {};
 
 const i18n = {
   en: {
@@ -405,6 +414,13 @@ async function loadDashboardTables() {
   if (fromApi && fromApi.tables) return fromApi.tables;
   const fallback = await loadCurrentModel();
   return fallback?.tables || {};
+}
+
+async function loadDashboardSingleTable(tableName) {
+  const fromApi = await apiFetch(`/api/model/table/${encodeURIComponent(tableName)}`);
+  if (fromApi && Array.isArray(fromApi.rows)) return fromApi.rows;
+  const fallback = await loadDashboardTables();
+  return fallback?.[tableName] || [];
 }
 
 async function loadDashboardWorkbook() {
@@ -863,6 +879,12 @@ function renderObjectTable(targetId, rows) {
   root.innerHTML = `<table class="data-table">${head}${body}</table>`;
 }
 
+function renderTableLoading(targetId) {
+  const root = document.getElementById(targetId);
+  if (!root) return;
+  root.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "正在加载..." : "Loading..."}</p>`;
+}
+
 function renderSheetTable(targetId, rows) {
   const root = document.getElementById(targetId);
   if (!root) return;
@@ -1298,21 +1320,33 @@ function scheduleHeavyDashboardRender(model) {
   const token = dashboardHeavyRenderToken;
   const task = async () => {
     if (token !== dashboardHeavyRenderToken) return;
-    const tables = await loadDashboardTables();
+    const [dimensionsRows, inputRows, indicatorRows] = await Promise.all([
+      loadDashboardSingleTable("dimensions"),
+      loadDashboardSingleTable("inputs"),
+      loadDashboardSingleTable("indicators")
+    ]);
     if (token !== dashboardHeavyRenderToken) return;
     const merged = normalizeModel({
       ...model,
       tables: {
         ...(model.tables || {}),
-        ...(tables || {})
+        dimensions: dimensionsRows,
+        inputs: inputRows,
+        indicators: indicatorRows
       }
     });
+    dashboardPrefetchedTableRows.indicators = indicatorRows;
     renderDimensionLayers(merged.all14DimensionsDetailed || merged.tables?.dimensions || [], merged);
     renderObjectTable("dimensions-table", merged.tables?.dimensions || []);
     renderObjectTable("inputs-table", merged.tables?.inputs || []);
-    renderObjectTable("indicators-table", merged.tables?.indicators || []);
-    renderObjectTable("scores-table", merged.tables?.scores || []);
-    renderObjectTable("alerts-table", merged.tables?.alerts || []);
+    dashboardTableLoaded.dimensions = true;
+    dashboardTableLoaded.inputs = true;
+    renderTableLoading("indicators-table");
+    renderTableLoading("scores-table");
+    renderTableLoading("alerts-table");
+    setupDashboardSectionTableLazyLoad("indicators", "indicators-table", token);
+    setupDashboardSectionTableLazyLoad("scores", "scores-table", token);
+    setupDashboardSectionTableLazyLoad("alerts", "alerts-table", token);
     setupDashboardWorkbookLazyLoad(merged, token);
   };
   if (typeof window.requestIdleCallback === "function") {
@@ -1320,6 +1354,33 @@ function scheduleHeavyDashboardRender(model) {
     return;
   }
   window.setTimeout(task, 60);
+}
+
+function setupDashboardSectionTableLazyLoad(tableName, targetId, token) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  const loadRows = async () => {
+    if (dashboardTableLoaded[tableName]) return;
+    const rows = dashboardPrefetchedTableRows[tableName] || (await loadDashboardSingleTable(tableName));
+    if (token !== dashboardHeavyRenderToken) return;
+    renderObjectTable(targetId, rows);
+    dashboardTableLoaded[tableName] = true;
+  };
+  if (!("IntersectionObserver" in window)) {
+    window.setTimeout(loadRows, 800);
+    return;
+  }
+  const observer = new IntersectionObserver(
+    (entries) => {
+      const hit = entries.some((entry) => entry.isIntersecting);
+      if (!hit) return;
+      observer.disconnect();
+      loadRows();
+    },
+    { rootMargin: "240px 0px" }
+  );
+  observer.observe(target);
+  dashboardTableObservers.push(observer);
 }
 
 function setupDashboardWorkbookLazyLoad(model, token) {
@@ -2188,6 +2249,14 @@ async function initDashboard() {
   const status = document.getElementById("file-status");
   dashboardWorkbookLoaded = false;
   dashboardWorkbookLoading = false;
+  dashboardTableObservers.forEach((o) => o.disconnect());
+  dashboardTableObservers = [];
+  Object.keys(dashboardTableLoaded).forEach((k) => {
+    dashboardTableLoaded[k] = false;
+  });
+  Object.keys(dashboardPrefetchedTableRows).forEach((k) => {
+    delete dashboardPrefetchedTableRows[k];
+  });
   if (dashboardWorkbookObserver) {
     dashboardWorkbookObserver.disconnect();
     dashboardWorkbookObserver = null;
@@ -2202,6 +2271,14 @@ async function initDashboard() {
   setupUpload((next) => {
     dashboardWorkbookLoaded = false;
     dashboardWorkbookLoading = false;
+    dashboardTableObservers.forEach((o) => o.disconnect());
+    dashboardTableObservers = [];
+    Object.keys(dashboardTableLoaded).forEach((k) => {
+      dashboardTableLoaded[k] = false;
+    });
+    Object.keys(dashboardPrefetchedTableRows).forEach((k) => {
+      delete dashboardPrefetchedTableRows[k];
+    });
     if (dashboardWorkbookObserver) {
       dashboardWorkbookObserver.disconnect();
       dashboardWorkbookObserver = null;

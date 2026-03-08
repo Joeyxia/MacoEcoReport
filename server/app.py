@@ -137,6 +137,17 @@ def _build_model_tables(model):
   }
 
 
+def _build_single_table(model, table_name):
+  if not isinstance(model, dict):
+    return {"error": "not_found"}
+  tables = model.get("tables") or {}
+  return {
+    "asOf": model.get("asOf") or "",
+    "table": table_name,
+    "rows": tables.get(table_name) or [],
+  }
+
+
 def _build_model_workbook(model):
   if not isinstance(model, dict):
     return {"error": "not_found"}
@@ -251,6 +262,25 @@ def model_workbook():
     return jsonify({"error": "not_found"}), 404
   workbook_payload = _cache_set("model:workbook", _build_model_workbook(model))
   return _etag_response(workbook_payload)
+
+
+@app.route("/api/model/table/<table_name>", methods=["GET"])
+def model_single_table(table_name):
+  allowed = {"dimensions", "inputs", "indicators", "scores", "alerts"}
+  name = str(table_name or "").strip().lower()
+  if name not in allowed:
+    return jsonify({"error": "invalid_table"}), 400
+  cache_key = f"model:table:{name}"
+  cached = _cache_get(cache_key)
+  if cached is not None:
+    return _etag_response(cached)
+  model = _cache_get("model:current")
+  if model is None:
+    model = _cache_set("model:current", get_latest_model_snapshot())
+  if not model:
+    return jsonify({"error": "not_found"}), 404
+  payload = _cache_set(cache_key, _build_single_table(model, name))
+  return _etag_response(payload)
 
 
 @app.route("/api/reports", methods=["GET", "POST", "OPTIONS"])
