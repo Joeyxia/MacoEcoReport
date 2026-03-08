@@ -238,47 +238,83 @@ def _normalize_openrouter_text(raw_html: str):
   return lines
 
 
-def _parse_openrouter_section(lines, start_label: str, stop_labels):
-  out = []
-  start = -1
-  for i, line in enumerate(lines):
-    if line.lower() == start_label.lower():
-      start = i + 1
-      break
+def _extract_openrouter_hidden_section(raw_html: str, section_id: str, boundary_id: str):
+  start_tag = f'<div hidden id="{section_id}">'
+  end_tag = f'<script>$RC("{boundary_id}","{section_id}")</script>'
+  start = raw_html.find(start_tag)
   if start < 0:
-    return out
+    return ""
+  start += len(start_tag)
+  end = raw_html.find(end_tag, start)
+  if end < 0:
+    return ""
+  return raw_html[start:end]
 
-  i = start
+
+def _openrouter_section_to_lines(section_html: str):
+  if not section_html:
+    return []
+  content = re.sub(r"<!--[\s\S]*?-->", "", section_html, flags=re.I)
+  content = re.sub(r"<script[\s\S]*?</script>", " ", content, flags=re.I)
+  content = re.sub(r"<style[\s\S]*?</style>", " ", content, flags=re.I)
+  content = re.sub(r"<[^>]+>", "\n", content)
+  content = html.unescape(content)
+  return [x.strip() for x in content.splitlines() if x and x.strip()]
+
+
+def _parse_openrouter_ranked_lines(lines, with_share: bool):
+  out = []
+  i = 0
   while i < len(lines):
     line = lines[i]
-    if any(line.lower() == s.lower() for s in stop_labels):
-      break
     m = re.match(r"^(\d+)\.$", line)
     if not m:
       i += 1
       continue
     rank = int(m.group(1))
-    item = {"rank": rank, "name": "", "creator": "", "tokens": "", "share": ""}
+    item = {"rank": rank, "name": "", "creator": "", "tokens": "", "share": "" if with_share else ""}
     i += 1
+    prev = ""
     while i < len(lines):
       current = lines[i]
-      if re.match(r"^\d+\.$", current) or any(current.lower() == s.lower() for s in stop_labels):
+      if re.match(r"^\d+\.$", current):
         break
       low = current.lower()
       if not item["name"]:
         item["name"] = current
       elif low.startswith("by "):
         item["creator"] = current[3:].strip()
+      elif low == "by" and i + 1 < len(lines):
+        item["creator"] = lines[i + 1].strip()
+        i += 1
       elif "token" in low and not item["tokens"]:
-        item["tokens"] = current
-      elif re.match(r"^\d+(\.\d+)?%$", current) and not item["share"]:
+        item["tokens"] = current if " " in current else f"{prev} tokens".strip()
+      elif with_share and re.match(r"^\d+(\.\d+)?%$", current) and not item.get("share"):
         item["share"] = current
+      prev = current
       i += 1
     if item["name"]:
       out.append(item)
     if len(out) >= 50:
       break
   return out
+
+
+def _parse_openrouter_section(lines, start_label: str, stop_labels, with_share: bool):
+  start = -1
+  for i, line in enumerate(lines):
+    if line.lower() == start_label.lower():
+      start = i + 1
+      break
+  if start < 0:
+    return []
+  section = []
+  for i in range(start, len(lines)):
+    line = lines[i]
+    if any(line.lower() == s.lower() for s in stop_labels):
+      break
+    section.append(line)
+  return _parse_openrouter_ranked_lines(section, with_share=with_share)
 
 
 def _fetch_openrouter_rankings():
@@ -294,9 +330,17 @@ def _fetch_openrouter_rankings():
   with urllib.request.urlopen(req, timeout=30) as resp:
     raw = resp.read().decode("utf-8", errors="ignore")
 
-  lines = _normalize_openrouter_text(raw)
-  models = _parse_openrouter_section(lines, "Top Models", ("Top Apps", "Top Prompts", "Top Providers"))
-  apps = _parse_openrouter_section(lines, "Top Apps", ("Top Prompts", "Top Providers", "API", "Developer Docs"))
+  models_hidden = _openrouter_section_to_lines(_extract_openrouter_hidden_section(raw, "S:3", "B:3"))
+  apps_hidden = _openrouter_section_to_lines(_extract_openrouter_hidden_section(raw, "S:d", "B:d"))
+
+  models = _parse_openrouter_ranked_lines(models_hidden, with_share=True) if models_hidden else []
+  apps = _parse_openrouter_ranked_lines(apps_hidden, with_share=False) if apps_hidden else []
+  if not models or not apps:
+    lines = _normalize_openrouter_text(raw)
+    if not models:
+      models = _parse_openrouter_section(lines, "Top Models", ("Top Apps", "Top Prompts", "Top Providers"), with_share=True)
+    if not apps:
+      apps = _parse_openrouter_section(lines, "Top Apps", ("Top Prompts", "Top Providers", "API", "Developer Docs"), with_share=False)
   return {
     "ok": True,
     "sourceUrl": url,
