@@ -388,6 +388,11 @@ async function loadCurrentModel() {
   return normalizeModel(loadModelFallback());
 }
 
+async function loadDashboardSummary() {
+  const fromApi = await apiFetch("/api/model/summary");
+  return fromApi && !fromApi.error ? fromApi : null;
+}
+
 async function saveCurrentModel(model) {
   const normalized = normalizeModel(model);
   await apiFetch("/api/model/current", { method: "POST", body: JSON.stringify(normalized) });
@@ -412,8 +417,9 @@ async function loadReport(date) {
   return staticReports.find((r) => r.date === date) || null;
 }
 
-async function listReports() {
-  const fromApi = await apiFetch("/api/reports?limit=400");
+async function listReports(limit = 400) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 400, 1000));
+  const fromApi = await apiFetch(`/api/reports?limit=${safeLimit}`);
   if (Array.isArray(fromApi?.reports)) return fromApi.reports.sort((a, b) => b.date.localeCompare(a.date));
   const reports = await dbGetAll("reports");
   const staticReports = await loadStaticReports();
@@ -1115,8 +1121,7 @@ async function renderLatestReportSummary(model) {
   const watchRoot = document.getElementById("daily-watch-items");
   if (!root) return;
 
-  const reports = await listReports();
-  const latest = reports[0];
+  const latest = model.latestReport || (await listReports(1))[0];
   const activeAlerts = (model.alerts || []).filter((a) => a.triggered);
   const weakDims = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 3);
 
@@ -1271,6 +1276,90 @@ function renderDashboard(model) {
   renderObjectTable("scores-table", model.tables?.scores || []);
   renderObjectTable("alerts-table", model.tables?.alerts || []);
   renderWorkbookExplorer(model.workbook || {});
+}
+
+function renderDashboardSummary(summary) {
+  if (!summary || summary.error) return;
+  const score = document.getElementById("total-score");
+  const asOf = document.getElementById("as-of");
+  const status = document.getElementById("macro-status");
+  const alertList = document.getElementById("alert-list");
+  const bars = document.getElementById("dimension-bars");
+  const drivers = document.getElementById("drivers");
+  const keyGrid = document.getElementById("key-indicators-grid");
+  const layers = document.getElementById("dimension-layers");
+  if (score) score.textContent = round(summary.totalScore, 1).toFixed(1);
+  if (asOf) asOf.textContent = summary.asOf || "--";
+  if (status) status.textContent = summary.status || "--";
+
+  if (alertList) {
+    const active = (summary.alerts || []).filter((a) => a.triggered);
+    alertList.innerHTML = "";
+    if (!active.length) {
+      const li = document.createElement("li");
+      li.className = "alert-item none";
+      li.textContent = getLang() === "zh" ? "当前无触发预警。" : "No active alerts.";
+      alertList.appendChild(li);
+    } else {
+      active.slice(0, 6).forEach((alert) => {
+        const li = document.createElement("li");
+        li.className = `alert-item ${(alert.level || "").toLowerCase()}`;
+        li.innerHTML = `<strong>${escapeHtml(alert.id || "--")} (${escapeHtml(alert.level || "--")})</strong><br>${escapeHtml(alert.condition || "")}`;
+        alertList.appendChild(li);
+      });
+    }
+  }
+
+  if (bars) {
+    bars.innerHTML = "";
+    (summary.topDimensionContributors || []).slice(0, 8).forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "bar-row";
+      const width = Math.max(0, Math.min(100, Number(item.score) || 0));
+      row.innerHTML = `
+        <div class="bar-top"><span>${escapeHtml(item.name || "--")}</span><span>${round(item.score, 1)}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+      `;
+      bars.appendChild(row);
+    });
+  }
+
+  if (drivers) {
+    drivers.innerHTML = "";
+    (summary.primaryDrivers || []).slice(0, 3).forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "driver-card";
+      card.innerHTML = `<h3>${escapeHtml(item.title || "")}</h3><p>${escapeHtml(item.text || item.summary || "")}</p>`;
+      drivers.appendChild(card);
+    });
+  }
+
+  if (keyGrid && Array.isArray(summary.keyIndicatorsSnapshot) && summary.keyIndicatorsSnapshot.length) {
+    keyGrid.innerHTML = "";
+    summary.keyIndicatorsSnapshot.slice(0, 6).forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "indicator-mini-card";
+      card.innerHTML = `
+        <h3>${escapeHtml(item.title || item.label || "--")}</h3>
+        <div class="indicator-value">${escapeHtml(item.value ?? "--")}</div>
+        <div class="indicator-source">${escapeHtml(item.source || "")}</div>
+      `;
+      keyGrid.appendChild(card);
+    });
+  }
+
+  if (layers) {
+    layers.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "正在加载14维明细..." : "Loading 14-dimension details..."}</p>`;
+  }
+  renderLatestReportSummary({
+    ...summary,
+    latestReport: summary.latestReportDate
+      ? {
+          date: summary.latestReportDate,
+          meta: { summary: summary.latestReportSummary || "" }
+        }
+      : null
+  });
 }
 
 function isValidEmail(email) {
@@ -2014,6 +2103,8 @@ function setupUpload(onLoaded) {
 
 async function initDashboard() {
   const status = document.getElementById("file-status");
+  const summary = await loadDashboardSummary();
+  if (summary) renderDashboardSummary(summary);
   let model = await loadCurrentModel();
   renderDashboard(model);
   if (!model?.tables?.dimensions?.length) {
