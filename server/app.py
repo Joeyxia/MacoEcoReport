@@ -222,6 +222,52 @@ def _etag_response(payload, status_code=200):
   return resp
 
 
+def _estimate_tokens_from_bytes(raw: bytes) -> int:
+  if not raw:
+    return 0
+  return max(1, (len(raw) + 3) // 4)
+
+
+def _should_autotrack_token() -> bool:
+  path = request.path or ""
+  if request.method == "OPTIONS":
+    return False
+  if path == "/monitor-api/track/token":
+    return False
+  return path.startswith("/api/") or path.startswith("/monitor-api/")
+
+
+@app.after_request
+def auto_track_request_token_usage(response):
+  try:
+    if not _should_autotrack_token():
+      return response
+    req_body = request.get_data(cache=True, as_text=False) or b""
+    query_text = (request.query_string or b"").decode("utf-8", errors="ignore")
+    input_bytes = req_body + query_text.encode("utf-8")
+    input_tokens = _estimate_tokens_from_bytes(input_bytes)
+
+    resp_body = response.get_data(as_text=False) or b""
+    output_tokens = _estimate_tokens_from_bytes(resp_body)
+    total_tokens = int(input_tokens or 0) + int(output_tokens or 0)
+
+    log_token_usage(
+      source="api_request_estimation",
+      model="http-estimated",
+      input_tokens=input_tokens,
+      output_tokens=output_tokens,
+      total_tokens=total_tokens,
+      meta={
+        "path": request.path,
+        "method": request.method,
+        "status": int(response.status_code or 0),
+      },
+    )
+  except Exception:
+    pass
+  return response
+
+
 def _is_monitor_authorized(email: str):
   e = str(email or "").strip().lower()
   if not e:
