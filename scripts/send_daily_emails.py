@@ -4,11 +4,11 @@ import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "server"))
 from db import init_db, list_active_subscribers, save_email_dispatch_log
+from mailer import send_email
 
 SUBSCRIBERS_PATH = ROOT / "data" / "subscribers.json"
 SNAPSHOT_PATH = ROOT / "data" / "latest_snapshot.json"
@@ -28,28 +28,6 @@ def load_json(path: Path, default):
     return json.loads(path.read_text(encoding="utf-8"))
   except Exception:
     return default
-
-
-def resend_send(to_email: str, subject: str, html: str):
-  payload = {
-    "from": RESEND_FROM,
-    "to": [to_email],
-    "subject": subject,
-    "html": html,
-  }
-  req = Request(
-    "https://api.resend.com/emails",
-    data=json.dumps(payload).encode("utf-8"),
-    headers={
-      "Authorization": f"Bearer {RESEND_API_KEY}",
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "User-Agent": "macro-monitor-bot",
-    },
-    method="POST",
-  )
-  with urlopen(req, timeout=30) as resp:
-    return json.loads(resp.read().decode("utf-8"))
 
 
 def build_daily_report_email(snapshot, report_date: str, report_link: str):
@@ -111,8 +89,8 @@ def build_failure_email(report_date: str, reason: str):
 
 def main():
   init_db()
-  if not RESEND_API_KEY or not RESEND_FROM:
-    print("skip: RESEND_API_KEY or RESEND_FROM not set")
+  if not ((RESEND_API_KEY and RESEND_FROM) or (os.environ.get("SMTP_USER") and os.environ.get("SMTP_APP_PASSWORD"))):
+    print("skip: no mail provider configured")
     return
 
   db_subs = list_active_subscribers()
@@ -147,7 +125,7 @@ def main():
   errors = []
   for email in recipients:
     try:
-      resend_send(email, subject, html)
+      send_email(email, subject, html)
       sent += 1
     except Exception as e:
       failed += 1

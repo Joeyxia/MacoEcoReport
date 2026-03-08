@@ -32,6 +32,7 @@ try:
     save_online_check,
     upsert_daily_report,
   )
+  from .mailer import send_email
 except ImportError:
   from db import (
     add_subscriber,
@@ -51,6 +52,7 @@ except ImportError:
     save_online_check,
     upsert_daily_report,
   )
+  from mailer import send_email
 
 ROOT = Path(__file__).resolve().parents[1]
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$", re.I)
@@ -66,8 +68,6 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 OPENAI_API_KEY = str(os.environ.get("OPENAI_API_KEY", "")).strip()
 OPENAI_MODEL = str(os.environ.get("OPENAI_MODEL", "gpt-5.4")).strip()
 OPENAI_BASE_URL = str(os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")).strip().rstrip("/")
-RESEND_API_KEY = str(os.environ.get("RESEND_API_KEY", "")).strip()
-RESEND_FROM = str(os.environ.get("RESEND_FROM", "")).strip()
 
 app = Flask(__name__, static_folder=str(ROOT), static_url_path="")
 app.secret_key = os.environ.get("MONITOR_SESSION_SECRET") or base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
@@ -272,38 +272,12 @@ def _extract_chat_text(resp: dict):
   return str(msg.get("content") or "").strip()
 
 
-def _resend_send(to_email: str, subject: str, html: str):
-  if not RESEND_API_KEY or not RESEND_FROM:
-    return None
-  payload = {
-    "from": RESEND_FROM,
-    "to": [to_email],
-    "subject": subject,
-    "html": html,
-  }
-  req = urllib.request.Request(
-    "https://api.resend.com/emails",
-    data=json.dumps(payload).encode("utf-8"),
-    headers={
-      "Authorization": f"Bearer {RESEND_API_KEY}",
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "User-Agent": "macro-monitor-backend",
-    },
-    method="POST",
-  )
-  with urllib.request.urlopen(req, timeout=30) as resp:
-    return json.loads(resp.read().decode("utf-8"))
-
-
 def _send_welcome_email_if_needed(email: str):
   e = str(email or "").strip().lower()
   if not e:
     return {"sent": False, "reason": "empty_email"}
   if has_email_event(e, "welcome_sent"):
     return {"sent": False, "reason": "already_sent"}
-  if not RESEND_API_KEY or not RESEND_FROM:
-    return {"sent": False, "reason": "resend_not_configured"}
   subject = "Welcome to Nexo Marco Intelligence | 欢迎订阅 Nexo Marco Intelligence"
   html = f"""
   <div style="font-family:Arial,sans-serif;line-height:1.6;color:#10242b">
@@ -326,7 +300,7 @@ def _send_welcome_email_if_needed(email: str):
     </p>
   </div>
   """
-  _resend_send(e, subject, html)
+  send_email(e, subject, html)
   save_email_event(e, "welcome_sent", {"subject": subject})
   return {"sent": True}
 

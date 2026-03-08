@@ -3,32 +3,11 @@ import json
 import os
 import sys
 from pathlib import Path
-from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "server"))
 from db import has_email_event, init_db, list_active_subscribers, save_email_event
-
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
-RESEND_FROM = os.environ.get("RESEND_FROM", "").strip()
-
-
-def resend_send(to_email: str, subject: str, html: str):
-  payload = {"from": RESEND_FROM, "to": [to_email], "subject": subject, "html": html}
-  req = Request(
-    "https://api.resend.com/emails",
-    data=json.dumps(payload).encode("utf-8"),
-    headers={
-      "Authorization": f"Bearer {RESEND_API_KEY}",
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "User-Agent": "macro-monitor-welcome-bot",
-    },
-    method="POST",
-  )
-  with urlopen(req, timeout=30) as resp:
-    return json.loads(resp.read().decode("utf-8"))
-
+from mailer import send_email
 
 def build_welcome(email: str):
   subject = "Welcome to Nexo Marco Intelligence | 欢迎订阅 Nexo Marco Intelligence"
@@ -58,8 +37,8 @@ def build_welcome(email: str):
 
 def main():
   init_db()
-  if not RESEND_API_KEY or not RESEND_FROM:
-    raise RuntimeError("RESEND_API_KEY/RESEND_FROM not configured")
+  if not ((os.environ.get("RESEND_API_KEY") and os.environ.get("RESEND_FROM")) or (os.environ.get("SMTP_USER") and os.environ.get("SMTP_APP_PASSWORD"))):
+    raise RuntimeError("mail provider not configured")
   subs = list_active_subscribers()
   sent = 0
   skipped = 0
@@ -73,7 +52,7 @@ def main():
       continue
     subject, html = build_welcome(email)
     try:
-      resend_send(email, subject, html)
+      send_email(email, subject, html)
       save_email_event(email, "welcome_sent", {"subject": subject})
       sent += 1
     except Exception:
