@@ -59,25 +59,32 @@ def main():
   parser.add_argument("--start-date", default="", help="UTC date, format YYYY-MM-DD")
   parser.add_argument("--end-date", default="", help="UTC date, format YYYY-MM-DD (inclusive)")
   parser.add_argument("--days", type=int, default=2, help="Fallback lookback days if start/end not provided")
+  parser.add_argument("--minutes", type=int, default=0, help="If >0, ignore day window and import recent N minutes")
+  parser.add_argument("--bucket-width", default="1m", choices=["1m", "1h", "1d"], help="OpenAI usage bucket width")
   args = parser.parse_args()
 
   if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_ADMIN_API_KEY is required")
 
-  if args.start_date:
-    start_dt = day_start_utc(args.start_date)
+  now_utc = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+  if int(args.minutes or 0) > 0:
+    end_dt = now_utc + timedelta(minutes=1)
+    start_dt = now_utc - timedelta(minutes=max(1, int(args.minutes)))
   else:
-    start_dt = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=max(1, args.days))
+    if args.start_date:
+      start_dt = day_start_utc(args.start_date)
+    else:
+      start_dt = now_utc.replace(hour=0, minute=0) - timedelta(days=max(1, args.days))
 
-  if args.end_date:
-    end_dt = day_start_utc(args.end_date) + timedelta(days=1)
-  else:
-    end_dt = datetime.now(timezone.utc) + timedelta(minutes=1)
+    if args.end_date:
+      end_dt = day_start_utc(args.end_date) + timedelta(days=1)
+    else:
+      end_dt = now_utc + timedelta(minutes=1)
 
   params = {
     "start_time": to_ts(start_dt),
     "end_time": to_ts(end_dt),
-    "bucket_width": "1d",
+    "bucket_width": args.bucket_width,
     "limit": 90,
   }
 
