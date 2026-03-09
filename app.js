@@ -1275,12 +1275,17 @@ async function renderLatestReportSummary(model) {
   const latest = model.latestReport || (await listReports(1))[0];
   const activeAlerts = (model.alerts || []).filter((a) => a.triggered);
   const weakDims = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 3);
+  const aiInsight = model.latestReportAiInsight || model.aiInsight || {};
+  const aiJson = aiInsight.insight || {};
+  const aiShort = getLang() === "zh" ? asText(aiJson.short_summary_zh) : asText(aiJson.short_summary_en);
 
   root.innerHTML = `
     <div class="summary-score">${round(model.totalScore, 1)}/100 · ${escapeHtml(model.status)}</div>
     <div class="summary-line">${getLang() === "zh" ? "模型更新日" : "Model As-Of"}: ${escapeHtml(model.asOf)}</div>
     <div class="summary-line">${getLang() === "zh" ? "最新报告日期" : "Latest Report Date"}: ${escapeHtml(latest?.date || "--")}</div>
     <div class="summary-line">${getLang() === "zh" ? "简要结论" : "Short Summary"}: ${escapeHtml(
+      aiShort ||
+      aiInsight.short_summary ||
       model.latestReportSummary ||
         (getLang() === "zh"
           ? `当前处于${escapeHtml(model.status)}，重点关注${weakDims.map((d) => d.name).join(" / ")}。`
@@ -1304,6 +1309,28 @@ async function renderLatestReportSummary(model) {
     link.textContent = text;
     watchRoot.appendChild(link);
   });
+}
+
+function renderDailyAiInsight(report) {
+  const root = document.getElementById("daily-ai-insight");
+  const meta = document.getElementById("daily-ai-insight-meta");
+  if (!root) return;
+  const ai = report?.aiInsight || report?.reportPayload?.aiInsight || null;
+  if (!ai) {
+    root.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "暂无 AI 解读数据。" : "No AI interpretation data yet."}</p>`;
+    if (meta) meta.textContent = "--";
+    return;
+  }
+  const insight = ai.insight || ai;
+  const detailed = getLang() === "zh" ? asText(insight.detailed_markdown_zh) : asText(insight.detailed_markdown_en);
+  const shortLine = getLang() === "zh" ? asText(insight.short_summary_zh) : asText(insight.short_summary_en);
+  const modelLabel = asText(ai.model || report?.reportPayload?.aiInsight?.model || "--");
+  const genAt = asText(ai.generated_at || report?.reportPayload?.aiInsight?.generated_at || report?.generatedAt || "--");
+  root.innerHTML = `
+    <div class="summary-line"><strong>${getLang() === "zh" ? "简要结论" : "Short Summary"}:</strong> ${escapeHtml(shortLine || "--")}</div>
+    <pre class="ai-detailed-text">${escapeHtml(detailed || "--")}</pre>
+  `;
+  if (meta) meta.textContent = `${modelLabel} · ${genAt}`;
 }
 
 function groupByTier(bundles) {
@@ -2042,6 +2069,7 @@ async function renderDailyReport(model) {
   const initial = existing?.text || generateDailyText(model, date, null);
   editor.value = initial;
   renderDailyReportPreview(viewModel, date);
+  renderDailyAiInsight(existing || { reportPayload: payload });
 
   renderObjectTable("daily-scores-table", viewModel.tables?.scores || model.tables?.scores || []);
   renderOnlineCheckTable(viewModel.onlineCheck || model.onlineCheck || []);
@@ -2058,6 +2086,7 @@ async function renderDailyReport(model) {
   regenBtn?.addEventListener("click", () => {
     editor.value = generateDailyText(model, date, null);
     renderDailyReportPreview(viewModel, date);
+    renderDailyAiInsight(existing || { reportPayload: payload });
     saveStatus.textContent = getLang() === "zh" ? "草稿已重新生成。" : "Draft regenerated.";
   });
 
@@ -2079,12 +2108,16 @@ async function renderDailyReport(model) {
     editor.value = generateDailyText(targetModel, date, summary);
     renderDailyReportPreview(targetModel, date);
     await saveReport(date, editor.value, { score: round(targetModel.totalScore, 1), status: targetModel.status });
+    existing = await loadReport(date);
+    renderDailyAiInsight(existing || { reportPayload: targetModel });
     renderReportLinks(await listReports());
     saveStatus.textContent = getLang() === "zh" ? "最终报告已生成并保存。" : "Final report generated and saved.";
   });
 
   saveBtn?.addEventListener("click", async () => {
     await saveReport(date, editor.value, { score: round(model.totalScore, 1), status: model.status });
+    existing = await loadReport(date);
+    renderDailyAiInsight(existing || { reportPayload: payload });
     renderReportLinks(await listReports());
     saveStatus.textContent = getLang() === "zh" ? "已保存。" : "Saved.";
   });

@@ -135,6 +135,22 @@ def init_db():
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS daily_report_ai_insights (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      report_date TEXT UNIQUE NOT NULL,
+      short_summary TEXT,
+      detailed_text TEXT,
+      insight_json TEXT,
+      status TEXT,
+      model TEXT,
+      prompt_version TEXT,
+      generated_at TEXT,
+      error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_daily_report_ai_insights_date ON daily_report_ai_insights(report_date);
     """
   )
   conn.commit()
@@ -497,6 +513,86 @@ def get_api_key(service: str):
   if not row:
     return ""
   return str(row["api_key"] or "").strip()
+
+
+def upsert_daily_report_ai_insight(
+  report_date: str,
+  short_summary: str = "",
+  detailed_text: str = "",
+  insight=None,
+  status: str = "ok",
+  model: str = "",
+  prompt_version: str = "",
+  generated_at: str = "",
+  error: str = "",
+):
+  conn = get_conn()
+  ts = now_iso()
+  insight_json = json.dumps(insight or {}, ensure_ascii=False)
+  conn.execute(
+    """
+    INSERT INTO daily_report_ai_insights
+    (report_date, short_summary, detailed_text, insight_json, status, model, prompt_version, generated_at, error, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(report_date) DO UPDATE SET
+      short_summary=excluded.short_summary,
+      detailed_text=excluded.detailed_text,
+      insight_json=excluded.insight_json,
+      status=excluded.status,
+      model=excluded.model,
+      prompt_version=excluded.prompt_version,
+      generated_at=excluded.generated_at,
+      error=excluded.error,
+      updated_at=excluded.updated_at
+    """,
+    (
+      str(report_date or "").strip(),
+      str(short_summary or ""),
+      str(detailed_text or ""),
+      insight_json,
+      str(status or "").strip() or "ok",
+      str(model or "").strip(),
+      str(prompt_version or "").strip(),
+      str(generated_at or "").strip() or ts,
+      str(error or "")[:500],
+      ts,
+      ts,
+    ),
+  )
+  conn.commit()
+  conn.close()
+
+
+def get_daily_report_ai_insight(report_date: str):
+  conn = get_conn()
+  row = conn.execute(
+    """
+    SELECT report_date, short_summary, detailed_text, insight_json, status, model, prompt_version, generated_at, error
+    FROM daily_report_ai_insights
+    WHERE report_date = ?
+    LIMIT 1
+    """,
+    (str(report_date or "").strip(),),
+  ).fetchone()
+  conn.close()
+  if not row:
+    return None
+  insight = {}
+  try:
+    insight = json.loads(row["insight_json"]) if row["insight_json"] else {}
+  except Exception:
+    insight = {}
+  return {
+    "report_date": row["report_date"],
+    "short_summary": row["short_summary"] or "",
+    "detailed_text": row["detailed_text"] or "",
+    "insight": insight,
+    "status": row["status"] or "",
+    "model": row["model"] or "",
+    "prompt_version": row["prompt_version"] or "",
+    "generated_at": row["generated_at"] or "",
+    "error": row["error"] or "",
+  }
 
 
 def get_page_visit_daily(days: int = 30):

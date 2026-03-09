@@ -7,11 +7,13 @@ import math
 import os
 import ssl
 import sys
+import time
 from math import ceil
 from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+import urllib.error
 
 from openpyxl import load_workbook
 
@@ -30,7 +32,15 @@ if not os.environ.get("MACRO_DB_PATH") and ENV_FILE.exists():
     except Exception:
         pass
 sys.path.insert(0, str(ROOT / "server"))
-from db import get_api_key, init_db, log_token_usage, replace_sheet_rows, save_model_snapshot, upsert_daily_report
+from db import (
+    get_api_key,
+    init_db,
+    log_token_usage,
+    replace_sheet_rows,
+    save_model_snapshot,
+    upsert_daily_report,
+    upsert_daily_report_ai_insight,
+)
 
 MODEL_PATH = ROOT / "model.xlsx"
 REPORTS_DIR = ROOT / "reports"
@@ -39,6 +49,11 @@ CTX = ssl._create_unverified_context()
 UPDATE_LOG_PATH = ROOT / "data_update_log.json"
 FRED_API_BASE = "https://api.stlouisfed.org/fred/series/observations"
 _FRED_KEY_CACHE = None
+_OPENAI_KEY_CACHE = None
+OPENAI_MODEL = str(os.environ.get("OPENAI_MODEL", "gpt-5.4")).strip()
+OPENAI_BASE_URL = str(os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")).strip().rstrip("/")
+OPENAI_MAX_RETRIES = max(1, int(os.environ.get("OPENAI_MAX_RETRIES", "2")))
+AI_PROMPT_VERSION = "daily_report_v1"
 
 
 def fetch_text(url: str) -> str:
@@ -49,6 +64,16 @@ def fetch_text(url: str) -> str:
 
 def fetch_json(url: str):
     return json.loads(fetch_text(url))
+
+
+def post_json(url: str, payload: dict, headers=None):
+    req = Request(url, method="POST")
+    req.add_header("Content-Type", "application/json")
+    for k, v in (headers or {}).items():
+        req.add_header(k, v)
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    with urlopen(req, body, timeout=60, context=CTX) as resp:
+        return json.loads(resp.read().decode("utf-8", errors="ignore"))
 
 
 def get_fred_api_key():
@@ -65,6 +90,140 @@ def get_fred_api_key():
         key = ""
     _FRED_KEY_CACHE = key
     return _FRED_KEY_CACHE
+
+
+def get_openai_api_key():
+    global _OPENAI_KEY_CACHE
+    if _OPENAI_KEY_CACHE is not None:
+        return _OPENAI_KEY_CACHE
+    key = str(os.environ.get("OPENAI_API_KEY", "")).strip()
+    if key:
+        _OPENAI_KEY_CACHE = key
+        return _OPENAI_KEY_CACHE
+    try:
+        key = str(get_api_key("openai") or "").strip()
+    except Exception:
+        key = ""
+    _OPENAI_KEY_CACHE = key
+    return _OPENAI_KEY_CACHE
+
+
+def _extract_chat_text(resp: dict):
+    if not isinstance(resp, dict):
+        return ""
+    choices = resp.get("choices") or []
+    if not choices:
+        return ""
+    msg = choices[0].get("message") or {}
+    return str(msg.get("content") or "").strip()
+
+
+def build_local_ai_insight(today, total_score, model_status, top_dimension_contributors, failed_count, short_summary):
+    top = [str(x.get("name") or x.get("id") or "--") for x in (top_dimension_contributors or [])[:3]]
+    short_zh = f"{today} 总分 {total_score}（{model_status}），重点关注 {', '.join(top) if top else '关键维度'}。"
+    short_en = f"{today} score {total_score} ({model_status}); focus on {', '.join(top) if top else 'key dimensions'}."
+    detailed_zh = (
+        f"## 总览\n- 日期: {today}\n- 综合得分: {total_score}\n- 状态: {model_status}\n\n"
+        f"## 结构解读\n- 主要贡献维度: {', '.join(top) if top else '--'}\n- 数据更新失败指标数: {failed_count}\n\n"
+        f"## 结论\n- {short_summary}"
+    )
+    detailed_en = (
+        f"## Overview\n- Date: {today}\n- Composite score: {total_score}\n- Regime: {model_status}\n\n"
+        f"## Structure\n- Top contributing dimensions: {', '.join(top) if top else '--'}\n- Failed indicators in online refresh: {failed_count}\n\n"
+        f"## Conclusion\n- {short_summary}"
+    )
+    return {
+        "short_summary_zh": short_zh,
+        "short_summary_en": short_en,
+        "detailed_markdown_zh": detailed_zh,
+        "detailed_markdown_en": detailed_en,
+        "key_risks": [],
+        "action_items": [],
+    }, "local-fallback", ""
+
+
+def generate_ai_insight(
+    today,
+    generated_at,
+    total_score,
+    model_status,
+    top_dimension_contributors,
+    trigger_alerts,
+    key_indicators_snapshot,
+    indicator_details,
+    short_summary,
+):
+    api_key = get_openai_api_key()
+    if not api_key:
+        return build_local_ai_insight(
+            today, total_score, model_status, top_dimension_contributors, len(indicator_details or []), short_summary
+        )
+
+    compact_failed = [
+        {
+            "code": x.get("IndicatorCode"),
+            "name": x.get("IndicatorName"),
+            "valueDate": x.get("ValueDate"),
+            "status": x.get("VerificationStatus"),
+            "error": x.get("VerificationError"),
+        }
+        for x in (indicator_details or [])
+        if not bool(x.get("VerifiedOnline"))
+    ][:15]
+    compact_context = {
+        "date": today,
+        "generatedAt": generated_at,
+        "totalScore": total_score,
+        "status": model_status,
+        "topDimensions": (top_dimension_contributors or [])[:6],
+        "triggeredAlerts": [x for x in (trigger_alerts or []) if x.get("triggered")][:10],
+        "keyIndicatorsSnapshot": (key_indicators_snapshot or [])[:10],
+        "failedIndicators": compact_failed,
+        "baseSummary": short_summary,
+    }
+    system_text = (
+        "You are a macro risk analyst. Return STRICT JSON only with keys: "
+        "short_summary_zh, short_summary_en, detailed_markdown_zh, detailed_markdown_en, key_risks, action_items. "
+        "short_summary fields <= 120 Chinese chars / <= 220 English chars. "
+        "Detailed markdown should be concise and data-grounded. Do not fabricate unavailable values."
+    )
+    user_text = f"Context JSON:\n{json.dumps(compact_context, ensure_ascii=False)}"
+    body = {
+        "model": OPENAI_MODEL,
+        "temperature": 0.2,
+        "messages": [
+            {"role": "system", "content": system_text},
+            {"role": "user", "content": user_text},
+        ],
+    }
+
+    last_err = ""
+    for i in range(OPENAI_MAX_RETRIES):
+        try:
+            resp = post_json(
+                f"{OPENAI_BASE_URL}/chat/completions",
+                body,
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            txt = _extract_chat_text(resp)
+            parsed = json.loads(txt)
+            if isinstance(parsed, dict) and parsed.get("short_summary_zh") and parsed.get("detailed_markdown_zh"):
+                return parsed, OPENAI_MODEL, ""
+            last_err = "invalid_json_shape"
+        except urllib.error.HTTPError as he:
+            last_err = f"http_{he.code}"
+            if he.code == 429 and i < OPENAI_MAX_RETRIES - 1:
+                time.sleep(1.2 * (i + 1))
+                continue
+        except Exception as e:
+            last_err = str(e)[:180]
+        if i < OPENAI_MAX_RETRIES - 1:
+            time.sleep(0.8 * (i + 1))
+
+    fallback, model_name, _ = build_local_ai_insight(
+        today, total_score, model_status, top_dimension_contributors, len(compact_failed), short_summary
+    )
+    return fallback, model_name, f"openai_failed:{last_err}"
 
 
 def fred_observations(series: str):
@@ -660,6 +819,22 @@ def run(mode="full", report_date=None, strict_freshness=False):
         f"Composite score: {total_score} ({model_status})."
     )
 
+    ai_payload, ai_model, ai_error = generate_ai_insight(
+        today=today,
+        generated_at=generated_at,
+        total_score=total_score,
+        model_status=model_status,
+        top_dimension_contributors=top_dimension_contributors,
+        trigger_alerts=alerts,
+        key_indicators_snapshot=key_indicators_snapshot,
+        indicator_details=indicator_details,
+        short_summary=short_summary,
+    )
+    ai_short_zh = str(ai_payload.get("short_summary_zh") or "").strip()
+    ai_short_en = str(ai_payload.get("short_summary_en") or "").strip()
+    ai_detailed_zh = str(ai_payload.get("detailed_markdown_zh") or "").strip()
+    ai_detailed_en = str(ai_payload.get("detailed_markdown_en") or "").strip()
+
     if strict_freshness and freshness_failures:
         preview = ", ".join(
             [
@@ -756,8 +931,18 @@ def run(mode="full", report_date=None, strict_freshness=False):
             "primaryDrivers": drivers,
             "keyIndicatorsSnapshot": key_indicators_snapshot,
             "all14DimensionsDetailed": all14_dimensions_detailed,
-            "latestReportSummary": short_summary,
+            "latestReportSummary": ai_short_zh or short_summary,
             "indicatorDetails": indicator_details,
+            "aiInsight": {
+                "short_summary_zh": ai_short_zh,
+                "short_summary_en": ai_short_en,
+                "detailed_markdown_zh": ai_detailed_zh,
+                "detailed_markdown_en": ai_detailed_en,
+                "model": ai_model,
+                "prompt_version": AI_PROMPT_VERSION,
+                "generated_at": generated_at,
+                "error": ai_error,
+            },
             "generatedAt": generated_at,
         },
     }
@@ -774,7 +959,7 @@ def run(mode="full", report_date=None, strict_freshness=False):
         "dimensions": [{"name": d["name"], "score": d["score"], "contribution": d["contribution"], "id": d["id"]} for d in dim_summary],
         "drivers": drivers,
         "keyWatch": key_watch,
-        "latestReportSummary": short_summary,
+        "latestReportSummary": ai_short_zh or short_summary,
         "generatedAt": generated_at,
         "topDimensionContributors": top_dimension_contributors,
         "triggerAlerts": alerts,
@@ -829,9 +1014,20 @@ def run(mode="full", report_date=None, strict_freshness=False):
         upsert_daily_report(
             report_date=today,
             text=report_text,
-            meta={"score": total_score, "status": model_status, "summary": short_summary},
+            meta={"score": total_score, "status": model_status, "summary": ai_short_zh or short_summary},
             report_path=f"reports/{today}.html",
             payload=today_entry.get("reportPayload"),
+        )
+        upsert_daily_report_ai_insight(
+            report_date=today,
+            short_summary=ai_short_zh or short_summary,
+            detailed_text=ai_detailed_zh,
+            insight=ai_payload,
+            status="ok" if not ai_error else "fallback",
+            model=ai_model,
+            prompt_version=AI_PROMPT_VERSION,
+            generated_at=generated_at,
+            error=ai_error,
         )
         # Track estimated token usage for the daily generation pipeline.
         # Approximation rule: 1 token ~= 4 characters.

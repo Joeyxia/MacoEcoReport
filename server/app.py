@@ -31,12 +31,14 @@ try:
     get_page_visit_by_path,
     get_token_usage_daily,
     get_token_usage_minute,
+    get_daily_report_ai_insight,
     has_email_event,
     log_page_event,
     log_token_usage,
     save_email_event,
     save_model_snapshot,
     save_online_check,
+    upsert_daily_report_ai_insight,
     upsert_daily_report,
   )
   from .mailer import send_email
@@ -55,12 +57,14 @@ except ImportError:
     get_page_visit_by_path,
     get_token_usage_daily,
     get_token_usage_minute,
+    get_daily_report_ai_insight,
     has_email_event,
     log_page_event,
     log_token_usage,
     save_email_event,
     save_model_snapshot,
     save_online_check,
+    upsert_daily_report_ai_insight,
     upsert_daily_report,
   )
   from mailer import send_email
@@ -140,6 +144,8 @@ def _build_model_summary(model, latest_report=None):
   primary_drivers = model.get("primaryDrivers") or model.get("drivers") or []
   report_meta = latest_report.get("meta") if isinstance(latest_report, dict) else {}
   report_date = latest_report.get("date") if isinstance(latest_report, dict) else ""
+  ai = get_daily_report_ai_insight(report_date) if report_date else None
+  short_ai = (ai or {}).get("short_summary") if isinstance(ai, dict) else ""
 
   return {
     "asOf": model.get("asOf") or "",
@@ -150,8 +156,9 @@ def _build_model_summary(model, latest_report=None):
     "primaryDrivers": primary_drivers,
     "keyIndicatorsSnapshot": key_indicators,
     "dailyWatchedItems": watch_items,
-    "latestReportSummary": model.get("latestReportSummary") or report_meta.get("summary") or "",
+    "latestReportSummary": short_ai or model.get("latestReportSummary") or report_meta.get("summary") or "",
     "latestReportDate": report_date or "",
+    "latestReportAiInsight": ai or None,
     "generatedAt": model.get("generatedAt") or "",
   }
 
@@ -964,7 +971,38 @@ def report_by_date(report_date):
     row = _cache_set(cache_key, get_daily_report(report_date))
   if not row:
     return jsonify({"error": "not_found"}), 404
+  row = dict(row)
+  row["aiInsight"] = get_daily_report_ai_insight(report_date) or None
   return _etag_response(row)
+
+
+@app.route("/api/reports/<report_date>/insight", methods=["GET", "POST", "OPTIONS"])
+def report_insight_by_date(report_date):
+  if request.method == "OPTIONS":
+    return ("", 204)
+  date = str(report_date or "").strip()
+  if not date:
+    return jsonify({"error": "missing_date"}), 400
+  if request.method == "GET":
+    row = get_daily_report_ai_insight(date)
+    if not row:
+      return jsonify({"error": "not_found"}), 404
+    return _etag_response(row)
+
+  payload = request.get_json(silent=True) or {}
+  upsert_daily_report_ai_insight(
+    report_date=date,
+    short_summary=str(payload.get("short_summary") or ""),
+    detailed_text=str(payload.get("detailed_text") or ""),
+    insight=payload.get("insight") or {},
+    status=str(payload.get("status") or "ok"),
+    model=str(payload.get("model") or ""),
+    prompt_version=str(payload.get("prompt_version") or ""),
+    generated_at=str(payload.get("generated_at") or ""),
+    error=str(payload.get("error") or ""),
+  )
+  _invalidate_cache("model:summary", f"report:{date}")
+  return jsonify({"ok": True, "report_date": date})
 
 
 @app.route("/api/subscribers", methods=["GET", "POST", "OPTIONS"])
