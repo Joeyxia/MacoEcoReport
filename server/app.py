@@ -93,6 +93,12 @@ OPENAI_MAX_RETRIES = max(1, int(os.environ.get("OPENAI_MAX_RETRIES", "3")))
 OPENAI_FORCE_PRIMARY = str(os.environ.get("OPENAI_FORCE_PRIMARY", "true")).strip().lower() in {"1", "true", "yes", "on"}
 OPENAI_MIN_INTERVAL_SEC = max(0.0, float(os.environ.get("OPENAI_MIN_INTERVAL_SEC", "3.0")))
 OPENAI_MAX_QUEUE_WAIT_SEC = max(1.0, float(os.environ.get("OPENAI_MAX_QUEUE_WAIT_SEC", "20.0")))
+OPENROUTER_USE_PLAYWRIGHT = str(os.environ.get("OPENROUTER_USE_PLAYWRIGHT", "true")).strip().lower() in {"1", "true", "yes", "on"}
+
+try:
+  from playwright.sync_api import sync_playwright
+except Exception:
+  sync_playwright = None
 
 app = Flask(__name__, static_folder=str(ROOT), static_url_path="")
 app.secret_key = os.environ.get("MONITOR_SESSION_SECRET") or base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
@@ -348,16 +354,32 @@ def _fetch_openrouter_rankings(view: str = "week", category: str = "all"):
   path = "/rankings" if safe_category in {"", "all"} else f"/rankings/{urllib.parse.quote(safe_category)}"
   q = urllib.parse.urlencode({"view": safe_view})
   url = f"https://openrouter.ai{path}?{q}"
-  req = urllib.request.Request(
-    url,
-    headers={
-      "User-Agent": "Mozilla/5.0 (NexoMacroMonitor; +https://nexo.hk)",
-      "Accept": "text/html,application/xhtml+xml",
-    },
-    method="GET",
-  )
-  with urllib.request.urlopen(req, timeout=30) as resp:
-    raw = resp.read().decode("utf-8", errors="ignore")
+  raw = ""
+  parse_mode = "html-fallback"
+  if OPENROUTER_USE_PLAYWRIGHT and sync_playwright is not None:
+    try:
+      with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
+        page = browser.new_page()
+        page.goto(url, wait_until="domcontentloaded", timeout=45000)
+        page.wait_for_timeout(2500)
+        raw = page.content() or ""
+        browser.close()
+        parse_mode = "playwright-rendered"
+    except Exception:
+      raw = ""
+
+  if not raw:
+    req = urllib.request.Request(
+      url,
+      headers={
+        "User-Agent": "Mozilla/5.0 (NexoMacroMonitor; +https://nexo.hk)",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+      method="GET",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+      raw = resp.read().decode("utf-8", errors="ignore")
 
   models_hidden = _openrouter_section_to_lines(_extract_openrouter_hidden_section(raw, "S:3", "B:3"))
   apps_hidden = _openrouter_section_to_lines(_extract_openrouter_hidden_section(raw, "S:d", "B:d"))
@@ -377,6 +399,7 @@ def _fetch_openrouter_rankings(view: str = "week", category: str = "all"):
   return {
     "ok": True,
     "sourceUrl": url,
+    "parseMode": parse_mode,
     "view": safe_view,
     "category": safe_category or "all",
     "fetchedAt": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
