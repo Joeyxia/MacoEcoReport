@@ -11,8 +11,8 @@
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
-    <script src="app.js?v=20260309j" defer></script>
+    <link rel="stylesheet" href="styles.css?v=20260309k" />
+    <script src="app.js?v=20260309k" defer></script>
   </head>
   <body data-page="ai-assistant">
     <div class="bg-layer"></div>
@@ -30,22 +30,17 @@
       <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
     </header>
 
-    <main class="page">
-      <section class="panel">
-        <div class="section-head">
-          <h1 data-i18n="ai_assistant_page_title">AI Data Assistant</h1>
-          <p class="subtle" data-i18n="ai_assistant_page_desc">Ask natural-language questions about data freshness, failed indicators, and update status.</p>
-        </div>
-        <div class="ai-query-wrap">
-          <textarea id="ai-query-input" class="search-input" rows="4" data-i18n-placeholder="ai_data_assistant_placeholder" placeholder="e.g. Which indicators failed online verification today and what should I replace them with?"></textarea>
-          <div class="ai-query-actions">
+    <main class="page ai-assistant-page">
+      <section class="panel ai-search-shell">
+        <div class="ai-query-wrap ai-query-wrap-centered">
+          <input id="ai-query-input" class="search-input ai-search-input" type="text" data-i18n-placeholder="ai_data_assistant_placeholder" placeholder="e.g. Which indicators failed online verification today and what should I replace them with?" />
+          <div class="ai-query-actions ai-query-actions-centered">
             <button id="ai-query-submit" class="btn" type="button" data-i18n="ai_data_assistant_submit">Ask AI</button>
           </div>
-          <p id="ai-query-status" class="subtle"></p>
+          <p id="ai-query-status" class="subtle ai-center-text"></p>
           <div id="ai-query-output" class="summary-panel ai-answer"></div>
         </div>
       </section>
     </main>
   </body>
 </html>
-
