@@ -761,6 +761,14 @@ input[type="file"] {
   color: var(--ink-soft);
 }
 
+.site-footnote {
+  margin: 0.35rem 0 0.9rem;
+  text-align: center;
+  font-size: 0.74rem;
+  color: var(--ink-soft);
+  opacity: 0.82;
+}
+
 @media (max-width: 920px) {
   .site-header {
     grid-template-columns: 1fr;

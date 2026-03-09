@@ -499,6 +499,73 @@ def _build_ai_context(model: dict):
   }
 
 
+def _extract_report_date_from_question(question: str):
+  text = str(question or "").strip()
+  m = re.search(r"(\d{4}-\d{2}-\d{2})", text)
+  if m:
+    return m.group(1)
+  m = re.search(r"(\d{1,2})月(\d{1,2})日?", text)
+  if m:
+    cn_now = datetime.now(timezone.utc) + timedelta(hours=8)
+    month = int(m.group(1))
+    day = int(m.group(2))
+    try:
+      return datetime(cn_now.year, month, day).date().isoformat()
+    except Exception:
+      return ""
+  return ""
+
+
+def _build_local_ai_answer(question: str, lang: str, context_payload: dict):
+  target_date = _extract_report_date_from_question(question)
+  report = None
+  if target_date:
+    report = get_daily_report(target_date)
+  if not report:
+    ref_date = str(context_payload.get("reportDate") or context_payload.get("asOf") or "").strip()
+    if ref_date:
+      report = get_daily_report(ref_date)
+  if not report:
+    latest = list_daily_reports(limit=1)
+    report = latest[0] if latest else None
+
+  total_score = context_payload.get("totalScore")
+  regime = context_payload.get("status") or "--"
+  failed_count = len(context_payload.get("failedIndicators") or [])
+  top_dims = context_payload.get("topDimensionContributors") or []
+  top_text = ", ".join([str(x.get("name") or x.get("id") or "--") for x in top_dims[:3]])
+
+  if report:
+    date_text = report.get("date") or context_payload.get("reportDate") or context_payload.get("asOf") or "--"
+    meta = report.get("meta") or {}
+    score_text = meta.get("score") if meta.get("score") is not None else total_score
+    status_text = meta.get("status") or regime
+    summary_text = str(meta.get("summary") or "").strip() or ("暂无摘要" if lang.startswith("zh") else "No summary available")
+  else:
+    date_text = context_payload.get("reportDate") or context_payload.get("asOf") or "--"
+    score_text = total_score
+    status_text = regime
+    summary_text = "暂无可用日报，请先生成日报。" if lang.startswith("zh") else "No daily report is available yet. Please generate one first."
+
+  if lang.startswith("zh"):
+    return (
+      f"日报日期：{date_text}\n"
+      f"综合得分：{score_text}\n"
+      f"状态：{status_text}\n"
+      f"核心摘要：{summary_text}\n"
+      f"主要贡献维度：{top_text or '--'}\n"
+      f"在线校验未通过指标数：{failed_count}"
+    )
+  return (
+    f"Report date: {date_text}\n"
+    f"Composite score: {score_text}\n"
+    f"Regime: {status_text}\n"
+    f"Summary: {summary_text}\n"
+    f"Top contributing dimensions: {top_text or '--'}\n"
+    f"Failed online-verification indicators: {failed_count}"
+  )
+
+
 @app.after_request
 def set_cors(resp):
   resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -889,8 +956,6 @@ def checks():
 def ai_data_query():
   if request.method == "OPTIONS":
     return ("", 204)
-  if not OPENAI_API_KEY:
-    return jsonify({"error": "openai_not_configured"}), 503
   payload = request.get_json(silent=True) or {}
   question = str(payload.get("question") or "").strip()
   lang = str(payload.get("lang") or "zh").strip().lower()
@@ -930,6 +995,19 @@ def ai_data_query():
       {"role": "user", "content": user_text},
     ],
   }
+  if not OPENAI_API_KEY:
+    local_answer = _build_local_ai_answer(question, lang, context_payload)
+    return jsonify(
+      {
+        "ok": True,
+        "answer": local_answer,
+        "model": "local-fallback",
+        "asOf": context_payload.get("asOf"),
+        "generatedAt": context_payload.get("generatedAt"),
+        "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+        "fallback": True,
+      }
+    )
   try:
     resp = _json_post_json(
       f"{OPENAI_BASE_URL}/chat/completions",
@@ -941,6 +1019,8 @@ def ai_data_query():
     input_tokens = int(usage.get("prompt_tokens") or 0)
     output_tokens = int(usage.get("completion_tokens") or 0)
     total_tokens = int(usage.get("total_tokens") or (input_tokens + output_tokens))
+    if not str(text or "").strip():
+      text = _build_local_ai_answer(question, lang, context_payload)
     if total_tokens > 0:
       log_token_usage(
         source="ai_data_query",
@@ -965,7 +1045,19 @@ def ai_data_query():
       }
     )
   except Exception as e:
-    return jsonify({"error": "openai_request_failed", "detail": str(e)[:260]}), 502
+    local_answer = _build_local_ai_answer(question, lang, context_payload)
+    return jsonify(
+      {
+        "ok": True,
+        "answer": local_answer,
+        "model": "local-fallback",
+        "asOf": context_payload.get("asOf"),
+        "generatedAt": context_payload.get("generatedAt"),
+        "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+        "fallback": True,
+        "warning": f"openai_request_failed: {str(e)[:120]}",
+      }
+    )
 
 
 @app.route("/api/openrouter/rankings", methods=["GET"])
