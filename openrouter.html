@@ -12,7 +12,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=20260309p" />
-    <script src="app.js?v=20260309n" defer></script>
+    <script src="app.js?v=20260310a" defer></script>
   </head>
   <body data-page="openrouter">
     <div class="bg-layer"></div>
@@ -36,6 +36,22 @@
           <h1 data-i18n="openrouter_title">OpenRouter Rankings</h1>
           <p class="subtle" data-i18n="openrouter_desc">Live snapshot from openrouter.ai/rankings, including top models and top apps.</p>
         </div>
+        <div class="glossary-controls">
+          <select id="openrouter-view" class="filter-select">
+            <option value="day" data-i18n="openrouter_view_day">Day</option>
+            <option value="week" selected data-i18n="openrouter_view_week">Week</option>
+            <option value="month" data-i18n="openrouter_view_month">Month</option>
+            <option value="all" data-i18n="openrouter_view_all">All</option>
+          </select>
+          <select id="openrouter-category" class="filter-select">
+            <option value="all" selected data-i18n="openrouter_category_all">All Categories</option>
+            <option value="roleplay">Roleplay</option>
+            <option value="coding">Coding</option>
+            <option value="reasoning">Reasoning</option>
+            <option value="translation">Translation</option>
+          </select>
+          <button id="openrouter-refresh" class="btn ghost" type="button" data-i18n="openrouter_refresh">Refresh</button>
+        </div>
         <p id="openrouter-updated" class="subtle">--</p>
         <p id="openrouter-source" class="subtle"></p>
       </section>
@@ -48,6 +64,17 @@
         <article class="panel">
           <h2 data-i18n="openrouter_apps">Top Apps</h2>
           <div id="openrouter-apps" class="table-wrap"></div>
+        </article>
+      </section>
+
+      <section class="grid two-col">
+        <article class="panel">
+          <h2 data-i18n="openrouter_providers">Top Providers</h2>
+          <div id="openrouter-providers" class="table-wrap"></div>
+        </article>
+        <article class="panel">
+          <h2 data-i18n="openrouter_prompts">Top Prompts</h2>
+          <div id="openrouter-prompts" class="table-wrap"></div>
         </article>
       </section>
     </main>

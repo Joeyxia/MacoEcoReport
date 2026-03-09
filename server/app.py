@@ -341,8 +341,13 @@ def _parse_openrouter_section(lines, start_label: str, stop_labels, with_share: 
   return _parse_openrouter_ranked_lines(section, with_share=with_share)
 
 
-def _fetch_openrouter_rankings():
-  url = "https://openrouter.ai/rankings"
+def _fetch_openrouter_rankings(view: str = "week", category: str = "all"):
+  allowed_views = {"day", "week", "month", "all"}
+  safe_view = view if view in allowed_views else "week"
+  safe_category = (category or "all").strip().lower()
+  path = "/rankings" if safe_category in {"", "all"} else f"/rankings/{urllib.parse.quote(safe_category)}"
+  q = urllib.parse.urlencode({"view": safe_view})
+  url = f"https://openrouter.ai{path}?{q}"
   req = urllib.request.Request(
     url,
     headers={
@@ -359,18 +364,26 @@ def _fetch_openrouter_rankings():
 
   models = _parse_openrouter_ranked_lines(models_hidden, with_share=True) if models_hidden else []
   apps = _parse_openrouter_ranked_lines(apps_hidden, with_share=False) if apps_hidden else []
-  if not models or not apps:
+  prompts = []
+  providers = []
+  if not models or not apps or not prompts or not providers:
     lines = _normalize_openrouter_text(raw)
     if not models:
       models = _parse_openrouter_section(lines, "Top Models", ("Top Apps", "Top Prompts", "Top Providers"), with_share=True)
     if not apps:
       apps = _parse_openrouter_section(lines, "Top Apps", ("Top Prompts", "Top Providers", "API", "Developer Docs"), with_share=False)
+    prompts = _parse_openrouter_section(lines, "Top Prompts", ("Top Providers", "Top Apps", "API", "Developer Docs"), with_share=True)
+    providers = _parse_openrouter_section(lines, "Top Providers", ("Top Prompts", "Top Apps", "API", "Developer Docs"), with_share=True)
   return {
     "ok": True,
     "sourceUrl": url,
+    "view": safe_view,
+    "category": safe_category or "all",
     "fetchedAt": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
     "models": models,
     "apps": apps,
+    "providers": providers,
+    "prompts": prompts,
   }
 
 
@@ -1274,12 +1287,14 @@ def ai_data_query():
 
 @app.route("/api/openrouter/rankings", methods=["GET"])
 def openrouter_rankings():
-  cache_key = "openrouter:rankings"
+  view = str(request.args.get("view") or "week").strip().lower()
+  category = str(request.args.get("category") or "all").strip().lower()
+  cache_key = f"openrouter:rankings:{view}:{category}"
   cached = _cache_get(cache_key)
   if cached:
     return _etag_response(cached)
   try:
-    payload = _fetch_openrouter_rankings()
+    payload = _fetch_openrouter_rankings(view=view, category=category)
     return _etag_response(_cache_set(cache_key, payload))
   except Exception as e:
     stale = _cache_get(cache_key)

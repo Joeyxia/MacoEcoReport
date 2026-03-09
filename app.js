@@ -14,6 +14,7 @@ let dashboardWorkbookObserver = null;
 let dashboardWorkbookLoaded = false;
 let dashboardWorkbookLoading = false;
 let dashboardTableObservers = [];
+let openrouterControlsBound = false;
 const dashboardTableLoaded = {
   dimensions: false,
   inputs: false,
@@ -98,8 +99,16 @@ const i18n = {
     openrouter_desc: "Live snapshot from openrouter.ai/rankings, including top models and top apps.",
     openrouter_models: "Top Models",
     openrouter_apps: "Top Apps",
+    openrouter_providers: "Top Providers",
+    openrouter_prompts: "Top Prompts",
     openrouter_updated: "Fetched At",
     openrouter_source: "Source",
+    openrouter_view_day: "Day",
+    openrouter_view_week: "Week",
+    openrouter_view_month: "Month",
+    openrouter_view_all: "All",
+    openrouter_category_all: "All Categories",
+    openrouter_refresh: "Refresh",
     indicator_verification_status: "Indicator Verification Status",
     data_generated_at: "Data Generated At",
     signal_guide: "Signal Interpretation Guide",
@@ -177,8 +186,16 @@ const i18n = {
     openrouter_desc: "来自 openrouter.ai/rankings 的实时快照，展示 Top Models 与 Top Apps。",
     openrouter_models: "热门模型",
     openrouter_apps: "热门应用",
+    openrouter_providers: "热门提供方",
+    openrouter_prompts: "热门提示词",
     openrouter_updated: "抓取时间",
     openrouter_source: "来源",
+    openrouter_view_day: "日",
+    openrouter_view_week: "周",
+    openrouter_view_month: "月",
+    openrouter_view_all: "全部",
+    openrouter_category_all: "全部分类",
+    openrouter_refresh: "刷新",
     indicator_verification_status: "指标在线校验状态",
     data_generated_at: "数据生成时间",
     signal_guide: "信号解读指南",
@@ -2917,18 +2934,33 @@ function renderIndicatorsPage(model) {
 async function renderOpenRouterPage() {
   renderTableLoading("openrouter-models");
   renderTableLoading("openrouter-apps");
+  renderTableLoading("openrouter-providers");
+  renderTableLoading("openrouter-prompts");
   const updated = document.getElementById("openrouter-updated");
   const source = document.getElementById("openrouter-source");
+  const viewSel = document.getElementById("openrouter-view");
+  const catSel = document.getElementById("openrouter-category");
+  const refreshBtn = document.getElementById("openrouter-refresh");
 
-  const payload = await apiFetch("/api/openrouter/rankings");
+  const view = asText(viewSel?.value) || "week";
+  const category = asText(catSel?.value) || "all";
+  const query = `?view=${encodeURIComponent(view)}&category=${encodeURIComponent(category)}`;
+
+  const payload = await apiFetch(`/api/openrouter/rankings${query}`);
   if (!payload?.ok) {
     const msg = getLang() === "zh" ? "暂时无法获取 OpenRouter 排行数据。" : "Unable to fetch OpenRouter rankings for now.";
     renderObjectTable("openrouter-models", []);
     renderObjectTable("openrouter-apps", []);
+    renderObjectTable("openrouter-providers", []);
+    renderObjectTable("openrouter-prompts", []);
     const m = document.getElementById("openrouter-models");
     const a = document.getElementById("openrouter-apps");
+    const p = document.getElementById("openrouter-providers");
+    const pr = document.getElementById("openrouter-prompts");
     if (m) m.innerHTML = `<p class="table-empty">${escapeHtml(msg)}</p>`;
     if (a) a.innerHTML = `<p class="table-empty">${escapeHtml(msg)}</p>`;
+    if (p) p.innerHTML = `<p class="table-empty">${escapeHtml(msg)}</p>`;
+    if (pr) pr.innerHTML = `<p class="table-empty">${escapeHtml(msg)}</p>`;
     return;
   }
 
@@ -2971,9 +3003,58 @@ async function renderOpenRouterPage() {
           Tokens: x.tokens || "--"
         }
   );
+  const providerRows = (payload.providers || []).map((x) =>
+    zh
+      ? {
+          排名: x.rank,
+          提供方: x.name,
+          负责人: x.creator || "--",
+          用量: x.tokens || "--",
+          占比: x.share || "--"
+        }
+      : {
+          Rank: x.rank,
+          Provider: x.name,
+          Owner: x.creator || "--",
+          Tokens: x.tokens || "--",
+          Share: x.share || "--"
+        }
+  );
+  const promptRows = (payload.prompts || []).map((x) =>
+    zh
+      ? {
+          排名: x.rank,
+          提示词: x.name,
+          作者: x.creator || "--",
+          用量: x.tokens || "--",
+          占比: x.share || "--"
+        }
+      : {
+          Rank: x.rank,
+          Prompt: x.name,
+          Author: x.creator || "--",
+          Tokens: x.tokens || "--",
+          Share: x.share || "--"
+        }
+  );
 
   renderObjectTable("openrouter-models", modelRows);
   renderObjectTable("openrouter-apps", appRows);
+  renderObjectTable("openrouter-providers", providerRows);
+  renderObjectTable("openrouter-prompts", promptRows);
+
+  if (!openrouterControlsBound) {
+    openrouterControlsBound = true;
+    viewSel?.addEventListener("change", () => {
+      renderOpenRouterPage();
+    });
+    catSel?.addEventListener("change", () => {
+      renderOpenRouterPage();
+    });
+    refreshBtn?.addEventListener("click", () => {
+      renderOpenRouterPage();
+    });
+  }
 }
 
 async function loadDefaultWorkbook() {
