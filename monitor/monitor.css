@@ -418,29 +418,66 @@ canvas {
   max-height: 300px;
 }
 
-.tool-actions {
+body[data-page="data-tool"] .report-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
+  gap: 8px;
   margin-bottom: 12px;
+  align-items: center;
 }
 
-.tool-editor {
-  width: 100%;
-  min-height: 420px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px;
-  font: inherit;
-  color: var(--ink);
-  background: #fff;
-}
-
-.check-inline {
+body[data-page="data-tool"] .check-row {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+}
+
+body[data-page="data-tool"] .report-editor {
+  width: 100%;
+  min-height: 420px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 12px;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  resize: vertical;
+  background: #fff;
+  color: var(--ink);
+}
+
+body[data-page="data-tool"] .table-wrap {
+  overflow: auto;
+  max-height: 360px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+body[data-page="data-tool"] .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  table-layout: fixed;
+}
+
+body[data-page="data-tool"] .data-table th,
+body[data-page="data-tool"] .data-table td {
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid rgba(19, 36, 44, 0.08);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  white-space: normal;
+  word-break: break-word;
+}
+
+body[data-page="data-tool"] .data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f2f6f8;
+  font-weight: 600;
 }
 
 @keyframes glow-move {

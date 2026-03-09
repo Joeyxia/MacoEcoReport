@@ -11,7 +11,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./monitor.css" />
-    <script defer src="./monitor.js?v=20260309dt2"></script>
+    <script defer src="./monitor.js?v=20260309dt3"></script>
   </head>
   <body data-page="data-tool">
     <div class="bg-layer"></div>
@@ -26,28 +26,26 @@
       <div class="userbox"><span id="user-email"></span><button id="logout-btn" class="btn ghost">Logout</button></div>
     </header>
 
-    <main class="page wrap">
+    <main class="page page-report wrap">
       <section class="panel">
-        <h2>数据生成工具</h2>
-        <div class="tool-actions">
-          <button id="tool-generate-report" class="btn">重新生成草稿</button>
-          <button id="tool-finalize-report" class="btn">生成最终报告</button>
-          <button id="tool-save-report" class="btn ghost">保存</button>
-          <button id="tool-download-report" class="btn ghost">下载 .txt</button>
-          <label class="muted check-inline" for="tool-run-online-check">
-            <input id="tool-run-online-check" type="checkbox" checked />
+        <div class="report-actions">
+          <button id="generate-report" class="btn">重新生成草稿</button>
+          <button id="finalize-report" class="btn">生成最终报告</button>
+          <button id="save-report" class="btn ghost">保存</button>
+          <button id="download-report" class="btn ghost">下载 .txt</button>
+          <label class="check-row muted" for="run-online-check">
+            <input id="run-online-check" type="checkbox" checked />
             <span>生成最终报告前执行在线数据校验</span>
           </label>
-          <span id="tool-save-status" class="muted"></span>
+          <span id="save-status" class="muted"></span>
         </div>
-        <textarea id="tool-report-editor" class="tool-editor" spellcheck="false"></textarea>
+        <textarea id="report-editor" class="report-editor" spellcheck="false"></textarea>
       </section>
 
       <section class="panel">
         <h2>在线数据校验结果</h2>
-        <div id="tool-online-check-table"></div>
+        <div id="online-check-table" class="table-wrap"></div>
       </section>
     </main>
   </body>
 </html>
-

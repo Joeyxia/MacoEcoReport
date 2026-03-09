@@ -36,6 +36,26 @@ function tableFromRows(rows){
   return `<div class="table"><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
 }
 
+function objectRowsToColumns(rows){
+  const cols = new Set();
+  (rows || []).forEach((row)=>Object.keys(row || {}).forEach((k)=>cols.add(k)));
+  return [...cols];
+}
+
+function renderObjectTable(targetId, rows){
+  const root = q(targetId);
+  if(!root) return;
+  const dataRows = Array.isArray(rows) ? rows : [];
+  const columns = objectRowsToColumns(dataRows);
+  if(!dataRows.length || !columns.length){
+    root.innerHTML = '<p class="muted">暂无数据。</p>';
+    return;
+  }
+  const head = `<thead><tr>${columns.map((c)=>`<th>${c}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${dataRows.map((row)=>`<tr>${columns.map((c)=>`<td>${asText(row[c])}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  root.innerHTML = `<table class="data-table">${head}${body}</table>`;
+}
+
 function asText(v){ return v == null ? '' : String(v); }
 function round(v, d = 1){
   const n = Number(v);
@@ -127,10 +147,23 @@ async function runOnlineDataCheckForTool(model){
   return { checked, updated, failed, results };
 }
 
-function renderToolOnlineCheck(rows){
-  const root = q('tool-online-check-table');
-  if(!root) return;
-  root.innerHTML = tableFromRows(rows || []);
+function renderOnlineCheckTableForTool(rows){
+  const mapped = (rows || []).map((row)=>({
+    指标: asText(row.indicator || row['指标']),
+    来源: asText(row.source || row['来源']),
+    序列: asText(row.series || row['序列']),
+    状态: asText(row.status || row['状态']),
+    最新日期: asText(row.latestDate || row['最新日期']),
+    最新值: asText(row.latestValue || row['最新值']),
+    错误: asText(row.error || row['错误'])
+  }));
+  renderObjectTable('online-check-table', mapped);
+}
+
+function getReportDateFromUrl(){
+  const p = new URLSearchParams(location.search);
+  const d = p.get('date');
+  return /^\d{4}-\d{2}-\d{2}$/.test(asText(d)) ? d : todayISO();
 }
 
 async function requireAuth(){
@@ -278,22 +311,20 @@ async function initFormDetail(){
 async function initDataTool(){
   if(!(await requireAuth())) return;
   setupLogout();
-  const editor = q('tool-report-editor');
-  const saveStatus = q('tool-save-status');
-  const btnGen = q('tool-generate-report');
-  const btnFinal = q('tool-finalize-report');
-  const btnSave = q('tool-save-report');
-  const btnDl = q('tool-download-report');
-  const runCheck = q('tool-run-online-check');
+  const editor = q('report-editor');
+  const saveStatus = q('save-status');
+  const btnGen = q('generate-report');
+  const btnFinal = q('finalize-report');
+  const btnSave = q('save-report');
+  const btnDl = q('download-report');
+  const runCheck = q('run-online-check');
   if(!editor) return;
 
-  const date = todayISO();
+  const date = getReportDateFromUrl();
   const model = await api.get('/api/model/current?view=core') || await api.get('/api/model/current') || {};
   const existing = await api.get(`/api/reports/${encodeURIComponent(date)}`);
   editor.value = asText(existing?.text) || generateToolDraft(model, date, null);
-  renderToolOnlineCheck((model.onlineCheck || []).map((r)=>({
-    指标: r.indicator, 来源: r.source, 序列: r.series, 状态: r.status, 最新日期: r.latestDate, 最新值: r.latestValue, 错误: r.error || ''
-  })));
+  renderOnlineCheckTableForTool(model.onlineCheck || []);
 
   btnGen?.addEventListener('click', async()=>{
     const m = await api.get('/api/model/current?view=core') || model;
@@ -307,7 +338,7 @@ async function initDataTool(){
     if(runCheck?.checked){
       if(saveStatus) saveStatus.textContent = '正在执行在线数据校验...';
       summary = await runOnlineDataCheckForTool(m);
-      renderToolOnlineCheck(summary.results);
+      renderOnlineCheckTableForTool(summary.results);
       await api.post('/api/checks', { checkedAt: new Date().toISOString(), summary, rows: summary.results });
     }
     editor.value = generateToolDraft(m, date, summary);
