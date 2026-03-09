@@ -389,7 +389,7 @@ async function initDataTool(){
   if(!editor) return;
 
   const date = getReportDateFromUrl();
-  const model = await dataGet('/api/model/current?view=core') || await dataGet('/api/model/current') || {};
+  const model = await dataGet('/api/model/current') || await dataGet('/api/model/current?view=core') || {};
   const existing = await dataGet(`/api/reports/${encodeURIComponent(date)}`);
   const reports = await dataGet('/api/reports?limit=30');
   const latestCheck = await dataGet('/api/checks/latest');
@@ -398,13 +398,13 @@ async function initDataTool(){
   renderToolReportLinks(reports?.reports || []);
 
   btnGen?.addEventListener('click', async()=>{
-    const m = await dataGet('/api/model/current?view=core') || model;
+    const m = await dataGet('/api/model/current') || model;
     editor.value = generateToolDraft(m, date, null);
     if(saveStatus) saveStatus.textContent = '草稿已重新生成。';
   });
 
   btnFinal?.addEventListener('click', async()=>{
-    const m = await dataGet('/api/model/current?view=core') || model;
+    const m = await dataGet('/api/model/current') || model;
     let summary = null;
     if(runCheck?.checked){
       if(saveStatus) saveStatus.textContent = '正在执行在线数据校验...';
@@ -423,7 +423,7 @@ async function initDataTool(){
   });
 
   btnSave?.addEventListener('click', async()=>{
-    const m = await dataGet('/api/model/current?view=core') || model;
+    const m = await dataGet('/api/model/current') || model;
     const payload = { date, text: editor.value, meta: { score: round(m.totalScore || 0,1), status: asText(m.status || '') }, path: `reports/${date}.html` };
     const res = await dataPost('/api/reports', payload);
     if(res?.ok){
