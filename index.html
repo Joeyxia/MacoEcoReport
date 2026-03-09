@@ -138,6 +138,33 @@
         background: linear-gradient(120deg, rgba(56, 217, 255, 0.28), rgba(56, 217, 255, 0.12));
       }
 
+      .human-check {
+        margin: 0 auto 18px;
+        width: min(420px, 90vw);
+        display: grid;
+        gap: 8px;
+      }
+
+      .human-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+      }
+
+      .human-input {
+        border: 1px solid rgba(56, 217, 255, 0.45);
+        border-radius: 999px;
+        background: rgba(8, 20, 40, 0.45);
+        color: #d9f7ff;
+        font-size: 14px;
+        padding: 10px 14px;
+        outline: none;
+      }
+
+      .human-input::placeholder {
+        color: rgba(217, 247, 255, 0.6);
+      }
+
       @keyframes rise {
         from {
           opacity: 0;
@@ -176,9 +203,54 @@
         <span class="brand">Nexo Macro Intelligence</span>
         <h1 class="slogan">Signal Before the Storm</h1>
         <p class="sub">Track global macro risk with a 14-dimension monitoring model.</p>
-        <a class="btn" href="dashboard.html">Enter Dashboard</a>
+        <div class="human-check">
+          <label id="human-question">Human Verification</label>
+          <div class="human-row">
+            <input id="human-answer" class="human-input" type="text" placeholder="Enter answer" autocomplete="off" />
+            <button id="human-verify" class="btn" type="button" style="min-width: 120px; height: 44px">Verify</button>
+          </div>
+        </div>
+        <a id="enter-dashboard" class="btn" href="dashboard.html" aria-disabled="true" style="pointer-events:none;opacity:0.55">Enter Dashboard</a>
       </section>
     </main>
     <footer class="footer-note">由 Nexo Marco Intelligence 提供支持</footer>
+    <script>
+      (function () {
+        var q = document.getElementById("human-question");
+        var a = document.getElementById("human-answer");
+        var v = document.getElementById("human-verify");
+        var enter = document.getElementById("enter-dashboard");
+        if (!q || !a || !v || !enter) return;
+        var answer = 0;
+        function reset() {
+          var x = Math.floor(Math.random() * 8) + 1;
+          var y = Math.floor(Math.random() * 8) + 1;
+          answer = x + y;
+          q.textContent = "Human Verification: " + x + " + " + y + " = ?";
+          a.value = "";
+        }
+        function pass() {
+          sessionStorage.setItem("nexo_human_verified", "1");
+          q.textContent = "Verification passed";
+          enter.style.pointerEvents = "auto";
+          enter.style.opacity = "1";
+          enter.setAttribute("aria-disabled", "false");
+        }
+        if (sessionStorage.getItem("nexo_human_verified") === "1") {
+          pass();
+          return;
+        }
+        reset();
+        v.addEventListener("click", function () {
+          var val = Number(String(a.value || "").trim());
+          if (Number.isFinite(val) && val === answer) {
+            pass();
+            return;
+          }
+          q.textContent = "Wrong answer, try again";
+          reset();
+        });
+      })();
+    </script>
   </body>
 </html>

@@ -1,33 +1,34 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nexo Monitor | Data Forms</title>
+    <title>Nexo Monitor | 数据表单</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./monitor.css?v=20260309m2" />
-    <script defer src="./monitor.js?v=20260309dt6"></script>
+    <link rel="stylesheet" href="./monitor.css?v=20260309m3" />
+    <script defer src="./monitor.js?v=20260309dt9"></script>
   </head>
   <body data-page="forms">
     <div class="bg-layer"></div>
     <header class="site-header">
       <a class="brand" href="./dashboard.html">Nexo Monitor</a>
       <nav>
-        <a href="./dashboard.html" class="nav-link">Ops Dashboard</a>
-        <a href="./subscribers.html" class="nav-link">Business</a>
-        <a href="./data-tool.html" class="nav-link">数据生成工具</a>
-        <a href="./forms.html" class="nav-link active">Data Forms</a>
+        <a href="./dashboard.html" class="nav-link" data-i18n="nav_ops">运维看板</a>
+        <a href="./subscribers.html" class="nav-link" data-i18n="nav_business">业务运营</a>
+        <a href="./data-tool.html" class="nav-link" data-i18n="nav_tool">数据生成工具</a>
+        <a href="./forms.html" class="nav-link active" data-i18n="nav_forms">数据表单</a>
       </nav>
-      <div class="userbox"><span id="user-email"></span><button id="logout-btn" class="btn ghost">Logout</button></div>
+      <div class="userbox"><span id="user-email"></span><button id="logout-btn" class="btn ghost" data-i18n="logout">退出</button></div>
+      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">EN</button>
     </header>
     <main class="page wrap">
       <section class="panel">
-        <h2>Data Form Directory</h2>
+        <h2 data-i18n="forms_title">数据表单目录</h2>
         <div id="forms-list" class="list"></div>
       </section>
     </main>

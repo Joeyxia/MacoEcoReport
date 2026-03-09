@@ -10,32 +10,33 @@
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./monitor.css?v=20260309m2" />
-    <script defer src="./monitor.js?v=20260309dt8"></script>
+    <link rel="stylesheet" href="./monitor.css?v=20260309m3" />
+    <script defer src="./monitor.js?v=20260309dt9"></script>
   </head>
   <body data-page="data-tool">
     <div class="bg-layer"></div>
     <header class="site-header">
       <a class="brand" href="./dashboard.html">Nexo Monitor</a>
       <nav>
-        <a href="./dashboard.html" class="nav-link">Ops Dashboard</a>
-        <a href="./subscribers.html" class="nav-link">Business</a>
-        <a href="./data-tool.html" class="nav-link active">数据生成工具</a>
-        <a href="./forms.html" class="nav-link">Data Forms</a>
+        <a href="./dashboard.html" class="nav-link" data-i18n="nav_ops">运维看板</a>
+        <a href="./subscribers.html" class="nav-link" data-i18n="nav_business">业务运营</a>
+        <a href="./data-tool.html" class="nav-link active" data-i18n="nav_tool">数据生成工具</a>
+        <a href="./forms.html" class="nav-link" data-i18n="nav_forms">数据表单</a>
       </nav>
-      <div class="userbox"><span id="user-email"></span><button id="logout-btn" class="btn ghost">Logout</button></div>
+      <div class="userbox"><span id="user-email"></span><button id="logout-btn" class="btn ghost" data-i18n="logout">退出</button></div>
+      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">EN</button>
     </header>
 
     <main class="page page-report wrap">
       <section class="panel">
         <div class="report-actions">
-          <button id="generate-report" class="btn">重新生成草稿</button>
-          <button id="finalize-report" class="btn">生成最终报告</button>
-          <button id="save-report" class="btn ghost">保存</button>
-          <button id="download-report" class="btn ghost">下载 .txt</button>
+          <button id="generate-report" class="btn" data-i18n="tool_regen">重新生成草稿</button>
+          <button id="finalize-report" class="btn" data-i18n="tool_finalize">生成最终报告</button>
+          <button id="save-report" class="btn ghost" data-i18n="tool_save">保存</button>
+          <button id="download-report" class="btn ghost" data-i18n="tool_download">下载 .txt</button>
           <label class="subtle check-row" for="run-online-check">
             <input id="run-online-check" type="checkbox" checked />
-            <span>生成最终报告前执行在线数据校验</span>
+            <span data-i18n="tool_run_check">生成最终报告前执行在线数据校验</span>
           </label>
           <span id="save-status" class="subtle"></span>
         </div>
@@ -44,12 +45,12 @@
 
       <section class="grid two">
         <article class="panel">
-          <h2>每日报告归档</h2>
-          <p class="subtle">每个保存日期都提供直接访问链接。</p>
+          <h2 data-i18n="tool_archive_title">每日报告归档</h2>
+          <p class="subtle" data-i18n="tool_archive_desc">每个保存日期都提供直接访问链接。</p>
           <div id="report-links" class="report-links report-list"></div>
         </article>
         <article class="panel">
-          <h2>在线数据校验结果</h2>
+          <h2 data-i18n="tool_check_title">在线数据校验结果</h2>
           <div id="online-check-table" class="table-wrap"></div>
         </article>
       </section>

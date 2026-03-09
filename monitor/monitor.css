@@ -129,6 +129,17 @@ body:not([data-page="login"]) {
   animation: rise 0.7s ease-out both;
 }
 
+.login-lang {
+  justify-self: center;
+  min-width: 86px !important;
+}
+
+.lang-toggle {
+  min-width: 72px;
+  width: auto !important;
+  justify-self: end;
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -149,7 +160,7 @@ body:not([data-page="login"]) {
   margin: 0 auto;
   padding: 1.25rem 1.2rem;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   gap: 0.8rem;
   align-items: center;
   border-bottom: 1px solid var(--line);
@@ -272,6 +283,14 @@ body[data-page="login"] .btn {
   padding: 0 20px;
 }
 
+body[data-page="login"] #human-verify,
+body[data-page="login"] #lang-toggle {
+  min-width: 104px;
+  height: 42px;
+  font-size: 14px;
+  padding: 0 12px;
+}
+
 body[data-page="login"] #login-status {
   min-height: 28px;
   font-size: 14px;
@@ -293,6 +312,39 @@ body[data-page="login"] #login-status {
   color: var(--soft-dark);
   font-size: clamp(14px, 2vw, 18px);
   line-height: normal;
+}
+
+.human-check {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  width: min(440px, 92vw);
+}
+
+.human-check label {
+  color: var(--soft-dark);
+  font-size: 14px;
+}
+
+.human-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  width: 100%;
+}
+
+.human-row input {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: rgba(8, 20, 40, 0.45);
+  color: var(--ink-dark);
+  font-size: 14px;
+  padding: 10px 14px;
+  outline: none;
+}
+
+.human-row input::placeholder {
+  color: rgba(226, 238, 255, 0.56);
 }
 
 .subtle-note {
