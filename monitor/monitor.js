@@ -166,6 +166,7 @@ const monitorI18n = {
 };
 
 function getMonitorLang(){
+  if (document.body?.dataset?.page === 'login') return 'en';
   const raw = String(localStorage.getItem(MONITOR_LANG_KEY) || '').toLowerCase();
   return raw === 'en' ? 'en' : 'zh';
 }
@@ -216,7 +217,9 @@ function ensureSiteFooter(){
   if(document.querySelector('.site-footer-note')) return;
   const footer = document.createElement('footer');
   footer.className = 'site-footer-note';
-  footer.textContent = '由 Nexo Marco Intelligence 提供支持';
+  footer.textContent = getMonitorLang() === 'en'
+    ? 'Powered by Nexo Marco Intelligence'
+    : '由 Nexo Marco Intelligence 提供支持';
   document.body.appendChild(footer);
 }
 
