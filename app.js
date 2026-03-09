@@ -354,9 +354,17 @@ async function apiFetch(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   try {
     const res = await fetch(`${base}${path}`, { ...options, headers });
-    if (!res.ok) return null;
-    if (res.status === 204) return {};
-    return await res.json();
+    if (res.status === 204) return { ok: true };
+    let body = null;
+    try {
+      body = await res.json();
+    } catch {
+      body = null;
+    }
+    if (!res.ok) {
+      return body || { ok: false, error: `http_${res.status}` };
+    }
+    return body || { ok: true };
   } catch {
     return null;
   }
