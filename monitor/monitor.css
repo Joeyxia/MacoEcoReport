@@ -80,8 +80,8 @@ body:not([data-page="login"]) {
 
 .wrap {
   width: 100%;
-  padding: 18px;
-  max-width: 1400px;
+  padding: 0 1.2rem 2rem;
+  max-width: none;
   margin: 0 auto;
 }
 
@@ -163,12 +163,12 @@ body:not([data-page="login"]) {
   grid-template-columns: auto 1fr auto auto;
   gap: 0.8rem;
   align-items: center;
-  border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(8px);
-  position: sticky;
-  top: 0;
-  z-index: 6;
+  border-bottom: 0;
+  background: transparent;
+  backdrop-filter: none;
+  position: relative;
+  top: auto;
+  z-index: 3;
 }
 
 .brand {
@@ -215,6 +215,14 @@ nav a.active,
 nav a:hover {
   background: rgba(10, 122, 104, 0.12);
   color: var(--brand-deep);
+}
+
+body:not([data-page="login"]) .site-header {
+  border-bottom: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  position: relative;
 }
 
 .nav-link {
@@ -657,6 +665,10 @@ body[data-page="data-tool"] .report-open:hover {
   .site-header {
     padding: 0.8rem 0.8rem 0.45rem;
   }
+  body:not([data-page="login"]) .site-header {
+    padding: 0.8rem 0.8rem 0.45rem;
+    gap: 0.62rem;
+  }
   .wrap {
     padding: 0 0.72rem 1.2rem;
   }
@@ -680,30 +692,26 @@ body[data-page="data-tool"] .report-open:hover {
     font-size: 0.84rem;
     padding: 0.4rem 0.56rem;
   }
-  body[data-page="ops"] .site-header {
-    padding: 0.8rem 0.8rem 0.45rem;
-    gap: 0.7rem;
-  }
-  body[data-page="ops"] .brand {
+  body:not([data-page="login"]) .brand {
     font-size: 2rem;
     line-height: 1.1;
   }
-  body[data-page="ops"] .site-header nav {
+  body:not([data-page="login"]) .site-header nav {
     order: 2;
     width: 100%;
     gap: 0.52rem;
   }
-  body[data-page="ops"] .site-header .lang-toggle {
+  body:not([data-page="login"]) .site-header .lang-toggle {
     order: 3;
     justify-self: start;
     min-width: 72px;
   }
-  body[data-page="ops"] .site-header .userbox {
+  body:not([data-page="login"]) .site-header .userbox {
     order: 4;
     width: 100%;
     justify-content: space-between;
   }
-  body[data-page="ops"] #user-email {
+  body:not([data-page="login"]) #user-email {
     font-size: 0.84rem;
     max-width: 66vw;
   }
