@@ -81,6 +81,8 @@ OPENAI_MODEL = str(os.environ.get("OPENAI_MODEL", "gpt-5.4")).strip()
 OPENAI_BASE_URL = str(os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")).strip().rstrip("/")
 OPENAI_MAX_RETRIES = max(1, int(os.environ.get("OPENAI_MAX_RETRIES", "3")))
 OPENAI_FORCE_PRIMARY = str(os.environ.get("OPENAI_FORCE_PRIMARY", "true")).strip().lower() in {"1", "true", "yes", "on"}
+OPENAI_MIN_INTERVAL_SEC = max(0.0, float(os.environ.get("OPENAI_MIN_INTERVAL_SEC", "3.0")))
+OPENAI_MAX_QUEUE_WAIT_SEC = max(1.0, float(os.environ.get("OPENAI_MAX_QUEUE_WAIT_SEC", "20.0")))
 
 app = Flask(__name__, static_folder=str(ROOT), static_url_path="")
 app.secret_key = os.environ.get("MONITOR_SESSION_SECRET") or base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
@@ -92,6 +94,8 @@ app.config.update(
 init_db()
 _cache = {}
 _cache_lock = Lock()
+_openai_queue_lock = Lock()
+_openai_next_allowed_at = 0.0
 
 
 def _cache_get(key):
@@ -440,6 +444,21 @@ def _json_post_json(url: str, payload: dict, headers=None):
     req.add_header(k, v)
   with urllib.request.urlopen(req, timeout=60) as resp:
     return json.loads(resp.read().decode("utf-8"))
+
+
+def _openai_wait_turn_or_raise():
+  global _openai_next_allowed_at
+  while True:
+    with _openai_queue_lock:
+      now = time.time()
+      wait_sec = _openai_next_allowed_at - now
+      if wait_sec <= 0:
+        _openai_next_allowed_at = now + OPENAI_MIN_INTERVAL_SEC
+        return
+      if wait_sec > OPENAI_MAX_QUEUE_WAIT_SEC:
+        raise RuntimeError(f"openai_queue_timeout wait={wait_sec:.2f}s")
+    # Sleep outside lock so other requests can evaluate their own wait.
+    time.sleep(min(wait_sec, 0.5))
 
 
 def _extract_chat_text(resp: dict):
@@ -991,6 +1010,13 @@ def ai_data_query():
   if len(question) > 1600:
     return jsonify({"error": "question_too_long"}), 400
 
+  # Small query cache to reduce duplicate burst traffic.
+  qkey = hashlib.sha1(f"{lang}::{question}".encode("utf-8")).hexdigest()
+  qcache_key = f"ai:query:{qkey}"
+  cached = _cache_get(qcache_key)
+  if cached is not None:
+    return _etag_response(cached)
+
   model = _cache_get("model:current")
   if model is None:
     model = _cache_set("model:current", get_latest_model_snapshot())
@@ -1036,6 +1062,7 @@ def ai_data_query():
       }
     )
   try:
+    _openai_wait_turn_or_raise()
     resp = None
     last_err = None
     for i in range(OPENAI_MAX_RETRIES):
@@ -1076,20 +1103,20 @@ def ai_data_query():
         total_tokens=total_tokens,
         meta={"lang": lang, "question": question[:240]},
       )
-    return jsonify(
-      {
-        "ok": True,
-        "answer": text,
-        "model": OPENAI_MODEL,
-        "asOf": context_payload.get("asOf"),
-        "generatedAt": context_payload.get("generatedAt"),
-        "usage": {
-          "input_tokens": input_tokens,
-          "output_tokens": output_tokens,
-          "total_tokens": total_tokens,
-        },
-      }
-    )
+    result = {
+      "ok": True,
+      "answer": text,
+      "model": OPENAI_MODEL,
+      "asOf": context_payload.get("asOf"),
+      "generatedAt": context_payload.get("generatedAt"),
+      "usage": {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+      },
+    }
+    _cache_set(qcache_key, result)
+    return jsonify(result)
   except Exception as e:
     if OPENAI_FORCE_PRIMARY:
       return jsonify({"error": "openai_request_failed", "detail": str(e)[:260]}), 502
