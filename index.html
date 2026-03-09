@@ -206,7 +206,7 @@
         <div class="human-check">
           <label id="human-question">Human Verification</label>
           <div class="human-row">
-            <input id="human-answer" class="human-input" type="text" placeholder="Enter answer" autocomplete="off" />
+            <input id="human-answer" class="human-input" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Enter answer" autocomplete="off" />
             <button id="human-verify" class="btn" type="button" style="min-width: 120px; height: 44px">Verify</button>
           </div>
         </div>
@@ -222,6 +222,31 @@
         var enter = document.getElementById("enter-dashboard");
         if (!q || !a || !v || !enter) return;
         var answer = 0;
+        function toHalfWidthDigits(s) {
+          return String(s || "").replace(/[０-９]/g, function (ch) {
+            return String.fromCharCode(ch.charCodeAt(0) - 65248);
+          });
+        }
+        function parseHumanValue(raw) {
+          var s = toHalfWidthDigits(raw).trim();
+          if (!s) return null;
+          var n = Number(s);
+          return Number.isFinite(n) ? n : null;
+        }
+        function setVerified(verified) {
+          if (verified) {
+            sessionStorage.setItem("nexo_human_verified", "1");
+            q.textContent = "Verification passed";
+            enter.style.pointerEvents = "auto";
+            enter.style.opacity = "1";
+            enter.setAttribute("aria-disabled", "false");
+            return;
+          }
+          sessionStorage.removeItem("nexo_human_verified");
+          enter.style.pointerEvents = "none";
+          enter.style.opacity = "0.55";
+          enter.setAttribute("aria-disabled", "true");
+        }
         function reset() {
           var x = Math.floor(Math.random() * 8) + 1;
           var y = Math.floor(Math.random() * 8) + 1;
@@ -230,24 +255,34 @@
           a.value = "";
         }
         function pass() {
-          sessionStorage.setItem("nexo_human_verified", "1");
-          q.textContent = "Verification passed";
-          enter.style.pointerEvents = "auto";
-          enter.style.opacity = "1";
-          enter.setAttribute("aria-disabled", "false");
+          setVerified(true);
         }
         if (sessionStorage.getItem("nexo_human_verified") === "1") {
           pass();
-          return;
+        } else {
+          setVerified(false);
+          reset();
         }
-        reset();
-        v.addEventListener("click", function () {
-          var val = Number(String(a.value || "").trim());
+        function runVerify() {
+          var val = parseHumanValue(a.value);
           if (Number.isFinite(val) && val === answer) {
             pass();
             return;
           }
           q.textContent = "Wrong answer, try again";
+          reset();
+        }
+        v.addEventListener("click", runVerify);
+        a.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            runVerify();
+          }
+        });
+        enter.addEventListener("click", function (e) {
+          if (sessionStorage.getItem("nexo_human_verified") === "1") return;
+          e.preventDefault();
+          q.textContent = "Please finish human verification first";
           reset();
         });
       })();
