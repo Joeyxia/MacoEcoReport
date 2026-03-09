@@ -82,6 +82,7 @@ const monitorI18n = {
     tool_archive_title: '每日报告归档',
     tool_archive_desc: '每个保存日期都提供直接访问链接。',
     tool_check_title: '在线数据校验结果',
+    tool_indicator_verification: '指标在线校验状态',
     tool_status_score: '综合评分',
     tool_status_signal: '信号',
     tool_open: '打开',
@@ -149,6 +150,7 @@ const monitorI18n = {
     tool_archive_title: 'Daily Report Archive',
     tool_archive_desc: 'Each saved date has a direct link.',
     tool_check_title: 'Online Data Check Results',
+    tool_indicator_verification: 'Indicator Verification Status',
     tool_status_score: 'Score',
     tool_status_signal: 'Signal',
     tool_open: 'Open',
@@ -383,6 +385,23 @@ function renderOnlineCheckTableForTool(rows){
     错误: asText(row.error || row['错误'])
   }));
   renderObjectTable('online-check-table', mapped);
+}
+
+function renderIndicatorVerificationTableForTool(rows){
+  const zh = getMonitorLang() === 'zh';
+  const mapped = (rows || []).map((r)=>({
+    [zh ? '指标代码' : 'IndicatorCode']: asText(r.IndicatorCode || r.indicatorCode || ''),
+    [zh ? '指标名称' : 'IndicatorName']: asText(r.IndicatorName || r.indicatorName || ''),
+    [zh ? '维度ID' : 'DimensionID']: asText(r.DimensionID || r.dimensionId || ''),
+    [zh ? '最新值' : 'LatestValue']: asText(r.LatestValue || r.latestValue || ''),
+    [zh ? '值日期' : 'ValueDate']: asText(r.ValueDate || r.valueDate || ''),
+    [zh ? '来源日期' : 'SourceDate']: asText(r.SourceDate || r.sourceDate || ''),
+    [zh ? '是否在线校验' : 'VerifiedOnline']: asText(r.VerifiedOnline ?? r.verifiedOnline ?? ''),
+    [zh ? '校验状态' : 'VerificationStatus']: asText(r.VerificationStatus || r.verificationStatus || ''),
+    [zh ? '校验错误' : 'VerificationError']: asText(r.VerificationError || r.verificationError || ''),
+    [zh ? '生成时间' : 'GeneratedAt']: asText(r.GeneratedAt || r.generatedAt || '')
+  }));
+  renderObjectTable('indicator-verification-table', mapped);
 }
 
 function renderToolReportLinks(reports){
@@ -631,6 +650,7 @@ async function initDataTool(){
   const latestCheck = await dataGet('/api/checks/latest');
   editor.value = asText(existing?.text) || generateToolDraft(model, date, null);
   renderOnlineCheckTableForTool(model.onlineCheck || latestCheck?.rows || []);
+  renderIndicatorVerificationTableForTool(existing?.reportPayload?.indicatorDetails || model.indicatorDetails || []);
   renderToolReportLinks(reports?.reports || []);
 
   btnGen?.addEventListener('click', async()=>{
@@ -649,6 +669,7 @@ async function initDataTool(){
       await dataPost('/api/checks', { checkedAt: new Date().toISOString(), summary, rows: summary.results });
     }
     editor.value = generateToolDraft(m, date, summary);
+    renderIndicatorVerificationTableForTool(m.indicatorDetails || []);
     const payload = { date, text: editor.value, meta: { score: round(m.totalScore || 0,1), status: asText(m.status || '') }, path: `reports/${date}.html` };
     const res = await dataPost('/api/reports', payload);
     if(res?.ok){
@@ -660,6 +681,7 @@ async function initDataTool(){
 
   btnSave?.addEventListener('click', async()=>{
     const m = await dataGet('/api/model/current') || model;
+    renderIndicatorVerificationTableForTool(m.indicatorDetails || []);
     const payload = { date, text: editor.value, meta: { score: round(m.totalScore || 0,1), status: asText(m.status || '') }, path: `reports/${date}.html` };
     const res = await dataPost('/api/reports', payload);
     if(res?.ok){

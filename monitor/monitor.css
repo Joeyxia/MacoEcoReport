@@ -510,6 +510,11 @@ body[data-page="data-tool"] .table-wrap {
   background: rgba(255, 255, 255, 0.92);
 }
 
+body[data-page="data-tool"] .table-wrap.explorer {
+  margin-top: 0.7rem;
+  max-height: 620px;
+}
+
 body[data-page="data-tool"] .data-table {
   width: 100%;
   border-collapse: collapse;
