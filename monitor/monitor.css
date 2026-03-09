@@ -418,6 +418,31 @@ canvas {
   max-height: 300px;
 }
 
+.tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.tool-editor {
+  width: 100%;
+  min-height: 420px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+
+.check-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 @keyframes glow-move {
   from {
     transform: translate3d(-1.2%, -1%, 0) scale(1);

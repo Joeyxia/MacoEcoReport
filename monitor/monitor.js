@@ -36,6 +36,103 @@ function tableFromRows(rows){
   return `<div class="table"><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
 }
 
+function asText(v){ return v == null ? '' : String(v); }
+function round(v, d = 1){
+  const n = Number(v);
+  if(!Number.isFinite(n)) return 0;
+  const p = 10 ** d;
+  return Math.round(n * p) / p;
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function keyByIncludes(row, patterns){
+  const keys = Object.keys(row || {});
+  return keys.find((k)=>patterns.some((p)=>k.toLowerCase().includes(p))) || null;
+}
+function pickInputCodeKey(inputs){
+  const first = (inputs || [])[0] || {};
+  return keyByIncludes(first, ['indicatorcode','code']) || 'IndicatorCode';
+}
+function pickInputValueKey(inputs){
+  const first = (inputs || [])[0] || {};
+  return keyByIncludes(first, ['latestvalue','value']) || 'LatestValue';
+}
+function extractSingleSeriesCode(raw){
+  const text = asText(raw);
+  const m = text.match(/\b[A-Z][A-Z0-9_]{1,20}\b/);
+  return m ? m[0] : '';
+}
+async function fetchFredLatestValue(seriesCode){
+  const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(seriesCode)}`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const csv = await r.text();
+  const lines = csv.split(/\r?\n/).slice(1).filter(Boolean);
+  for(let i = lines.length - 1; i >= 0; i--){
+    const [date, value] = lines[i].split(',');
+    if(value && value !== '.') return { date, value: Number(value) };
+  }
+  throw new Error('No valid value');
+}
+
+function generateToolDraft(model, date, onlineSummary){
+  const dims = (model.dimensions || []).slice();
+  const top = dims.sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,3);
+  const bottom = dims.sort((a,b)=>(a.score||0)-(b.score||0)).slice(0,3);
+  const alerts = (model.alerts || []).filter((a)=>a.triggered);
+  const lines = [
+    '宏观监控每日报告',
+    `报告日期: ${date}`,
+    `模型更新日: ${asText(model.asOf || date)}`,
+    `综合得分: ${round(model.totalScore || 0, 1)} (${asText(model.status || '--')})`,
+    '',
+    '执行摘要',
+    `- 当前模型处于“${asText(model.status || '--')}”状态，总分 ${round(model.totalScore || 0, 1)}。`,
+    `- 当前触发预警 ${alerts.length} 条。`
+  ];
+  if(onlineSummary){
+    lines.push(`- 在线数据校验：检查 ${onlineSummary.checked} 项，更新 ${onlineSummary.updated} 项，失败 ${onlineSummary.failed} 项。`);
+  }
+  lines.push('', '主要支撑维度');
+  top.forEach((x)=>lines.push(`- ${asText(x.name)}: ${round(x.score,1)}`));
+  lines.push('', '主要拖累维度');
+  bottom.forEach((x)=>lines.push(`- ${asText(x.name)}: ${round(x.score,1)}`));
+  return lines.join('\n');
+}
+
+async function runOnlineDataCheckForTool(model){
+  const indicators = model?.tables?.indicators || [];
+  const inputs = model?.tables?.inputs || [];
+  const inputCodeKey = pickInputCodeKey(inputs);
+  const sourceKey = indicators.length ? keyByIncludes(indicators[0], ['sourceurl','source','数据源']) : null;
+  const seriesKey = indicators.length ? keyByIncludes(indicators[0], ['series/code','series','code','建议系列']) : null;
+  const indCodeKey = indicators.length ? keyByIncludes(indicators[0], ['indicatorcode','code']) : null;
+  const results = [];
+  let checked = 0, updated = 0, failed = 0;
+  for(const row of indicators){
+    const source = asText(row[sourceKey]).toLowerCase();
+    const code = extractSingleSeriesCode(row[seriesKey] || row[indCodeKey]);
+    const indicator = asText(row[indCodeKey] || code);
+    const shouldCheck = source.includes('fred') || /^([A-Z]{2,}|[A-Z0-9_]+)$/.test(code);
+    if(!shouldCheck || !code) continue;
+    checked += 1;
+    try{
+      const latest = await fetchFredLatestValue(code);
+      updated += 1;
+      results.push({ 指标: indicator, 来源: 'FRED', 序列: code, 状态: 'OK', 最新日期: latest.date, 最新值: latest.value, 错误: '' });
+    }catch(err){
+      failed += 1;
+      results.push({ 指标: indicator, 来源: 'FRED', 序列: code, 状态: 'FAILED', 最新日期: '', 最新值: '', 错误: asText(err?.message || 'Failed to fetch') });
+    }
+  }
+  return { checked, updated, failed, results };
+}
+
+function renderToolOnlineCheck(rows){
+  const root = q('tool-online-check-table');
+  if(!root) return;
+  root.innerHTML = tableFromRows(rows || []);
+}
+
 async function requireAuth(){
   const me = await api.get('/monitor-api/auth/me');
   if(!me?.ok){
@@ -178,12 +275,73 @@ async function initFormDetail(){
   q('form-table').innerHTML = tableFromRows(data?.rows || []);
 }
 
+async function initDataTool(){
+  if(!(await requireAuth())) return;
+  setupLogout();
+  const editor = q('tool-report-editor');
+  const saveStatus = q('tool-save-status');
+  const btnGen = q('tool-generate-report');
+  const btnFinal = q('tool-finalize-report');
+  const btnSave = q('tool-save-report');
+  const btnDl = q('tool-download-report');
+  const runCheck = q('tool-run-online-check');
+  if(!editor) return;
+
+  const date = todayISO();
+  const model = await api.get('/api/model/current?view=core') || await api.get('/api/model/current') || {};
+  const existing = await api.get(`/api/reports/${encodeURIComponent(date)}`);
+  editor.value = asText(existing?.text) || generateToolDraft(model, date, null);
+  renderToolOnlineCheck((model.onlineCheck || []).map((r)=>({
+    指标: r.indicator, 来源: r.source, 序列: r.series, 状态: r.status, 最新日期: r.latestDate, 最新值: r.latestValue, 错误: r.error || ''
+  })));
+
+  btnGen?.addEventListener('click', async()=>{
+    const m = await api.get('/api/model/current?view=core') || model;
+    editor.value = generateToolDraft(m, date, null);
+    if(saveStatus) saveStatus.textContent = '草稿已重新生成。';
+  });
+
+  btnFinal?.addEventListener('click', async()=>{
+    const m = await api.get('/api/model/current?view=core') || model;
+    let summary = null;
+    if(runCheck?.checked){
+      if(saveStatus) saveStatus.textContent = '正在执行在线数据校验...';
+      summary = await runOnlineDataCheckForTool(m);
+      renderToolOnlineCheck(summary.results);
+      await api.post('/api/checks', { checkedAt: new Date().toISOString(), summary, rows: summary.results });
+    }
+    editor.value = generateToolDraft(m, date, summary);
+    const payload = { date, text: editor.value, meta: { score: round(m.totalScore || 0,1), status: asText(m.status || '') }, path: `reports/${date}.html` };
+    const res = await api.post('/api/reports', payload);
+    if(saveStatus) saveStatus.textContent = res?.ok ? '最终报告已生成并保存。' : '保存失败，请重试。';
+  });
+
+  btnSave?.addEventListener('click', async()=>{
+    const m = await api.get('/api/model/current?view=core') || model;
+    const payload = { date, text: editor.value, meta: { score: round(m.totalScore || 0,1), status: asText(m.status || '') }, path: `reports/${date}.html` };
+    const res = await api.post('/api/reports', payload);
+    if(saveStatus) saveStatus.textContent = res?.ok ? '已保存。' : '保存失败，请重试。';
+  });
+
+  btnDl?.addEventListener('click', ()=>{
+    const blob = new Blob([editor.value], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `macro-daily-report-${date}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  });
+}
+
 (async function(){
   trackMonitorPageView();
   const page = document.body.dataset.page;
   if(page==='login') return initLogin();
   if(page==='ops') return initOps();
   if(page==='subscribers') return initSubscribers();
+  if(page==='data-tool') return initDataTool();
   if(page==='forms') return initForms();
   if(page==='form-detail') return initFormDetail();
 })();
