@@ -1003,6 +1003,10 @@ def report_analysis_by_date(report_date):
     report_date=date,
     short_summary=str(payload.get("short_summary") or ""),
     detailed_interpretation=str(payload.get("detailed_interpretation") or ""),
+    short_summary_zh=str(payload.get("short_summary_zh") or ""),
+    short_summary_en=str(payload.get("short_summary_en") or ""),
+    detailed_interpretation_zh=str(payload.get("detailed_interpretation_zh") or ""),
+    detailed_interpretation_en=str(payload.get("detailed_interpretation_en") or ""),
     model=str(payload.get("model") or ""),
     status=str(payload.get("status") or ""),
     generated_at=str(payload.get("generated_at") or ""),
@@ -1025,11 +1029,12 @@ def report_insight_by_date(report_date):
     return _etag_response(row)
 
   payload = request.get_json(silent=True) or {}
+  insight = payload.get("insight") or {}
   upsert_daily_report_ai_insight(
     report_date=date,
     short_summary=str(payload.get("short_summary") or ""),
     detailed_text=str(payload.get("detailed_text") or ""),
-    insight=payload.get("insight") or {},
+    insight=insight,
     status=str(payload.get("status") or "ok"),
     model=str(payload.get("model") or ""),
     prompt_version=str(payload.get("prompt_version") or ""),
@@ -1038,8 +1043,12 @@ def report_insight_by_date(report_date):
   )
   update_daily_report_analysis(
     report_date=date,
-    short_summary=str(payload.get("short_summary") or ""),
-    detailed_interpretation=str(payload.get("detailed_text") or ""),
+    short_summary=str(payload.get("short_summary") or insight.get("short_summary_zh") or ""),
+    detailed_interpretation=str(payload.get("detailed_text") or insight.get("detailed_markdown_zh") or ""),
+    short_summary_zh=str(insight.get("short_summary_zh") or ""),
+    short_summary_en=str(insight.get("short_summary_en") or ""),
+    detailed_interpretation_zh=str(insight.get("detailed_markdown_zh") or ""),
+    detailed_interpretation_en=str(insight.get("detailed_markdown_en") or ""),
     model=str(payload.get("model") or ""),
     status=str(payload.get("status") or "ok"),
     generated_at=str(payload.get("generated_at") or ""),

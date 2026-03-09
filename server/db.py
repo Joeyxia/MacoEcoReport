@@ -52,6 +52,10 @@ def init_db():
       summary TEXT,
       ai_short_summary TEXT,
       ai_detailed_interpretation TEXT,
+      ai_short_summary_zh TEXT,
+      ai_short_summary_en TEXT,
+      ai_detailed_interpretation_zh TEXT,
+      ai_detailed_interpretation_en TEXT,
       ai_model TEXT,
       ai_status TEXT,
       ai_generated_at TEXT,
@@ -161,6 +165,10 @@ def init_db():
   for ddl in [
     "ALTER TABLE daily_reports ADD COLUMN ai_short_summary TEXT",
     "ALTER TABLE daily_reports ADD COLUMN ai_detailed_interpretation TEXT",
+    "ALTER TABLE daily_reports ADD COLUMN ai_short_summary_zh TEXT",
+    "ALTER TABLE daily_reports ADD COLUMN ai_short_summary_en TEXT",
+    "ALTER TABLE daily_reports ADD COLUMN ai_detailed_interpretation_zh TEXT",
+    "ALTER TABLE daily_reports ADD COLUMN ai_detailed_interpretation_en TEXT",
     "ALTER TABLE daily_reports ADD COLUMN ai_model TEXT",
     "ALTER TABLE daily_reports ADD COLUMN ai_status TEXT",
     "ALTER TABLE daily_reports ADD COLUMN ai_generated_at TEXT",
@@ -221,8 +229,12 @@ def upsert_daily_report(report_date: str, text: str, meta: dict, report_path: st
   status = meta.get("status")
   summary = meta.get("summary", "")
   ai = ai_analysis or {}
-  ai_short = str(ai.get("short_summary") or "")
-  ai_detail = str(ai.get("detailed_interpretation") or "")
+  ai_short_zh = str(ai.get("short_summary_zh") or "")
+  ai_short_en = str(ai.get("short_summary_en") or "")
+  ai_detail_zh = str(ai.get("detailed_interpretation_zh") or "")
+  ai_detail_en = str(ai.get("detailed_interpretation_en") or "")
+  ai_short = str(ai.get("short_summary") or ai_short_zh or ai_short_en or "")
+  ai_detail = str(ai.get("detailed_interpretation") or ai_detail_zh or ai_detail_en or "")
   ai_model = str(ai.get("model") or "")
   ai_status = str(ai.get("status") or "")
   ai_generated_at = str(ai.get("generated_at") or "")
@@ -230,14 +242,18 @@ def upsert_daily_report(report_date: str, text: str, meta: dict, report_path: st
   conn.execute(
     """
     INSERT INTO daily_reports
-    (report_date, score, status, summary, ai_short_summary, ai_detailed_interpretation, ai_model, ai_status, ai_generated_at, report_text, report_path, payload_json, generated_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (report_date, score, status, summary, ai_short_summary, ai_detailed_interpretation, ai_short_summary_zh, ai_short_summary_en, ai_detailed_interpretation_zh, ai_detailed_interpretation_en, ai_model, ai_status, ai_generated_at, report_text, report_path, payload_json, generated_at, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(report_date) DO UPDATE SET
       score=excluded.score,
       status=excluded.status,
       summary=excluded.summary,
       ai_short_summary=excluded.ai_short_summary,
       ai_detailed_interpretation=excluded.ai_detailed_interpretation,
+      ai_short_summary_zh=excluded.ai_short_summary_zh,
+      ai_short_summary_en=excluded.ai_short_summary_en,
+      ai_detailed_interpretation_zh=excluded.ai_detailed_interpretation_zh,
+      ai_detailed_interpretation_en=excluded.ai_detailed_interpretation_en,
       ai_model=excluded.ai_model,
       ai_status=excluded.ai_status,
       ai_generated_at=excluded.ai_generated_at,
@@ -254,6 +270,10 @@ def upsert_daily_report(report_date: str, text: str, meta: dict, report_path: st
       summary,
       ai_short,
       ai_detail,
+      ai_short_zh,
+      ai_short_en,
+      ai_detail_zh,
+      ai_detail_en,
       ai_model,
       ai_status,
       ai_generated_at,
@@ -274,7 +294,10 @@ def list_daily_reports(limit: int = 200):
   rows = conn.execute(
     """
     SELECT report_date, score, status, summary,
-           ai_short_summary, ai_detailed_interpretation, ai_model, ai_status, ai_generated_at,
+           ai_short_summary, ai_detailed_interpretation,
+           ai_short_summary_zh, ai_short_summary_en,
+           ai_detailed_interpretation_zh, ai_detailed_interpretation_en,
+           ai_model, ai_status, ai_generated_at,
            report_text, report_path, payload_json, generated_at
     FROM daily_reports
     ORDER BY report_date DESC LIMIT ?
@@ -295,6 +318,10 @@ def list_daily_reports(limit: int = 200):
         "aiAnalysis": {
           "short_summary": r["ai_short_summary"] or "",
           "detailed_interpretation": r["ai_detailed_interpretation"] or "",
+          "short_summary_zh": r["ai_short_summary_zh"] or "",
+          "short_summary_en": r["ai_short_summary_en"] or "",
+          "detailed_interpretation_zh": r["ai_detailed_interpretation_zh"] or "",
+          "detailed_interpretation_en": r["ai_detailed_interpretation_en"] or "",
           "model": r["ai_model"] or "",
           "status": r["ai_status"] or "",
           "generated_at": r["ai_generated_at"] or "",
@@ -310,7 +337,10 @@ def get_daily_report(report_date: str):
   r = conn.execute(
     """
     SELECT report_date, score, status, summary,
-           ai_short_summary, ai_detailed_interpretation, ai_model, ai_status, ai_generated_at,
+           ai_short_summary, ai_detailed_interpretation,
+           ai_short_summary_zh, ai_short_summary_en,
+           ai_detailed_interpretation_zh, ai_detailed_interpretation_en,
+           ai_model, ai_status, ai_generated_at,
            report_text, report_path, payload_json, generated_at
     FROM daily_reports
     WHERE report_date = ?
@@ -330,6 +360,10 @@ def get_daily_report(report_date: str):
     "aiAnalysis": {
       "short_summary": r["ai_short_summary"] or "",
       "detailed_interpretation": r["ai_detailed_interpretation"] or "",
+      "short_summary_zh": r["ai_short_summary_zh"] or "",
+      "short_summary_en": r["ai_short_summary_en"] or "",
+      "detailed_interpretation_zh": r["ai_detailed_interpretation_zh"] or "",
+      "detailed_interpretation_en": r["ai_detailed_interpretation_en"] or "",
       "model": r["ai_model"] or "",
       "status": r["ai_status"] or "",
       "generated_at": r["ai_generated_at"] or "",
@@ -342,17 +376,31 @@ def update_daily_report_analysis(
   report_date: str,
   short_summary: str = "",
   detailed_interpretation: str = "",
+  short_summary_zh: str = "",
+  short_summary_en: str = "",
+  detailed_interpretation_zh: str = "",
+  detailed_interpretation_en: str = "",
   model: str = "",
   status: str = "",
   generated_at: str = "",
 ):
   conn = get_conn()
   ts = now_iso()
+  ss_zh = str(short_summary_zh or "")
+  ss_en = str(short_summary_en or "")
+  di_zh = str(detailed_interpretation_zh or "")
+  di_en = str(detailed_interpretation_en or "")
+  ss = str(short_summary or ss_zh or ss_en or "")
+  di = str(detailed_interpretation or di_zh or di_en or "")
   conn.execute(
     """
     UPDATE daily_reports
     SET ai_short_summary = ?,
         ai_detailed_interpretation = ?,
+        ai_short_summary_zh = ?,
+        ai_short_summary_en = ?,
+        ai_detailed_interpretation_zh = ?,
+        ai_detailed_interpretation_en = ?,
         ai_model = ?,
         ai_status = ?,
         ai_generated_at = ?,
@@ -360,8 +408,12 @@ def update_daily_report_analysis(
     WHERE report_date = ?
     """,
     (
-      str(short_summary or ""),
-      str(detailed_interpretation or ""),
+      ss,
+      di,
+      ss_zh,
+      ss_en,
+      di_zh,
+      di_en,
       str(model or ""),
       str(status or ""),
       str(generated_at or ""),
@@ -377,7 +429,10 @@ def get_daily_report_analysis(report_date: str):
   conn = get_conn()
   row = conn.execute(
     """
-    SELECT report_date, ai_short_summary, ai_detailed_interpretation, ai_model, ai_status, ai_generated_at, updated_at
+    SELECT report_date, ai_short_summary, ai_detailed_interpretation,
+           ai_short_summary_zh, ai_short_summary_en,
+           ai_detailed_interpretation_zh, ai_detailed_interpretation_en,
+           ai_model, ai_status, ai_generated_at, updated_at
     FROM daily_reports
     WHERE report_date = ?
     LIMIT 1
@@ -391,6 +446,10 @@ def get_daily_report_analysis(report_date: str):
     "report_date": row["report_date"],
     "short_summary": row["ai_short_summary"] or "",
     "detailed_interpretation": row["ai_detailed_interpretation"] or "",
+    "short_summary_zh": row["ai_short_summary_zh"] or "",
+    "short_summary_en": row["ai_short_summary_en"] or "",
+    "detailed_interpretation_zh": row["ai_detailed_interpretation_zh"] or "",
+    "detailed_interpretation_en": row["ai_detailed_interpretation_en"] or "",
     "model": row["ai_model"] or "",
     "status": row["ai_status"] or "",
     "generated_at": row["ai_generated_at"] or "",

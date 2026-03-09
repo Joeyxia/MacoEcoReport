@@ -1020,6 +1020,10 @@ def run(mode="full", report_date=None, strict_freshness=False):
             ai_analysis={
                 "short_summary": ai_short_zh or short_summary,
                 "detailed_interpretation": ai_detailed_zh,
+                "short_summary_zh": ai_short_zh,
+                "short_summary_en": ai_short_en,
+                "detailed_interpretation_zh": ai_detailed_zh,
+                "detailed_interpretation_en": ai_detailed_en,
                 "model": ai_model,
                 "status": "ok" if not ai_error else "fallback",
                 "generated_at": generated_at,

@@ -1328,11 +1328,11 @@ function renderDailyAiInsight(report, analysis) {
   }
   const insight = ai.insight || ai;
   const detailed = getLang() === "zh"
-    ? asText(insight.detailed_interpretation || insight.detailed_text || insight.detailed_markdown_zh)
-    : asText(insight.detailed_interpretation || insight.detailed_markdown_en || insight.detailed_text);
+    ? asText(insight.detailed_interpretation_zh || insight.detailed_interpretation || insight.detailed_text || insight.detailed_markdown_zh)
+    : asText(insight.detailed_interpretation_en || insight.detailed_interpretation || insight.detailed_markdown_en || insight.detailed_text);
   const shortLine = getLang() === "zh"
-    ? asText(insight.short_summary || insight.short_summary_zh)
-    : asText(insight.short_summary || insight.short_summary_en);
+    ? asText(insight.short_summary_zh || insight.short_summary)
+    : asText(insight.short_summary_en || insight.short_summary);
   const modelLabel = asText(ai.model || "--");
   const genAt = asText(ai.generated_at || report?.generatedAt || "--");
   root.innerHTML = `
