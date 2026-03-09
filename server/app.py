@@ -994,9 +994,44 @@ def report_analysis_by_date(report_date):
     return jsonify({"error": "missing_date"}), 400
   if request.method == "GET":
     row = get_daily_report_analysis(date)
-    if not row:
+    insight = get_daily_report_ai_insight(date)
+    if not row and not insight:
       return jsonify({"error": "not_found"}), 404
-    return _etag_response(row)
+    # Backward-compatible fallback:
+    # if daily_reports ai columns were accidentally blanked, serve the richer insight payload.
+    base = row or {}
+    insight_data = (insight or {}).get("insight") if isinstance(insight, dict) else {}
+    has_text = any(
+      str(base.get(k) or "").strip()
+      for k in (
+        "short_summary",
+        "short_summary_zh",
+        "short_summary_en",
+        "detailed_interpretation",
+        "detailed_interpretation_zh",
+        "detailed_interpretation_en",
+      )
+    )
+    if not has_text and isinstance(insight, dict):
+      base = {
+        "report_date": date,
+        "short_summary": str(base.get("short_summary") or insight.get("short_summary") or insight_data.get("short_summary_zh") or ""),
+        "short_summary_zh": str(base.get("short_summary_zh") or insight_data.get("short_summary_zh") or ""),
+        "short_summary_en": str(base.get("short_summary_en") or insight_data.get("short_summary_en") or ""),
+        "detailed_interpretation": str(
+          base.get("detailed_interpretation")
+          or insight.get("detailed_text")
+          or insight_data.get("detailed_markdown_zh")
+          or ""
+        ),
+        "detailed_interpretation_zh": str(base.get("detailed_interpretation_zh") or insight_data.get("detailed_markdown_zh") or ""),
+        "detailed_interpretation_en": str(base.get("detailed_interpretation_en") or insight_data.get("detailed_markdown_en") or ""),
+        "model": str(base.get("model") or insight.get("model") or ""),
+        "status": str(base.get("status") or insight.get("status") or ""),
+        "generated_at": str(base.get("generated_at") or insight.get("generated_at") or ""),
+        "updated_at": str(base.get("updated_at") or ""),
+      }
+    return _etag_response(base)
 
   payload = request.get_json(silent=True) or {}
   update_daily_report_analysis(

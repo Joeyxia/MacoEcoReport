@@ -225,20 +225,68 @@ def get_latest_model_snapshot():
 def upsert_daily_report(report_date: str, text: str, meta: dict, report_path: str = "", payload=None, ai_analysis=None):
   conn = get_conn()
   ts = now_iso()
+  existing = conn.execute(
+    """
+    SELECT score, status, summary, report_path, payload_json,
+           ai_short_summary, ai_detailed_interpretation,
+           ai_short_summary_zh, ai_short_summary_en,
+           ai_detailed_interpretation_zh, ai_detailed_interpretation_en,
+           ai_model, ai_status, ai_generated_at
+    FROM daily_reports
+    WHERE report_date = ?
+    """,
+    (str(report_date or "").strip(),),
+  ).fetchone()
   score = meta.get("score")
   status = meta.get("status")
   summary = meta.get("summary", "")
-  ai = ai_analysis or {}
-  ai_short_zh = str(ai.get("short_summary_zh") or "")
-  ai_short_en = str(ai.get("short_summary_en") or "")
-  ai_detail_zh = str(ai.get("detailed_interpretation_zh") or "")
-  ai_detail_en = str(ai.get("detailed_interpretation_en") or "")
-  ai_short = str(ai.get("short_summary") or ai_short_zh or ai_short_en or "")
-  ai_detail = str(ai.get("detailed_interpretation") or ai_detail_zh or ai_detail_en or "")
-  ai_model = str(ai.get("model") or "")
-  ai_status = str(ai.get("status") or "")
-  ai_generated_at = str(ai.get("generated_at") or "")
-  payload_json = json.dumps(payload, ensure_ascii=False) if payload is not None else None
+  ai = ai_analysis if isinstance(ai_analysis, dict) else {}
+  has_new_ai = any(
+    str(ai.get(k) or "").strip()
+    for k in (
+      "short_summary",
+      "detailed_interpretation",
+      "short_summary_zh",
+      "short_summary_en",
+      "detailed_interpretation_zh",
+      "detailed_interpretation_en",
+      "model",
+      "status",
+      "generated_at",
+    )
+  )
+  if has_new_ai:
+    ai_short_zh = str(ai.get("short_summary_zh") or "")
+    ai_short_en = str(ai.get("short_summary_en") or "")
+    ai_detail_zh = str(ai.get("detailed_interpretation_zh") or "")
+    ai_detail_en = str(ai.get("detailed_interpretation_en") or "")
+    ai_short = str(ai.get("short_summary") or ai_short_zh or ai_short_en or "")
+    ai_detail = str(ai.get("detailed_interpretation") or ai_detail_zh or ai_detail_en or "")
+    ai_model = str(ai.get("model") or "")
+    ai_status = str(ai.get("status") or "")
+    ai_generated_at = str(ai.get("generated_at") or "")
+  else:
+    ai_short = str((existing["ai_short_summary"] if existing else "") or "")
+    ai_detail = str((existing["ai_detailed_interpretation"] if existing else "") or "")
+    ai_short_zh = str((existing["ai_short_summary_zh"] if existing else "") or "")
+    ai_short_en = str((existing["ai_short_summary_en"] if existing else "") or "")
+    ai_detail_zh = str((existing["ai_detailed_interpretation_zh"] if existing else "") or "")
+    ai_detail_en = str((existing["ai_detailed_interpretation_en"] if existing else "") or "")
+    ai_model = str((existing["ai_model"] if existing else "") or "")
+    ai_status = str((existing["ai_status"] if existing else "") or "")
+    ai_generated_at = str((existing["ai_generated_at"] if existing else "") or "")
+  if score is None and existing:
+    score = existing["score"]
+  if (status is None or str(status).strip() == "") and existing:
+    status = existing["status"]
+  if (summary is None or str(summary).strip() == "") and existing:
+    summary = existing["summary"] or ""
+  if (not report_path) and existing:
+    report_path = str(existing["report_path"] or "")
+  if payload is not None:
+    payload_json = json.dumps(payload, ensure_ascii=False)
+  else:
+    payload_json = existing["payload_json"] if existing else None
   conn.execute(
     """
     INSERT INTO daily_reports

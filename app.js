@@ -491,10 +491,17 @@ async function saveCurrentModel(model) {
   await dbPut("model", { id: "current", payload: normalized, updatedAt: new Date().toISOString() });
 }
 
-async function saveReport(date, text, meta) {
+async function saveReport(date, text, meta, extra = {}) {
   await apiFetch("/api/reports", {
     method: "POST",
-    body: JSON.stringify({ date, text, meta, path: `reports/${date}.html` })
+    body: JSON.stringify({
+      date,
+      text,
+      meta,
+      path: `reports/${date}.html`,
+      reportPayload: extra.reportPayload,
+      aiAnalysis: extra.aiAnalysis
+    })
   });
   await dbPut("reports", { date, text, meta, updatedAt: new Date().toISOString() });
 }
@@ -2119,7 +2126,12 @@ async function renderDailyReport(model) {
     }
 
     editor.value = generateDailyText(targetModel, date, summary);
-    await saveReport(date, editor.value, { score: round(targetModel.totalScore, 1), status: targetModel.status });
+    await saveReport(
+      date,
+      editor.value,
+      { score: round(targetModel.totalScore, 1), status: targetModel.status },
+      { reportPayload: existing?.reportPayload || targetModel, aiAnalysis: analysis || existing?.aiAnalysis || null }
+    );
     existing = await loadReport(date);
     analysis = await loadReportAnalysis(date);
     renderDailyReportPreview(targetModel, date, existing || { reportPayload: targetModel }, analysis);
@@ -2128,7 +2140,12 @@ async function renderDailyReport(model) {
   });
 
   saveBtn?.addEventListener("click", async () => {
-    await saveReport(date, editor.value, { score: round(model.totalScore, 1), status: model.status });
+    await saveReport(
+      date,
+      editor.value,
+      { score: round(model.totalScore, 1), status: model.status },
+      { reportPayload: existing?.reportPayload || payload || viewModel, aiAnalysis: analysis || existing?.aiAnalysis || null }
+    );
     existing = await loadReport(date);
     analysis = await loadReportAnalysis(date);
     renderDailyReportPreview(viewModel, date, existing || { reportPayload: payload }, analysis);
