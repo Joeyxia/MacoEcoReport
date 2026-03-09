@@ -48,7 +48,7 @@ function renderObjectTable(targetId, rows){
   const dataRows = Array.isArray(rows) ? rows : [];
   const columns = objectRowsToColumns(dataRows);
   if(!dataRows.length || !columns.length){
-    root.innerHTML = '<p class="muted">暂无数据。</p>';
+    root.innerHTML = '<p class="table-empty">暂无数据。</p>';
     return;
   }
   const head = `<thead><tr>${columns.map((c)=>`<th>${c}</th>`).join('')}</tr></thead>`;
@@ -158,6 +158,35 @@ function renderOnlineCheckTableForTool(rows){
     错误: asText(row.error || row['错误'])
   }));
   renderObjectTable('online-check-table', mapped);
+}
+
+function renderToolReportLinks(reports){
+  const root = q('report-links');
+  if(!root) return;
+  const list = Array.isArray(reports) ? reports : [];
+  if(!list.length){
+    root.innerHTML = '<p class="table-empty">暂无已保存报告。</p>';
+    return;
+  }
+  root.innerHTML = '';
+  list.forEach((report)=>{
+    const date = asText(report.date || '--');
+    const score = asText(report?.meta?.score ?? '--');
+    const status = asText(report?.meta?.status ?? '--');
+    const item = document.createElement('article');
+    item.className = 'report-item';
+    item.innerHTML = `
+      <div class="report-item-main">
+        <div class="report-date">${date}</div>
+        <div class="badge-row">
+          <span class="badge">综合评分: ${score}</span>
+          <span class="badge">信号: ${status}</span>
+        </div>
+      </div>
+      <a class="report-open" href="https://nexo.hk/daily-report.html?date=${encodeURIComponent(date)}" target="_blank" rel="noopener noreferrer">打开</a>
+    `;
+    root.appendChild(item);
+  });
 }
 
 function getReportDateFromUrl(){
@@ -323,8 +352,10 @@ async function initDataTool(){
   const date = getReportDateFromUrl();
   const model = await api.get('/api/model/current?view=core') || await api.get('/api/model/current') || {};
   const existing = await api.get(`/api/reports/${encodeURIComponent(date)}`);
+  const reports = await api.get('/api/reports?limit=30');
   editor.value = asText(existing?.text) || generateToolDraft(model, date, null);
   renderOnlineCheckTableForTool(model.onlineCheck || []);
+  renderToolReportLinks(reports?.reports || []);
 
   btnGen?.addEventListener('click', async()=>{
     const m = await api.get('/api/model/current?view=core') || model;
@@ -344,6 +375,10 @@ async function initDataTool(){
     editor.value = generateToolDraft(m, date, summary);
     const payload = { date, text: editor.value, meta: { score: round(m.totalScore || 0,1), status: asText(m.status || '') }, path: `reports/${date}.html` };
     const res = await api.post('/api/reports', payload);
+    if(res?.ok){
+      const latest = await api.get('/api/reports?limit=30');
+      renderToolReportLinks(latest?.reports || []);
+    }
     if(saveStatus) saveStatus.textContent = res?.ok ? '最终报告已生成并保存。' : '保存失败，请重试。';
   });
 
@@ -351,6 +386,10 @@ async function initDataTool(){
     const m = await api.get('/api/model/current?view=core') || model;
     const payload = { date, text: editor.value, meta: { score: round(m.totalScore || 0,1), status: asText(m.status || '') }, path: `reports/${date}.html` };
     const res = await api.post('/api/reports', payload);
+    if(res?.ok){
+      const latest = await api.get('/api/reports?limit=30');
+      renderToolReportLinks(latest?.reports || []);
+    }
     if(saveStatus) saveStatus.textContent = res?.ok ? '已保存。' : '保存失败，请重试。';
   });
 

@@ -253,6 +253,10 @@ h3 {
   color: var(--soft);
 }
 
+.subtle {
+  color: var(--soft);
+}
+
 body[data-page="login"] .muted {
   color: var(--soft-dark);
   font-size: clamp(22px, 2.2vw, 42px);
@@ -421,15 +425,15 @@ canvas {
 body[data-page="data-tool"] .report-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
   align-items: center;
 }
 
 body[data-page="data-tool"] .check-row {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.32rem;
 }
 
 body[data-page="data-tool"] .report-editor {
@@ -437,9 +441,9 @@ body[data-page="data-tool"] .report-editor {
   min-height: 420px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  padding: 12px;
+  padding: 0.85rem;
   font-family: "IBM Plex Sans", sans-serif;
-  font-size: 15px;
+  font-size: 0.94rem;
   line-height: 1.45;
   resize: vertical;
   background: #fff;
@@ -448,7 +452,7 @@ body[data-page="data-tool"] .report-editor {
 
 body[data-page="data-tool"] .table-wrap {
   overflow: auto;
-  max-height: 360px;
+  max-height: 320px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.92);
@@ -457,15 +461,15 @@ body[data-page="data-tool"] .table-wrap {
 body[data-page="data-tool"] .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 0.84rem;
   table-layout: fixed;
 }
 
 body[data-page="data-tool"] .data-table th,
 body[data-page="data-tool"] .data-table td {
-  border-bottom: 1px solid var(--line);
-  border-right: 1px solid rgba(19, 36, 44, 0.08);
-  padding: 8px 10px;
+  border-bottom: 1px solid rgba(18, 36, 40, 0.08);
+  border-right: 1px solid rgba(18, 36, 40, 0.06);
+  padding: 0.42rem 0.48rem;
   text-align: left;
   vertical-align: top;
   white-space: normal;
@@ -478,6 +482,67 @@ body[data-page="data-tool"] .data-table th {
   z-index: 1;
   background: #f2f6f8;
   font-weight: 600;
+}
+
+body[data-page="data-tool"] .table-empty {
+  margin: 0;
+  padding: 0.9rem;
+  color: var(--soft);
+}
+
+body[data-page="data-tool"] .report-links {
+  display: grid;
+  gap: 0.4rem;
+}
+
+body[data-page="data-tool"] .report-item {
+  border: 1px solid rgba(5, 89, 75, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.5rem 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+body[data-page="data-tool"] .report-item-main {
+  display: grid;
+  gap: 0.22rem;
+}
+
+body[data-page="data-tool"] .report-date {
+  font-weight: 700;
+}
+
+body[data-page="data-tool"] .badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+body[data-page="data-tool"] .badge {
+  font-size: 0.76rem;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  border: 1px solid rgba(18, 36, 40, 0.15);
+  color: var(--soft);
+}
+
+body[data-page="data-tool"] .report-open {
+  color: var(--brand-deep);
+  text-decoration: none;
+  border: 1px solid rgba(5, 89, 75, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.4rem 0.55rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+body[data-page="data-tool"] .report-open:hover {
+  background: rgba(10, 122, 104, 0.12);
 }
 
 @keyframes glow-move {
