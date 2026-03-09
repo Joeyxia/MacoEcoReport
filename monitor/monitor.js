@@ -18,10 +18,41 @@ const api = {
 
 const OPS_REFRESH_MS = 60 * 1000;
 const OPS_WINDOW_MINUTES = 1440;
+const DATA_API_BASE = 'https://api.nexo.hk';
 let visitsChart = null;
 let tokensChart = null;
 
 function q(id){ return document.getElementById(id); }
+
+function dataApiUrl(path){
+  const clean = String(path || '').startsWith('/') ? String(path) : `/${String(path || '')}`;
+  return `${DATA_API_BASE}${clean}`;
+}
+
+async function dataGet(path){
+  try{
+    const r = await fetch(dataApiUrl(path), { credentials: 'omit' });
+    if(!r.ok) return null;
+    return await r.json();
+  }catch(_err){
+    return null;
+  }
+}
+
+async function dataPost(path, body = {}){
+  try{
+    const r = await fetch(dataApiUrl(path), {
+      method: 'POST',
+      credentials: 'omit',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if(!r.ok) return null;
+    return await r.json();
+  }catch(_err){
+    return null;
+  }
+}
 
 function trackMonitorPageView(){
   const payload = { path: `${location.pathname}${location.search || ''}`, referrer: document.referrer || '' };
@@ -350,44 +381,44 @@ async function initDataTool(){
   if(!editor) return;
 
   const date = getReportDateFromUrl();
-  const model = await api.get('/api/model/current?view=core') || await api.get('/api/model/current') || {};
-  const existing = await api.get(`/api/reports/${encodeURIComponent(date)}`);
-  const reports = await api.get('/api/reports?limit=30');
+  const model = await dataGet('/api/model/current?view=core') || await dataGet('/api/model/current') || {};
+  const existing = await dataGet(`/api/reports/${encodeURIComponent(date)}`);
+  const reports = await dataGet('/api/reports?limit=30');
   editor.value = asText(existing?.text) || generateToolDraft(model, date, null);
   renderOnlineCheckTableForTool(model.onlineCheck || []);
   renderToolReportLinks(reports?.reports || []);
 
   btnGen?.addEventListener('click', async()=>{
-    const m = await api.get('/api/model/current?view=core') || model;
+    const m = await dataGet('/api/model/current?view=core') || model;
     editor.value = generateToolDraft(m, date, null);
     if(saveStatus) saveStatus.textContent = '草稿已重新生成。';
   });
 
   btnFinal?.addEventListener('click', async()=>{
-    const m = await api.get('/api/model/current?view=core') || model;
+    const m = await dataGet('/api/model/current?view=core') || model;
     let summary = null;
     if(runCheck?.checked){
       if(saveStatus) saveStatus.textContent = '正在执行在线数据校验...';
       summary = await runOnlineDataCheckForTool(m);
       renderOnlineCheckTableForTool(summary.results);
-      await api.post('/api/checks', { checkedAt: new Date().toISOString(), summary, rows: summary.results });
+      await dataPost('/api/checks', { checkedAt: new Date().toISOString(), summary, rows: summary.results });
     }
     editor.value = generateToolDraft(m, date, summary);
     const payload = { date, text: editor.value, meta: { score: round(m.totalScore || 0,1), status: asText(m.status || '') }, path: `reports/${date}.html` };
-    const res = await api.post('/api/reports', payload);
+    const res = await dataPost('/api/reports', payload);
     if(res?.ok){
-      const latest = await api.get('/api/reports?limit=30');
+      const latest = await dataGet('/api/reports?limit=30');
       renderToolReportLinks(latest?.reports || []);
     }
     if(saveStatus) saveStatus.textContent = res?.ok ? '最终报告已生成并保存。' : '保存失败，请重试。';
   });
 
   btnSave?.addEventListener('click', async()=>{
-    const m = await api.get('/api/model/current?view=core') || model;
+    const m = await dataGet('/api/model/current?view=core') || model;
     const payload = { date, text: editor.value, meta: { score: round(m.totalScore || 0,1), status: asText(m.status || '') }, path: `reports/${date}.html` };
-    const res = await api.post('/api/reports', payload);
+    const res = await dataPost('/api/reports', payload);
     if(res?.ok){
-      const latest = await api.get('/api/reports?limit=30');
+      const latest = await dataGet('/api/reports?limit=30');
       renderToolReportLinks(latest?.reports || []);
     }
     if(saveStatus) saveStatus.textContent = res?.ok ? '已保存。' : '保存失败，请重试。';
