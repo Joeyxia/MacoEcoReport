@@ -9,6 +9,7 @@ import base64
 import secrets
 import urllib.parse
 import urllib.request
+import urllib.error
 from threading import Lock
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -78,6 +79,8 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 OPENAI_API_KEY = str(os.environ.get("OPENAI_API_KEY", "")).strip()
 OPENAI_MODEL = str(os.environ.get("OPENAI_MODEL", "gpt-5.4")).strip()
 OPENAI_BASE_URL = str(os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")).strip().rstrip("/")
+OPENAI_MAX_RETRIES = max(1, int(os.environ.get("OPENAI_MAX_RETRIES", "3")))
+OPENAI_FORCE_PRIMARY = str(os.environ.get("OPENAI_FORCE_PRIMARY", "true")).strip().lower() in {"1", "true", "yes", "on"}
 
 app = Flask(__name__, static_folder=str(ROOT), static_url_path="")
 app.secret_key = os.environ.get("MONITOR_SESSION_SECRET") or base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
@@ -485,6 +488,28 @@ def _send_welcome_email_if_needed(email: str):
 def _build_ai_context(model: dict):
   details = model.get("indicatorDetails") or []
   failed = [d for d in details if not d.get("VerifiedOnline")]
+  failed_compact = []
+  for d in failed[:20]:
+    failed_compact.append(
+      {
+        "indicatorCode": d.get("IndicatorCode"),
+        "indicatorName": d.get("IndicatorName"),
+        "value": d.get("LatestValue"),
+        "valueDate": d.get("ValueDate"),
+        "freshness": d.get("Freshness"),
+        "verificationStatus": d.get("VerificationStatus"),
+      }
+    )
+  top_dims = (model.get("topDimensionContributors") or [])[:8]
+  key_ind = (model.get("keyIndicatorsSnapshot") or [])[:12]
+  latest_report = None
+  rep_date = str(model.get("reportDate") or model.get("asOf") or "").strip()
+  if rep_date:
+    latest_report = get_daily_report(rep_date)
+  if not latest_report:
+    rows = list_daily_reports(limit=1)
+    latest_report = rows[0] if rows else None
+
   return {
     "asOf": model.get("asOf") or "",
     "reportDate": model.get("reportDate") or "",
@@ -493,9 +518,11 @@ def _build_ai_context(model: dict):
     "status": model.get("status") or "",
     "onlineUpdate": model.get("onlineUpdate") or {},
     "freshness": model.get("freshness") or {},
-    "topDimensionContributors": model.get("topDimensionContributors") or [],
-    "keyIndicatorsSnapshot": model.get("keyIndicatorsSnapshot") or [],
-    "failedIndicators": failed[:80],
+    "topDimensionContributors": top_dims,
+    "keyIndicatorsSnapshot": key_ind,
+    "failedIndicators": failed_compact,
+    "latestReportMeta": (latest_report or {}).get("meta") if isinstance(latest_report, dict) else {},
+    "latestReportDate": (latest_report or {}).get("date") if isinstance(latest_report, dict) else "",
   }
 
 
@@ -1009,11 +1036,30 @@ def ai_data_query():
       }
     )
   try:
-    resp = _json_post_json(
-      f"{OPENAI_BASE_URL}/chat/completions",
-      req_body,
-      headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-    )
+    resp = None
+    last_err = None
+    for i in range(OPENAI_MAX_RETRIES):
+      try:
+        resp = _json_post_json(
+          f"{OPENAI_BASE_URL}/chat/completions",
+          req_body,
+          headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+        )
+        break
+      except urllib.error.HTTPError as he:
+        last_err = he
+        if he.code == 429 and i < OPENAI_MAX_RETRIES - 1:
+          time.sleep(1.2 * (i + 1))
+          continue
+        raise
+      except Exception as e:
+        last_err = e
+        if i < OPENAI_MAX_RETRIES - 1:
+          time.sleep(0.8 * (i + 1))
+          continue
+        raise
+    if resp is None and last_err:
+      raise last_err
     text = _extract_chat_text(resp)
     usage = resp.get("usage") or {}
     input_tokens = int(usage.get("prompt_tokens") or 0)
@@ -1045,6 +1091,8 @@ def ai_data_query():
       }
     )
   except Exception as e:
+    if OPENAI_FORCE_PRIMARY:
+      return jsonify({"error": "openai_request_failed", "detail": str(e)[:260]}), 502
     local_answer = _build_local_ai_answer(question, lang, context_payload)
     return jsonify(
       {
