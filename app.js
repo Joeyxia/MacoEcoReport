@@ -1565,6 +1565,34 @@ function getDailyAiInsightContent(report, analysis) {
   return { shortLine, detailed, modelLabel, genAt };
 }
 
+function cleanAiMarkdownLine(line) {
+  let s = asText(line);
+  if (!s) return "";
+  // Remove markdown heading markers and list markers.
+  s = s.replace(/^\s*#{1,6}\s*/g, "");
+  s = s.replace(/^\s*[-•]\s*/g, "");
+  // Remove markdown emphasis markers.
+  s = s.replace(/\*\*/g, "");
+  s = s.replace(/\*/g, "");
+  // Collapse extra spaces after cleanup.
+  s = s.replace(/\s{2,}/g, " ").trim();
+  return s;
+}
+
+function normalizeAiInterpretationLines(shortLine, detailed) {
+  const lines = [];
+  const shortClean = cleanAiMarkdownLine(shortLine);
+  if (shortClean) lines.push(shortClean);
+  const detailLines = asText(detailed)
+    .split(/\r?\n/)
+    .map(cleanAiMarkdownLine)
+    .filter(Boolean);
+  detailLines.forEach((line) => {
+    if (!lines.includes(line)) lines.push(line);
+  });
+  return lines;
+}
+
 function groupByTier(bundles) {
   const groups = new Map();
   bundles.forEach((bundle) => {
@@ -1582,8 +1610,8 @@ function renderDailyReportPreview(model, date, report, analysis) {
   const tierGroups = groupByTier(bundles);
   const topWatch = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 5);
   const ai = getDailyAiInsightContent(report, analysis);
-  const showAi = Boolean(ai.shortLine || ai.detailed);
-  const detailHtml = escapeHtml(ai.detailed || "").replace(/\n/g, "<br>");
+  const aiLines = normalizeAiInterpretationLines(ai.shortLine, ai.detailed);
+  const showAi = aiLines.length > 0;
 
   root.innerHTML = `
     <section class="preview-header">
@@ -1596,18 +1624,18 @@ function renderDailyReportPreview(model, date, report, analysis) {
       <ul class="preview-list">
         ${topWatch.map((d) => `<li>${escapeHtml(localizeDimensionName(d.name, d.id))}: ${round(d.score, 1)}</li>`).join("")}
       </ul>
-      ${
-        showAi
-          ? `
-      <div class="preview-ai-block">
-        <h3>${getLang() === "zh" ? "AI 报告解读" : "AI Report Interpretation"}</h3>
-        <p class="subtle">${escapeHtml(ai.modelLabel)} · ${escapeHtml(ai.genAt)}</p>
-        <p class="summary-line"><strong>${getLang() === "zh" ? "简要结论" : "Short Summary"}:</strong> ${escapeHtml(ai.shortLine || "--")}</p>
-        <div class="preview-ai-text">${detailHtml || "--"}</div>
-      </div>`
-          : ""
-      }
     </section>
+    ${
+      showAi
+        ? `
+    <section class="preview-section">
+      <h3>${getLang() === "zh" ? "AI 报告解读" : "AI Report Interpretation"}</h3>
+      <ul class="preview-list">
+        ${aiLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
+      </ul>
+    </section>`
+        : ""
+    }
   `;
 
   for (const [tier, dims] of tierGroups.entries()) {
