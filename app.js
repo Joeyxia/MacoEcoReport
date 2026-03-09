@@ -1579,18 +1579,47 @@ function cleanAiMarkdownLine(line) {
   return s;
 }
 
-function normalizeAiInterpretationLines(shortLine, detailed) {
-  const lines = [];
+function isAiSectionTitle(rawLine, cleanedLine) {
+  const raw = asText(rawLine).trim();
+  const cleaned = asText(cleanedLine).trim();
+  if (!cleaned) return false;
+  if (/^\s*#{1,6}\s+/.test(raw)) return true;
+  const knownZh = ["宏观判断", "数据要点", "结构解读", "数据质量提示", "简要结论"];
+  const knownEn = ["Macro view", "Key data points", "Interpretation", "Data quality note", "Short Summary"];
+  return knownZh.includes(cleaned) || knownEn.includes(cleaned);
+}
+
+function parseAiInterpretationBlocks(shortLine, detailed) {
+  const blocks = [];
   const shortClean = cleanAiMarkdownLine(shortLine);
-  if (shortClean) lines.push(shortClean);
-  const detailLines = asText(detailed)
-    .split(/\r?\n/)
-    .map(cleanAiMarkdownLine)
-    .filter(Boolean);
-  detailLines.forEach((line) => {
-    if (!lines.includes(line)) lines.push(line);
+  if (shortClean) {
+    blocks.push({
+      title: getLang() === "zh" ? "简要结论" : "Short Summary",
+      items: [shortClean]
+    });
+  }
+
+  const rawLines = asText(detailed).split(/\r?\n/);
+  let current = null;
+  rawLines.forEach((raw) => {
+    const cleaned = cleanAiMarkdownLine(raw);
+    if (!cleaned) return;
+    const isTitle = isAiSectionTitle(raw, cleaned);
+    if (isTitle) {
+      current = { title: cleaned, items: [] };
+      blocks.push(current);
+      return;
+    }
+    if (!current) {
+      current = { title: "", items: [] };
+      blocks.push(current);
+    }
+    current.items.push(cleaned);
   });
-  return lines;
+
+  return blocks
+    .map((b) => ({ title: asText(b.title), items: (b.items || []).filter(Boolean) }))
+    .filter((b) => b.title || b.items.length);
 }
 
 function groupByTier(bundles) {
@@ -1610,8 +1639,8 @@ function renderDailyReportPreview(model, date, report, analysis) {
   const tierGroups = groupByTier(bundles);
   const topWatch = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 5);
   const ai = getDailyAiInsightContent(report, analysis);
-  const aiLines = normalizeAiInterpretationLines(ai.shortLine, ai.detailed);
-  const showAi = aiLines.length > 0;
+  const aiBlocks = parseAiInterpretationBlocks(ai.shortLine, ai.detailed);
+  const showAi = aiBlocks.length > 0;
 
   root.innerHTML = `
     <section class="preview-header">
@@ -1630,9 +1659,18 @@ function renderDailyReportPreview(model, date, report, analysis) {
         ? `
     <section class="preview-section">
       <h3>${getLang() === "zh" ? "AI 报告解读" : "AI Report Interpretation"}</h3>
-      <ul class="preview-list">
-        ${aiLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
-      </ul>
+      ${aiBlocks
+        .map(
+          (block) => `
+        ${block.title ? `<p class="summary-line"><strong>${escapeHtml(block.title)}</strong></p>` : ""}
+        ${
+          block.items.length
+            ? `<ul class="preview-list">${block.items.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`
+            : ""
+        }
+      `
+        )
+        .join("")}
     </section>`
         : ""
     }
