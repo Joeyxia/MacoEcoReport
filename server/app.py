@@ -23,6 +23,7 @@ try:
     get_daily_report,
     get_daily_report_analysis,
     get_latest_model_snapshot,
+    get_latest_openrouter_rankings_snapshot,
     init_db,
     list_active_subscribers,
     list_active_subscribers_with_status,
@@ -43,6 +44,7 @@ try:
     update_daily_report_analysis,
     upsert_daily_report_ai_insight,
     upsert_daily_report,
+    upsert_openrouter_rankings_snapshot,
   )
   from .mailer import send_email
 except ImportError:
@@ -52,6 +54,7 @@ except ImportError:
     get_daily_report,
     get_daily_report_analysis,
     get_latest_model_snapshot,
+    get_latest_openrouter_rankings_snapshot,
     init_db,
     list_active_subscribers,
     list_active_subscribers_with_status,
@@ -72,6 +75,7 @@ except ImportError:
     update_daily_report_analysis,
     upsert_daily_report_ai_insight,
     upsert_daily_report,
+    upsert_openrouter_rankings_snapshot,
   )
   from mailer import send_email
 
@@ -1438,14 +1442,25 @@ def ai_data_query():
 def openrouter_rankings():
   view = str(request.args.get("view") or "week").strip().lower()
   category = str(request.args.get("category") or "all").strip().lower()
+  refresh = str(request.args.get("refresh") or "").strip().lower() in {"1", "true", "yes", "on"}
   cache_key = f"openrouter:rankings:{view}:{category}"
-  cached = _cache_get(cache_key)
-  if cached:
-    return _etag_response(cached)
+  if not refresh:
+    cached = _cache_get(cache_key)
+    if cached:
+      return _etag_response(cached)
+    db_payload = get_latest_openrouter_rankings_snapshot(view=view, category=category)
+    if db_payload:
+      return _etag_response(_cache_set(cache_key, db_payload))
   try:
     payload = _fetch_openrouter_rankings(view=view, category=category)
+    upsert_openrouter_rankings_snapshot(payload)
     return _etag_response(_cache_set(cache_key, payload))
   except Exception as e:
+    db_stale = get_latest_openrouter_rankings_snapshot(view=view, category=category)
+    if db_stale:
+      db_stale = dict(db_stale)
+      db_stale["warning"] = f"db_stale: {str(e)[:120]}"
+      return _etag_response(db_stale)
     stale = _cache_get(cache_key)
     if stale:
       stale = dict(stale)

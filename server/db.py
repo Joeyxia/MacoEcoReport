@@ -160,6 +160,69 @@ def init_db():
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_daily_report_ai_insights_date ON daily_report_ai_insights(report_date);
+
+    CREATE TABLE IF NOT EXISTS openrouter_fetch_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      view TEXT NOT NULL,
+      category TEXT NOT NULL,
+      source_url TEXT,
+      parse_mode TEXT,
+      fetched_at TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_openrouter_fetch_runs_vc ON openrouter_fetch_runs(view, category, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS openrouter_top_models (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fetch_run_id INTEGER NOT NULL,
+      rank_num INTEGER,
+      name TEXT,
+      creator TEXT,
+      tokens TEXT,
+      share TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(fetch_run_id) REFERENCES openrouter_fetch_runs(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_openrouter_top_models_run ON openrouter_top_models(fetch_run_id, rank_num);
+
+    CREATE TABLE IF NOT EXISTS openrouter_top_apps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fetch_run_id INTEGER NOT NULL,
+      rank_num INTEGER,
+      name TEXT,
+      creator TEXT,
+      tokens TEXT,
+      share TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(fetch_run_id) REFERENCES openrouter_fetch_runs(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_openrouter_top_apps_run ON openrouter_top_apps(fetch_run_id, rank_num);
+
+    CREATE TABLE IF NOT EXISTS openrouter_top_providers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fetch_run_id INTEGER NOT NULL,
+      rank_num INTEGER,
+      name TEXT,
+      creator TEXT,
+      tokens TEXT,
+      share TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(fetch_run_id) REFERENCES openrouter_fetch_runs(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_openrouter_top_providers_run ON openrouter_top_providers(fetch_run_id, rank_num);
+
+    CREATE TABLE IF NOT EXISTS openrouter_top_prompts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fetch_run_id INTEGER NOT NULL,
+      rank_num INTEGER,
+      name TEXT,
+      creator TEXT,
+      tokens TEXT,
+      share TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(fetch_run_id) REFERENCES openrouter_fetch_runs(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_openrouter_top_prompts_run ON openrouter_top_prompts(fetch_run_id, rank_num);
     """
   )
   for ddl in [
@@ -179,6 +242,109 @@ def init_db():
       pass
   conn.commit()
   conn.close()
+
+
+def upsert_openrouter_rankings_snapshot(payload: dict):
+  conn = get_conn()
+  ts = now_iso()
+  view = str((payload or {}).get("view") or "week").strip().lower() or "week"
+  category = str((payload or {}).get("category") or "all").strip().lower() or "all"
+  source_url = str((payload or {}).get("sourceUrl") or "")
+  parse_mode = str((payload or {}).get("parseMode") or "")
+  fetched_at = str((payload or {}).get("fetchedAt") or ts)
+
+  cur = conn.execute(
+    """
+    INSERT INTO openrouter_fetch_runs (view, category, source_url, parse_mode, fetched_at, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """,
+    (view, category, source_url, parse_mode, fetched_at, ts),
+  )
+  run_id = int(cur.lastrowid or 0)
+
+  def _insert_rows(table_name: str, rows):
+    for r in rows or []:
+      conn.execute(
+        f"""
+        INSERT INTO {table_name}
+        (fetch_run_id, rank_num, name, creator, tokens, share, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+          run_id,
+          int(r.get("rank") or 0),
+          str(r.get("name") or ""),
+          str(r.get("creator") or ""),
+          str(r.get("tokens") or ""),
+          str(r.get("share") or ""),
+          ts,
+        ),
+      )
+
+  _insert_rows("openrouter_top_models", (payload or {}).get("models") or [])
+  _insert_rows("openrouter_top_apps", (payload or {}).get("apps") or [])
+  _insert_rows("openrouter_top_providers", (payload or {}).get("providers") or [])
+  _insert_rows("openrouter_top_prompts", (payload or {}).get("prompts") or [])
+
+  conn.commit()
+  conn.close()
+  return run_id
+
+
+def get_latest_openrouter_rankings_snapshot(view: str = "week", category: str = "all"):
+  conn = get_conn()
+  v = str(view or "week").strip().lower() or "week"
+  c = str(category or "all").strip().lower() or "all"
+  run = conn.execute(
+    """
+    SELECT id, view, category, source_url, parse_mode, fetched_at
+    FROM openrouter_fetch_runs
+    WHERE view = ? AND category = ?
+    ORDER BY datetime(replace(replace(fetched_at, 'T', ' '), 'Z', '')) DESC, id DESC
+    LIMIT 1
+    """,
+    (v, c),
+  ).fetchone()
+  if not run:
+    conn.close()
+    return None
+  run_id = int(run["id"])
+
+  def _rows(table_name: str):
+    rows = conn.execute(
+      f"""
+      SELECT rank_num, name, creator, tokens, share
+      FROM {table_name}
+      WHERE fetch_run_id = ?
+      ORDER BY rank_num ASC, id ASC
+      """,
+      (run_id,),
+    ).fetchall()
+    return [
+      {
+        "rank": int(r["rank_num"] or 0),
+        "name": str(r["name"] or ""),
+        "creator": str(r["creator"] or ""),
+        "tokens": str(r["tokens"] or ""),
+        "share": str(r["share"] or ""),
+      }
+      for r in rows
+    ]
+
+  payload = {
+    "ok": True,
+    "sourceUrl": str(run["source_url"] or ""),
+    "parseMode": str(run["parse_mode"] or ""),
+    "view": str(run["view"] or v),
+    "category": str(run["category"] or c),
+    "fetchedAt": str(run["fetched_at"] or ""),
+    "models": _rows("openrouter_top_models"),
+    "apps": _rows("openrouter_top_apps"),
+    "providers": _rows("openrouter_top_providers"),
+    "prompts": _rows("openrouter_top_prompts"),
+  }
+  conn.close()
+  return payload
 
 
 def replace_sheet_rows(sheet_name: str, rows, as_of: str):
