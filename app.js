@@ -31,6 +31,7 @@ const i18n = {
     nav_indicators: "Indicators",
     nav_glossary: "Glossary",
     nav_subscribe: "Subscribe",
+    nav_ai_assistant: "AI Assistant",
     nav_openrouter: "OpenRouter",
     dashboard_eyebrow: "Global Macro Crisis Radar",
     dashboard_title: "Institutional 14-Dimension Monitoring Dashboard",
@@ -87,6 +88,8 @@ const i18n = {
     subscribe_submit: "Subscribe",
     subscribe_note: "If backend is unavailable, subscription will fallback to GitHub request.",
     subscribe_count: "Active Subscribers",
+    ai_assistant_page_title: "AI Data Assistant",
+    ai_assistant_page_desc: "Ask natural-language questions about data freshness, failed indicators, and update status.",
     ai_data_assistant_title: "AI Data Assistant",
     ai_data_assistant_desc: "Ask natural-language questions about data freshness, failed indicators, and update status.",
     ai_data_assistant_placeholder: "e.g. Which indicators failed online verification today and what should I replace them with?",
@@ -108,6 +111,7 @@ const i18n = {
     nav_indicators: "指标库",
     nav_glossary: "术语表",
     nav_subscribe: "订阅",
+    nav_ai_assistant: "AI 助手",
     nav_openrouter: "OpenRouter",
     dashboard_eyebrow: "全球宏观危机雷达",
     dashboard_title: "14维机构级宏观监控仪表盘",
@@ -163,6 +167,8 @@ const i18n = {
     subscribe_submit: "订阅",
     subscribe_note: "若后端不可用，将自动回退到 GitHub 请求订阅。",
     subscribe_count: "当前有效订阅数",
+    ai_assistant_page_title: "AI 数据助手",
+    ai_assistant_page_desc: "可以直接询问数据新鲜度、失败指标和更新状态。",
     ai_data_assistant_title: "AI 数据助手",
     ai_data_assistant_desc: "可以直接询问数据新鲜度、失败指标和更新状态。",
     ai_data_assistant_placeholder: "例如：今天哪些指标在线校验失败？分别建议替代数据源是什么？",
@@ -3041,7 +3047,11 @@ async function initDashboard() {
     renderDashboard(next);
   });
   await setupSubscriptionForm();
-  await setupAiDataAssistant(coreModel);
+}
+
+async function initAiAssistantPage() {
+  const model = await loadCurrentModel({ view: "core" });
+  await setupAiDataAssistant(model);
 }
 
 async function ensureModelData(model) {
@@ -3078,6 +3088,7 @@ async function init() {
     if (page === "indicators") renderIndicatorsPage(currentModel);
     if (page === "glossary") renderGlossary(currentModel);
     if (page === "subscribe") await setupSubscriptionForm();
+    if (page === "ai-assistant") await initAiAssistantPage();
     if (page === "openrouter") await renderOpenRouterPage();
   });
 
@@ -3086,6 +3097,7 @@ async function init() {
   if (page === "indicators") renderIndicatorsPage(model);
   if (page === "glossary") renderGlossary(model);
   if (page === "subscribe") await setupSubscriptionForm();
+  if (page === "ai-assistant") await initAiAssistantPage();
   if (page === "openrouter") await renderOpenRouterPage();
 }
 

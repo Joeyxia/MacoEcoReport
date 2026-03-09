@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="macro-api-base" content="https://api.nexo.hk" />
-    <title>Macro Risk Monitor | OpenRouter Rankings</title>
+    <title>Macro Risk Monitor | AI Assistant</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="app.js?v=20260309j" defer></script>
   </head>
-  <body data-page="openrouter">
+  <body data-page="ai-assistant">
     <div class="bg-layer"></div>
     <header class="site-header">
       <a class="brand" href="index.html">Macro Risk Monitor</a>
@@ -24,8 +24,8 @@
         <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
         <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
         <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
-        <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
-        <a class="nav-link active" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
+        <a class="nav-link active" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
+        <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
       </nav>
       <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
     </header>
@@ -33,23 +33,19 @@
     <main class="page">
       <section class="panel">
         <div class="section-head">
-          <h1 data-i18n="openrouter_title">OpenRouter Rankings</h1>
-          <p class="subtle" data-i18n="openrouter_desc">Live snapshot from openrouter.ai/rankings, including top models and top apps.</p>
+          <h1 data-i18n="ai_assistant_page_title">AI Data Assistant</h1>
+          <p class="subtle" data-i18n="ai_assistant_page_desc">Ask natural-language questions about data freshness, failed indicators, and update status.</p>
         </div>
-        <p id="openrouter-updated" class="subtle">--</p>
-        <p id="openrouter-source" class="subtle"></p>
-      </section>
-
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="openrouter_models">Top Models</h2>
-          <div id="openrouter-models" class="table-wrap"></div>
-        </article>
-        <article class="panel">
-          <h2 data-i18n="openrouter_apps">Top Apps</h2>
-          <div id="openrouter-apps" class="table-wrap"></div>
-        </article>
+        <div class="ai-query-wrap">
+          <textarea id="ai-query-input" class="search-input" rows="4" data-i18n-placeholder="ai_data_assistant_placeholder" placeholder="e.g. Which indicators failed online verification today and what should I replace them with?"></textarea>
+          <div class="ai-query-actions">
+            <button id="ai-query-submit" class="btn" type="button" data-i18n="ai_data_assistant_submit">Ask AI</button>
+          </div>
+          <p id="ai-query-status" class="subtle"></p>
+          <div id="ai-query-output" class="summary-panel ai-answer"></div>
+        </div>
       </section>
     </main>
   </body>
 </html>
+

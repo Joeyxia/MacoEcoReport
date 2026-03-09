@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js" defer></script>
-    <script src="app.js?v=20260309i" defer></script>
+    <script src="app.js?v=20260309j" defer></script>
   </head>
   <body data-page="dashboard">
     <div class="bg-layer"></div>
@@ -25,6 +25,7 @@
         <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
         <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
         <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
+        <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
         <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
       </nav>
       <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
@@ -126,21 +127,6 @@
           <h3 data-i18n="alerts">Alerts</h3>
           <div id="alerts-table" class="table-wrap"></div>
         </article>
-      </section>
-
-      <section class="panel">
-        <div class="section-head">
-          <h2 data-i18n="ai_data_assistant_title">AI Data Assistant</h2>
-          <p class="subtle" data-i18n="ai_data_assistant_desc">Ask natural-language questions about data freshness, failed indicators, and update status.</p>
-        </div>
-        <div class="ai-query-wrap">
-          <textarea id="ai-query-input" class="search-input" rows="3" data-i18n-placeholder="ai_data_assistant_placeholder" placeholder="e.g. Which indicators failed online verification today and what should I replace them with?"></textarea>
-          <div class="ai-query-actions">
-            <button id="ai-query-submit" class="btn" type="button" data-i18n="ai_data_assistant_submit">Ask AI</button>
-          </div>
-          <p id="ai-query-status" class="subtle"></p>
-          <div id="ai-query-output" class="summary-panel ai-answer"></div>
-        </div>
       </section>
 
       <p class="site-footnote" data-i18n="powered_by">Powered by Nexo Marco Intelligence</p>
