@@ -1316,15 +1316,10 @@ async function renderLatestReportSummary(model) {
   });
 }
 
-function renderDailyAiInsight(report, analysis) {
-  const root = document.getElementById("daily-ai-insight");
-  const meta = document.getElementById("daily-ai-insight-meta");
-  if (!root) return;
+function getDailyAiInsightContent(report, analysis) {
   const ai = analysis || report?.aiAnalysis || report?.aiInsight || report?.reportPayload?.aiInsight || null;
   if (!ai) {
-    root.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "暂无 AI 解读数据。" : "No AI interpretation data yet."}</p>`;
-    if (meta) meta.textContent = "--";
-    return;
+    return { shortLine: "", detailed: "", modelLabel: "--", genAt: "--" };
   }
   const insight = ai.insight || ai;
   const detailed = getLang() === "zh"
@@ -1335,11 +1330,7 @@ function renderDailyAiInsight(report, analysis) {
     : asText(insight.short_summary_en || insight.short_summary);
   const modelLabel = asText(ai.model || "--");
   const genAt = asText(ai.generated_at || report?.generatedAt || "--");
-  root.innerHTML = `
-    <div class="summary-line"><strong>${getLang() === "zh" ? "简要结论" : "Short Summary"}:</strong> ${escapeHtml(shortLine || "--")}</div>
-    <pre class="ai-detailed-text">${escapeHtml(detailed || "--")}</pre>
-  `;
-  if (meta) meta.textContent = `${modelLabel} · ${genAt}`;
+  return { shortLine, detailed, modelLabel, genAt };
 }
 
 function groupByTier(bundles) {
@@ -1351,13 +1342,16 @@ function groupByTier(bundles) {
   return groups;
 }
 
-function renderDailyReportPreview(model, date) {
+function renderDailyReportPreview(model, date, report, analysis) {
   const root = document.getElementById("report-preview");
   if (!root) return;
 
   const bundles = buildDimensionBundles(model);
   const tierGroups = groupByTier(bundles);
   const topWatch = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 5);
+  const ai = getDailyAiInsightContent(report, analysis);
+  const showAi = Boolean(ai.shortLine || ai.detailed);
+  const detailHtml = escapeHtml(ai.detailed || "").replace(/\n/g, "<br>");
 
   root.innerHTML = `
     <section class="preview-header">
@@ -1370,6 +1364,17 @@ function renderDailyReportPreview(model, date) {
       <ul class="preview-list">
         ${topWatch.map((d) => `<li>${escapeHtml(d.name)}: ${round(d.score, 1)}</li>`).join("")}
       </ul>
+      ${
+        showAi
+          ? `
+      <div class="preview-ai-block">
+        <h3>${getLang() === "zh" ? "AI 报告解读" : "AI Report Interpretation"}</h3>
+        <p class="subtle">${escapeHtml(ai.modelLabel)} · ${escapeHtml(ai.genAt)}</p>
+        <p class="summary-line"><strong>${getLang() === "zh" ? "简要结论" : "Short Summary"}:</strong> ${escapeHtml(ai.shortLine || "--")}</p>
+        <div class="preview-ai-text">${detailHtml || "--"}</div>
+      </div>`
+          : ""
+      }
     </section>
   `;
 
@@ -2077,9 +2082,8 @@ async function renderDailyReport(model) {
   };
   const initial = existing?.text || generateDailyText(model, date, null);
   editor.value = initial;
-  renderDailyReportPreview(viewModel, date);
   let analysis = await loadReportAnalysis(date);
-  renderDailyAiInsight(existing || { reportPayload: payload }, analysis);
+  renderDailyReportPreview(viewModel, date, existing || { reportPayload: payload }, analysis);
 
   renderObjectTable("daily-scores-table", viewModel.tables?.scores || model.tables?.scores || []);
   renderOnlineCheckTable(viewModel.onlineCheck || model.onlineCheck || []);
@@ -2095,8 +2099,7 @@ async function renderDailyReport(model) {
 
   regenBtn?.addEventListener("click", () => {
     editor.value = generateDailyText(model, date, null);
-    renderDailyReportPreview(viewModel, date);
-    renderDailyAiInsight(existing || { reportPayload: payload }, analysis);
+    renderDailyReportPreview(viewModel, date, existing || { reportPayload: payload }, analysis);
     saveStatus.textContent = getLang() === "zh" ? "草稿已重新生成。" : "Draft regenerated.";
   });
 
@@ -2116,11 +2119,10 @@ async function renderDailyReport(model) {
     }
 
     editor.value = generateDailyText(targetModel, date, summary);
-    renderDailyReportPreview(targetModel, date);
     await saveReport(date, editor.value, { score: round(targetModel.totalScore, 1), status: targetModel.status });
     existing = await loadReport(date);
     analysis = await loadReportAnalysis(date);
-    renderDailyAiInsight(existing || { reportPayload: targetModel }, analysis);
+    renderDailyReportPreview(targetModel, date, existing || { reportPayload: targetModel }, analysis);
     renderReportLinks(await listReports());
     saveStatus.textContent = getLang() === "zh" ? "最终报告已生成并保存。" : "Final report generated and saved.";
   });
@@ -2129,7 +2131,7 @@ async function renderDailyReport(model) {
     await saveReport(date, editor.value, { score: round(model.totalScore, 1), status: model.status });
     existing = await loadReport(date);
     analysis = await loadReportAnalysis(date);
-    renderDailyAiInsight(existing || { reportPayload: payload }, analysis);
+    renderDailyReportPreview(viewModel, date, existing || { reportPayload: payload }, analysis);
     renderReportLinks(await listReports());
     saveStatus.textContent = getLang() === "zh" ? "已保存。" : "Saved.";
   });
