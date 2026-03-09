@@ -3003,6 +3003,14 @@ function setupUpload(onLoaded) {
   });
 }
 
+function ensureSiteFooter() {
+  if (document.querySelector(".site-footer-note")) return;
+  const footer = document.createElement("footer");
+  footer.className = "site-footer-note";
+  footer.textContent = "由 Nexo Marco Intelligence 提供支持";
+  document.body.appendChild(footer);
+}
+
 async function initDashboard() {
   const status = document.getElementById("file-status");
   renderDashboardSkeleton();
@@ -3072,6 +3080,7 @@ async function init() {
   trackPublicPageView();
   setLang(getLang());
   applyI18n();
+  ensureSiteFooter();
   setupNavPrefetch();
   await migrateBrowserDataToServer();
 

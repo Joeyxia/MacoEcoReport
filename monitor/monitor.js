@@ -24,6 +24,14 @@ let tokensChart = null;
 
 function q(id){ return document.getElementById(id); }
 
+function ensureSiteFooter(){
+  if(document.querySelector('.site-footer-note')) return;
+  const footer = document.createElement('footer');
+  footer.className = 'site-footer-note';
+  footer.textContent = '由 Nexo Marco Intelligence 提供支持';
+  document.body.appendChild(footer);
+}
+
 function dataApiUrl(path){
   const clean = String(path || '').startsWith('/') ? String(path) : `/${String(path || '')}`;
   return `${DATA_API_BASE}${clean}`;
@@ -438,6 +446,7 @@ async function initDataTool(){
 
 (async function(){
   trackMonitorPageView();
+  ensureSiteFooter();
   const page = document.body.dataset.page;
   if(page==='login') return initLogin();
   if(page==='ops') return initOps();

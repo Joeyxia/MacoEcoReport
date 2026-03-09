@@ -908,7 +908,7 @@ body[data-page="ai-assistant"] .ai-answer {
     text-align: center;
   }
 
-  .sheet-tab {
+.sheet-tab {
     font-size: 0.76rem;
     padding: 0.28rem 0.52rem;
   }
@@ -918,4 +918,13 @@ body[data-page="ai-assistant"] .ai-answer {
     font-size: 0.78rem;
     padding: 0.34rem 0.36rem;
   }
+}
+
+.site-footer-note {
+  width: 100%;
+  text-align: center;
+  color: rgba(18, 36, 40, 0.48);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  padding: 1.2rem 0.9rem 1.6rem;
 }
