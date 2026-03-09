@@ -45,7 +45,7 @@ const i18n = {
     key_indicators_overview: "Key Indicators Snapshot",
     latest_report_summary: "Latest Report Summary",
     daily_watch_items: "Daily Watch Items",
-    dimensions_14_detail: "All 14 Dimensions Detail (from Dimensions Sheet)",
+    dimensions_14_detail: "All 14 Dimensions Detail",
     dimensions_14_detail_desc: "This section shows complete dimension definitions, tiers, weights, and update frequencies.",
     model_core_tables: "Model Core Tables",
     model_core_tables_desc: "Complete structured data from your 14-dimension model.",
@@ -122,7 +122,7 @@ const i18n = {
     key_indicators_overview: "关键指标概览",
     latest_report_summary: "最新报告摘要",
     daily_watch_items: "当日关注项",
-    dimensions_14_detail: "14个维度信息（来自 Dimensions 表）",
+    dimensions_14_detail: "14个维度信息",
     dimensions_14_detail_desc: "展示维度定义、层级、权重和更新频率。",
     model_core_tables: "模型核心数据表",
     model_core_tables_desc: "完整展示你的14维模型结构化数据。",
@@ -1635,8 +1635,6 @@ function renderDailyReportPreview(model, date, report, analysis) {
   const root = document.getElementById("report-preview");
   if (!root) return;
 
-  const bundles = buildDimensionBundles(model);
-  const tierGroups = groupByTier(bundles);
   const topWatch = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 5);
   const ai = getDailyAiInsightContent(report, analysis);
   const aiBlocks = parseAiInterpretationBlocks(ai.shortLine, ai.detailed);
@@ -1676,26 +1674,98 @@ function renderDailyReportPreview(model, date, report, analysis) {
     }
   `;
 
-  for (const [tier, dims] of tierGroups.entries()) {
-    const tierNode = document.createElement("section");
-    tierNode.className = "preview-tier";
-    tierNode.innerHTML = `<h3>${escapeHtml(localizeTierName(tier))}</h3>`;
+  const list = (model.tables?.dimensions || [])
+    .filter((row) => /^D\d{2}$/i.test(findValue(row, ["dimensionid", "维度id", "id"])))
+    .sort((a, b) => {
+      const ai = findValue(a, ["dimensionid", "维度id", "id"]);
+      const bi = findValue(b, ["dimensionid", "维度id", "id"]);
+      return ai.localeCompare(bi, undefined, { numeric: true });
+    })
+    .slice(0, 14);
+  if (!list.length) return;
 
-    dims.forEach((dim) => {
-      const trend = scoreTrend(dim.metric.score || 0);
-      const card = document.createElement("div");
-      card.className = "preview-dim-card";
+  const grouped = new Map();
+  list.forEach((row) => {
+    const tier = findValue(row, ["tier", "层级"]) || "Other";
+    if (!grouped.has(tier)) grouped.set(tier, []);
+    grouped.get(tier).push(row);
+  });
+
+  const payloadIndicators = Array.isArray(model.indicatorDetails) ? model.indicatorDetails : [];
+  const tableIndicators = model.tables?.indicators || [];
+  const tableInputs = model.tables?.inputs || [];
+  const inputCodeKey = pickInputCodeKey(tableInputs);
+  const inputValKey = pickInputValueKey(tableInputs);
+
+  const section = document.createElement("section");
+  section.className = "preview-section";
+  section.innerHTML = `<h3>${escapeHtml(t("dimensions_14_detail"))}</h3>`;
+
+  for (const [tier, dims] of grouped.entries()) {
+    const layer = document.createElement("section");
+    layer.className = "layer-block";
+    const totalWeight = dims.reduce((acc, row) => acc + parsePercentValue(findValue(row, ["weight", "权重", "%"])), 0);
+    layer.innerHTML = `
+      <div class="layer-header">
+        <div class="layer-title">${escapeHtml(localizeTierName(tier))}</div>
+        <div class="layer-weight">${getLang() === "zh" ? "层级权重" : "Layer Weight"}: ${round(totalWeight, 1)}%</div>
+      </div>
+      <div class="layer-dimensions"></div>
+    `;
+    const container = layer.querySelector(".layer-dimensions");
+    dims.forEach((row) => {
+      const id = findValue(row, ["dimensionid", "维度id", "id"]);
+      const name = findValue(row, ["dimensionname", "维度名称", "维度"]);
+      const weight = findValue(row, ["weight", "权重", "%"]);
+      const definition = localizeDimensionDefinition(id, findValue(row, ["definition", "说明", "定义"]));
+      const update = findValue(row, ["typical update", "frequency", "更新"]);
+      const metric = findDimensionMetric(model, id, name);
+      const trend = scoreTrend(metric.score || 0);
+
+      let dimIndicators = [];
+      if (payloadIndicators.length) {
+        dimIndicators = payloadIndicators
+          .filter((x) => asText(x.DimensionID).toLowerCase() === asText(id).toLowerCase())
+          .slice(0, 3)
+          .map((x) => ({
+            indicatorName: localizeIndicatorName(x.IndicatorName || x.IndicatorCode),
+            value: x.LatestValue
+          }));
+      } else {
+        dimIndicators = tableIndicators
+          .filter((r) => findValue(r, ["dimensionid", "维度id", "id"]).toLowerCase() === id.toLowerCase())
+          .slice(0, 3)
+          .map((r) => {
+            const code = findValue(r, ["indicatorcode", "code"]);
+            const indicatorName = localizeIndicatorName(findValue(r, ["indicatorname", "指标", "name"]) || code);
+            const input = tableInputs.find((x) => asText(x[inputCodeKey]) === code);
+            const value = input ? asText(input[inputValKey]) : "";
+            return { indicatorName, value };
+          });
+      }
+      const indicatorList = dimIndicators.map((i) => `<li>${escapeHtml(i.indicatorName)}: ${escapeHtml(i.value ?? "--")}</li>`).join("");
+
+      const card = document.createElement("article");
+      card.className = "dimension-card";
       card.innerHTML = `
-        <strong>${escapeHtml(dim.id)} ${escapeHtml(localizeDimensionName(dim.name, dim.id))}</strong>
-        <div>${getLang() === "zh" ? "权重" : "Weight"} ${escapeHtml(dim.weight)} | ${getLang() === "zh" ? "评分" : "Score"} ${round(dim.metric.score, 1)} ${trend.symbol} | ${getLang() === "zh" ? "贡献" : "Contribution"} ${round(dim.metric.contribution, 2)}</div>
-        <ul class="preview-list">
-          ${dim.indicators.map((i) => `<li>${escapeHtml(localizeIndicatorName(i.indicatorName))}: ${escapeHtml(i.value || "--")}</li>`).join("")}
-        </ul>
+        <h3>${escapeHtml(id)} ${escapeHtml(localizeDimensionName(name, id))}</h3>
+        <div class="dim-row">
+          <span class="dim-chip">${getLang() === "zh" ? "权重" : "Weight"}: ${escapeHtml(weight)}</span>
+          <span class="dim-chip">${getLang() === "zh" ? "更新" : "Update"}: ${escapeHtml(update)}</span>
+        </div>
+        <div class="score-line">
+          <span class="score-pill">${round(metric.score || 0, 1)}/100</span>
+          <span>${getLang() === "zh" ? "贡献" : "Contribution"}: ${round(metric.contribution || 0, 2)}</span>
+          <span class="${trend.cls}">${trend.symbol}</span>
+        </div>
+        <ul class="preview-list">${indicatorList}</ul>
+        <p>${escapeHtml(definition)}</p>
       `;
-      tierNode.appendChild(card);
+      container.appendChild(card);
     });
-    root.appendChild(tierNode);
+    section.appendChild(layer);
   }
+  root.appendChild(section);
 }
 
 function findValue(row, patterns) {
