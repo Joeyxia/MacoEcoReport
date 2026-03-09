@@ -222,6 +222,7 @@
         var enter = document.getElementById("enter-dashboard");
         if (!q || !a || !v || !enter) return;
         var answer = 0;
+        var verified = false;
         function toHalfWidthDigits(s) {
           return String(s || "").replace(/[０-９]/g, function (ch) {
             return String.fromCharCode(ch.charCodeAt(0) - 65248);
@@ -235,14 +236,12 @@
         }
         function setVerified(verified) {
           if (verified) {
-            sessionStorage.setItem("nexo_human_verified", "1");
             q.textContent = "Verification passed";
             enter.style.pointerEvents = "auto";
             enter.style.opacity = "1";
             enter.setAttribute("aria-disabled", "false");
             return;
           }
-          sessionStorage.removeItem("nexo_human_verified");
           enter.style.pointerEvents = "none";
           enter.style.opacity = "0.55";
           enter.setAttribute("aria-disabled", "true");
@@ -255,14 +254,11 @@
           a.value = "";
         }
         function pass() {
+          verified = true;
           setVerified(true);
         }
-        if (sessionStorage.getItem("nexo_human_verified") === "1") {
-          pass();
-        } else {
-          setVerified(false);
-          reset();
-        }
+        setVerified(false);
+        reset();
         function runVerify() {
           var val = parseHumanValue(a.value);
           if (Number.isFinite(val) && val === answer) {
@@ -280,9 +276,14 @@
           }
         });
         enter.addEventListener("click", function (e) {
-          if (sessionStorage.getItem("nexo_human_verified") === "1") return;
+          if (verified) return;
           e.preventDefault();
           q.textContent = "Please finish human verification first";
+          reset();
+        });
+        window.addEventListener("pageshow", function () {
+          verified = false;
+          setVerified(false);
           reset();
         });
       })();

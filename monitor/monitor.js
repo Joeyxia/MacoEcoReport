@@ -457,6 +457,7 @@ function setupLogout(){
   const btn=q('logout-btn');
   if(!btn) return;
   btn.addEventListener('click', async()=>{
+    try { sessionStorage.removeItem('monitor_human_verified'); } catch(_err) {}
     await api.post('/monitor-api/auth/logout',{});
     location.href='./index.html';
   });
@@ -490,34 +491,34 @@ async function initLogin(){
 
   const passHumanCheck = () => {
     if(!googleBtn) return;
-    sessionStorage.setItem('monitor_human_verified', '1');
     googleBtn.disabled = false;
     if(statusEl) statusEl.textContent = mt('human_pass');
   };
 
   if(hasHumanCheck){
     googleBtn.disabled = true;
-    if(sessionStorage.getItem('monitor_human_verified') === '1'){
-      passHumanCheck();
-    }else{
+    const doVerify = ()=>{
+      const v = normalizeNum(answerEl.value);
+      if(Number.isFinite(v) && v === humanAnswer){
+        passHumanCheck();
+        return;
+      }
+      if(statusEl) statusEl.textContent = mt('human_fail');
       updateHumanQuestion();
-      const doVerify = ()=>{
-        const v = normalizeNum(answerEl.value);
-        if(Number.isFinite(v) && v === humanAnswer){
-          passHumanCheck();
-          return;
-        }
-        if(statusEl) statusEl.textContent = mt('human_fail');
-        updateHumanQuestion();
-      };
-      verifyBtn.addEventListener('click', doVerify);
-      answerEl.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter'){
-          e.preventDefault();
-          doVerify();
-        }
-      });
-    }
+    };
+    updateHumanQuestion();
+    verifyBtn.addEventListener('click', doVerify);
+    answerEl.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        doVerify();
+      }
+    });
+    window.addEventListener('pageshow', ()=>{
+      googleBtn.disabled = true;
+      if(statusEl) statusEl.textContent = '';
+      updateHumanQuestion();
+    });
   }
 
   const btn=q('google-login');
