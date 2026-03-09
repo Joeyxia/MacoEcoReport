@@ -1017,6 +1017,13 @@ def run(mode="full", report_date=None, strict_freshness=False):
             meta={"score": total_score, "status": model_status, "summary": ai_short_zh or short_summary},
             report_path=f"reports/{today}.html",
             payload=today_entry.get("reportPayload"),
+            ai_analysis={
+                "short_summary": ai_short_zh or short_summary,
+                "detailed_interpretation": ai_detailed_zh,
+                "model": ai_model,
+                "status": "ok" if not ai_error else "fallback",
+                "generated_at": generated_at,
+            },
         )
         upsert_daily_report_ai_insight(
             report_date=today,

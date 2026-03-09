@@ -21,6 +21,7 @@ try:
     add_subscriber,
     deactivate_subscriber,
     get_daily_report,
+    get_daily_report_analysis,
     get_latest_model_snapshot,
     init_db,
     list_active_subscribers,
@@ -38,6 +39,7 @@ try:
     save_email_event,
     save_model_snapshot,
     save_online_check,
+    update_daily_report_analysis,
     upsert_daily_report_ai_insight,
     upsert_daily_report,
   )
@@ -47,6 +49,7 @@ except ImportError:
     add_subscriber,
     deactivate_subscriber,
     get_daily_report,
+    get_daily_report_analysis,
     get_latest_model_snapshot,
     init_db,
     list_active_subscribers,
@@ -64,6 +67,7 @@ except ImportError:
     save_email_event,
     save_model_snapshot,
     save_online_check,
+    update_daily_report_analysis,
     upsert_daily_report_ai_insight,
     upsert_daily_report,
   )
@@ -144,8 +148,12 @@ def _build_model_summary(model, latest_report=None):
   primary_drivers = model.get("primaryDrivers") or model.get("drivers") or []
   report_meta = latest_report.get("meta") if isinstance(latest_report, dict) else {}
   report_date = latest_report.get("date") if isinstance(latest_report, dict) else ""
+  report_ai = latest_report.get("aiAnalysis") if isinstance(latest_report, dict) else {}
   ai = get_daily_report_ai_insight(report_date) if report_date else None
-  short_ai = (ai or {}).get("short_summary") if isinstance(ai, dict) else ""
+  short_ai = (
+    (report_ai or {}).get("short_summary")
+    or ((ai or {}).get("short_summary") if isinstance(ai, dict) else "")
+  )
 
   return {
     "asOf": model.get("asOf") or "",
@@ -158,7 +166,7 @@ def _build_model_summary(model, latest_report=None):
     "dailyWatchedItems": watch_items,
     "latestReportSummary": short_ai or model.get("latestReportSummary") or report_meta.get("summary") or "",
     "latestReportDate": report_date or "",
-    "latestReportAiInsight": ai or None,
+    "latestReportAiInsight": report_ai or ai or None,
     "generatedAt": model.get("generatedAt") or "",
   }
 
@@ -955,10 +963,11 @@ def reports():
   text = str(payload.get("text") or "")
   meta = payload.get("meta") or {}
   report_payload = payload.get("reportPayload")
+  ai_analysis = payload.get("aiAnalysis") or {}
   report_path = str(payload.get("path") or f"reports/{date}.html")
   if not date:
     return jsonify({"error": "missing_date"}), 400
-  upsert_daily_report(date, text, meta, report_path=report_path, payload=report_payload)
+  upsert_daily_report(date, text, meta, report_path=report_path, payload=report_payload, ai_analysis=ai_analysis)
   _invalidate_cache("reports:", "model:summary")
   return jsonify({"ok": True})
 
@@ -972,8 +981,34 @@ def report_by_date(report_date):
   if not row:
     return jsonify({"error": "not_found"}), 404
   row = dict(row)
-  row["aiInsight"] = get_daily_report_ai_insight(report_date) or None
+  row["aiInsight"] = row.get("aiAnalysis") or get_daily_report_ai_insight(report_date) or None
   return _etag_response(row)
+
+
+@app.route("/api/reports/<report_date>/analysis", methods=["GET", "POST", "OPTIONS"])
+def report_analysis_by_date(report_date):
+  if request.method == "OPTIONS":
+    return ("", 204)
+  date = str(report_date or "").strip()
+  if not date:
+    return jsonify({"error": "missing_date"}), 400
+  if request.method == "GET":
+    row = get_daily_report_analysis(date)
+    if not row:
+      return jsonify({"error": "not_found"}), 404
+    return _etag_response(row)
+
+  payload = request.get_json(silent=True) or {}
+  update_daily_report_analysis(
+    report_date=date,
+    short_summary=str(payload.get("short_summary") or ""),
+    detailed_interpretation=str(payload.get("detailed_interpretation") or ""),
+    model=str(payload.get("model") or ""),
+    status=str(payload.get("status") or ""),
+    generated_at=str(payload.get("generated_at") or ""),
+  )
+  _invalidate_cache("model:summary", "reports:", f"report:{date}")
+  return jsonify({"ok": True, "report_date": date})
 
 
 @app.route("/api/reports/<report_date>/insight", methods=["GET", "POST", "OPTIONS"])
@@ -1000,6 +1035,14 @@ def report_insight_by_date(report_date):
     prompt_version=str(payload.get("prompt_version") or ""),
     generated_at=str(payload.get("generated_at") or ""),
     error=str(payload.get("error") or ""),
+  )
+  update_daily_report_analysis(
+    report_date=date,
+    short_summary=str(payload.get("short_summary") or ""),
+    detailed_interpretation=str(payload.get("detailed_text") or ""),
+    model=str(payload.get("model") or ""),
+    status=str(payload.get("status") or "ok"),
+    generated_at=str(payload.get("generated_at") or ""),
   )
   _invalidate_cache("model:summary", f"report:{date}")
   return jsonify({"ok": True, "report_date": date})

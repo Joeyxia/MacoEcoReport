@@ -508,6 +508,11 @@ async function loadReport(date) {
   return staticReports.find((r) => r.date === date) || null;
 }
 
+async function loadReportAnalysis(date) {
+  const fromApi = await apiFetch(`/api/reports/${encodeURIComponent(date)}/analysis`);
+  return fromApi && !fromApi.error ? fromApi : null;
+}
+
 async function listReports(limit = 400) {
   const safeLimit = Math.max(1, Math.min(Number(limit) || 400, 1000));
   const fromApi = await apiFetch(`/api/reports?limit=${safeLimit}`);
@@ -1311,21 +1316,25 @@ async function renderLatestReportSummary(model) {
   });
 }
 
-function renderDailyAiInsight(report) {
+function renderDailyAiInsight(report, analysis) {
   const root = document.getElementById("daily-ai-insight");
   const meta = document.getElementById("daily-ai-insight-meta");
   if (!root) return;
-  const ai = report?.aiInsight || report?.reportPayload?.aiInsight || null;
+  const ai = analysis || report?.aiAnalysis || report?.aiInsight || report?.reportPayload?.aiInsight || null;
   if (!ai) {
     root.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "暂无 AI 解读数据。" : "No AI interpretation data yet."}</p>`;
     if (meta) meta.textContent = "--";
     return;
   }
   const insight = ai.insight || ai;
-  const detailed = getLang() === "zh" ? asText(insight.detailed_markdown_zh) : asText(insight.detailed_markdown_en);
-  const shortLine = getLang() === "zh" ? asText(insight.short_summary_zh) : asText(insight.short_summary_en);
-  const modelLabel = asText(ai.model || report?.reportPayload?.aiInsight?.model || "--");
-  const genAt = asText(ai.generated_at || report?.reportPayload?.aiInsight?.generated_at || report?.generatedAt || "--");
+  const detailed = getLang() === "zh"
+    ? asText(insight.detailed_interpretation || insight.detailed_text || insight.detailed_markdown_zh)
+    : asText(insight.detailed_interpretation || insight.detailed_markdown_en || insight.detailed_text);
+  const shortLine = getLang() === "zh"
+    ? asText(insight.short_summary || insight.short_summary_zh)
+    : asText(insight.short_summary || insight.short_summary_en);
+  const modelLabel = asText(ai.model || "--");
+  const genAt = asText(ai.generated_at || report?.generatedAt || "--");
   root.innerHTML = `
     <div class="summary-line"><strong>${getLang() === "zh" ? "简要结论" : "Short Summary"}:</strong> ${escapeHtml(shortLine || "--")}</div>
     <pre class="ai-detailed-text">${escapeHtml(detailed || "--")}</pre>
@@ -2069,7 +2078,8 @@ async function renderDailyReport(model) {
   const initial = existing?.text || generateDailyText(model, date, null);
   editor.value = initial;
   renderDailyReportPreview(viewModel, date);
-  renderDailyAiInsight(existing || { reportPayload: payload });
+  let analysis = await loadReportAnalysis(date);
+  renderDailyAiInsight(existing || { reportPayload: payload }, analysis);
 
   renderObjectTable("daily-scores-table", viewModel.tables?.scores || model.tables?.scores || []);
   renderOnlineCheckTable(viewModel.onlineCheck || model.onlineCheck || []);
@@ -2086,7 +2096,7 @@ async function renderDailyReport(model) {
   regenBtn?.addEventListener("click", () => {
     editor.value = generateDailyText(model, date, null);
     renderDailyReportPreview(viewModel, date);
-    renderDailyAiInsight(existing || { reportPayload: payload });
+    renderDailyAiInsight(existing || { reportPayload: payload }, analysis);
     saveStatus.textContent = getLang() === "zh" ? "草稿已重新生成。" : "Draft regenerated.";
   });
 
@@ -2109,7 +2119,8 @@ async function renderDailyReport(model) {
     renderDailyReportPreview(targetModel, date);
     await saveReport(date, editor.value, { score: round(targetModel.totalScore, 1), status: targetModel.status });
     existing = await loadReport(date);
-    renderDailyAiInsight(existing || { reportPayload: targetModel });
+    analysis = await loadReportAnalysis(date);
+    renderDailyAiInsight(existing || { reportPayload: targetModel }, analysis);
     renderReportLinks(await listReports());
     saveStatus.textContent = getLang() === "zh" ? "最终报告已生成并保存。" : "Final report generated and saved.";
   });
@@ -2117,7 +2128,8 @@ async function renderDailyReport(model) {
   saveBtn?.addEventListener("click", async () => {
     await saveReport(date, editor.value, { score: round(model.totalScore, 1), status: model.status });
     existing = await loadReport(date);
-    renderDailyAiInsight(existing || { reportPayload: payload });
+    analysis = await loadReportAnalysis(date);
+    renderDailyAiInsight(existing || { reportPayload: payload }, analysis);
     renderReportLinks(await listReports());
     saveStatus.textContent = getLang() === "zh" ? "已保存。" : "Saved.";
   });

@@ -50,6 +50,11 @@ def init_db():
       score REAL,
       status TEXT,
       summary TEXT,
+      ai_short_summary TEXT,
+      ai_detailed_interpretation TEXT,
+      ai_model TEXT,
+      ai_status TEXT,
+      ai_generated_at TEXT,
       report_text TEXT,
       report_path TEXT,
       payload_json TEXT,
@@ -153,6 +158,17 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_daily_report_ai_insights_date ON daily_report_ai_insights(report_date);
     """
   )
+  for ddl in [
+    "ALTER TABLE daily_reports ADD COLUMN ai_short_summary TEXT",
+    "ALTER TABLE daily_reports ADD COLUMN ai_detailed_interpretation TEXT",
+    "ALTER TABLE daily_reports ADD COLUMN ai_model TEXT",
+    "ALTER TABLE daily_reports ADD COLUMN ai_status TEXT",
+    "ALTER TABLE daily_reports ADD COLUMN ai_generated_at TEXT",
+  ]:
+    try:
+      conn.execute(ddl)
+    except sqlite3.OperationalError:
+      pass
   conn.commit()
   conn.close()
 
@@ -198,28 +214,56 @@ def get_latest_model_snapshot():
   return None
 
 
-def upsert_daily_report(report_date: str, text: str, meta: dict, report_path: str = "", payload=None):
+def upsert_daily_report(report_date: str, text: str, meta: dict, report_path: str = "", payload=None, ai_analysis=None):
   conn = get_conn()
   ts = now_iso()
   score = meta.get("score")
   status = meta.get("status")
   summary = meta.get("summary", "")
+  ai = ai_analysis or {}
+  ai_short = str(ai.get("short_summary") or "")
+  ai_detail = str(ai.get("detailed_interpretation") or "")
+  ai_model = str(ai.get("model") or "")
+  ai_status = str(ai.get("status") or "")
+  ai_generated_at = str(ai.get("generated_at") or "")
   payload_json = json.dumps(payload, ensure_ascii=False) if payload is not None else None
   conn.execute(
     """
-    INSERT INTO daily_reports (report_date, score, status, summary, report_text, report_path, payload_json, generated_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO daily_reports
+    (report_date, score, status, summary, ai_short_summary, ai_detailed_interpretation, ai_model, ai_status, ai_generated_at, report_text, report_path, payload_json, generated_at, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(report_date) DO UPDATE SET
       score=excluded.score,
       status=excluded.status,
       summary=excluded.summary,
+      ai_short_summary=excluded.ai_short_summary,
+      ai_detailed_interpretation=excluded.ai_detailed_interpretation,
+      ai_model=excluded.ai_model,
+      ai_status=excluded.ai_status,
+      ai_generated_at=excluded.ai_generated_at,
       report_text=excluded.report_text,
       report_path=excluded.report_path,
       payload_json=excluded.payload_json,
       generated_at=excluded.generated_at,
       updated_at=excluded.updated_at
     """,
-    (report_date, score, status, summary, text, report_path, payload_json, ts, ts, ts),
+    (
+      report_date,
+      score,
+      status,
+      summary,
+      ai_short,
+      ai_detail,
+      ai_model,
+      ai_status,
+      ai_generated_at,
+      text,
+      report_path,
+      payload_json,
+      ts,
+      ts,
+      ts,
+    ),
   )
   conn.commit()
   conn.close()
@@ -228,7 +272,13 @@ def upsert_daily_report(report_date: str, text: str, meta: dict, report_path: st
 def list_daily_reports(limit: int = 200):
   conn = get_conn()
   rows = conn.execute(
-    "SELECT report_date, score, status, summary, report_text, report_path, payload_json, generated_at FROM daily_reports ORDER BY report_date DESC LIMIT ?",
+    """
+    SELECT report_date, score, status, summary,
+           ai_short_summary, ai_detailed_interpretation, ai_model, ai_status, ai_generated_at,
+           report_text, report_path, payload_json, generated_at
+    FROM daily_reports
+    ORDER BY report_date DESC LIMIT ?
+    """,
     (limit,),
   ).fetchall()
   conn.close()
@@ -242,6 +292,13 @@ def list_daily_reports(limit: int = 200):
         "text": r["report_text"],
         "path": r["report_path"],
         "reportPayload": payload,
+        "aiAnalysis": {
+          "short_summary": r["ai_short_summary"] or "",
+          "detailed_interpretation": r["ai_detailed_interpretation"] or "",
+          "model": r["ai_model"] or "",
+          "status": r["ai_status"] or "",
+          "generated_at": r["ai_generated_at"] or "",
+        },
         "generatedAt": r["generated_at"],
       }
     )
@@ -251,7 +308,13 @@ def list_daily_reports(limit: int = 200):
 def get_daily_report(report_date: str):
   conn = get_conn()
   r = conn.execute(
-    "SELECT report_date, score, status, summary, report_text, report_path, payload_json, generated_at FROM daily_reports WHERE report_date = ?",
+    """
+    SELECT report_date, score, status, summary,
+           ai_short_summary, ai_detailed_interpretation, ai_model, ai_status, ai_generated_at,
+           report_text, report_path, payload_json, generated_at
+    FROM daily_reports
+    WHERE report_date = ?
+    """,
     (report_date,),
   ).fetchone()
   conn.close()
@@ -264,7 +327,74 @@ def get_daily_report(report_date: str):
     "text": r["report_text"],
     "path": r["report_path"],
     "reportPayload": payload,
+    "aiAnalysis": {
+      "short_summary": r["ai_short_summary"] or "",
+      "detailed_interpretation": r["ai_detailed_interpretation"] or "",
+      "model": r["ai_model"] or "",
+      "status": r["ai_status"] or "",
+      "generated_at": r["ai_generated_at"] or "",
+    },
     "generatedAt": r["generated_at"],
+  }
+
+
+def update_daily_report_analysis(
+  report_date: str,
+  short_summary: str = "",
+  detailed_interpretation: str = "",
+  model: str = "",
+  status: str = "",
+  generated_at: str = "",
+):
+  conn = get_conn()
+  ts = now_iso()
+  conn.execute(
+    """
+    UPDATE daily_reports
+    SET ai_short_summary = ?,
+        ai_detailed_interpretation = ?,
+        ai_model = ?,
+        ai_status = ?,
+        ai_generated_at = ?,
+        updated_at = ?
+    WHERE report_date = ?
+    """,
+    (
+      str(short_summary or ""),
+      str(detailed_interpretation or ""),
+      str(model or ""),
+      str(status or ""),
+      str(generated_at or ""),
+      ts,
+      str(report_date or "").strip(),
+    ),
+  )
+  conn.commit()
+  conn.close()
+
+
+def get_daily_report_analysis(report_date: str):
+  conn = get_conn()
+  row = conn.execute(
+    """
+    SELECT report_date, ai_short_summary, ai_detailed_interpretation, ai_model, ai_status, ai_generated_at, updated_at
+    FROM daily_reports
+    WHERE report_date = ?
+    LIMIT 1
+    """,
+    (str(report_date or "").strip(),),
+  ).fetchone()
+  conn.close()
+  if not row:
+    return None
+  return {
+    "report_date": row["report_date"],
+    "short_summary": row["ai_short_summary"] or "",
+    "detailed_interpretation": row["ai_detailed_interpretation"] or "",
+    "model": row["ai_model"] or "",
+    "status": row["ai_status"] or "",
+    "generated_at": row["ai_generated_at"] or "",
+    "updated_at": row["updated_at"] or "",
   }
 
 
