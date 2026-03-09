@@ -526,6 +526,41 @@ def _fetch_openrouter_rankings(view: str = "week", category: str = "all"):
         ]
     except Exception:
       pass
+
+  if not models:
+    try:
+      req_models = urllib.request.Request(
+        "https://openrouter.ai/api/frontend/models",
+        headers={"User-Agent": "Mozilla/5.0 (NexoMacroMonitor; +https://nexo.hk)"},
+        method="GET",
+      )
+      with urllib.request.urlopen(req_models, timeout=30) as resp:
+        models_payload = json.loads(resp.read().decode("utf-8", errors="ignore"))
+      mlist = (models_payload or {}).get("data") if isinstance(models_payload, dict) else []
+      if isinstance(mlist, list):
+        picked = []
+        for item in mlist:
+          if not isinstance(item, dict):
+            continue
+          author = str(item.get("author") or "").strip()
+          short_name = str(item.get("short_name") or item.get("name") or "").strip()
+          if not short_name:
+            continue
+          picked.append(
+            {
+              "rank": len(picked) + 1,
+              "name": short_name,
+              "creator": author,
+              "tokens": "",
+              "share": "",
+            }
+          )
+          if len(picked) >= 20:
+            break
+        models = picked
+    except Exception:
+      pass
+
   return {
     "ok": True,
     "sourceUrl": url,
