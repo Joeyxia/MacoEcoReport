@@ -921,10 +921,12 @@ body[data-page="ai-assistant"] .ai-answer {
 }
 
 .site-footer-note {
+  display: block;
   width: 100%;
+  margin: 0 auto;
   text-align: center;
   color: rgba(18, 36, 40, 0.48);
   font-size: 0.78rem;
   line-height: 1.4;
-  padding: 1.2rem 0.9rem 1.6rem;
+  padding: 0.9rem 0.9rem 4.2em;
 }
