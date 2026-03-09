@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "server"))
@@ -64,7 +65,13 @@ def fetch_usage_rows(resource: str, params: dict):
     query = dict(params)
     if next_page:
       query["page"] = next_page
-    payload = fetch_json(f"{USAGE_URLS[resource]}?{urlencode(query)}")
+    try:
+      payload = fetch_json(f"{USAGE_URLS[resource]}?{urlencode(query)}")
+    except HTTPError as e:
+      if int(getattr(e, "code", 0)) == 404:
+        print(f"openai_usage_import_skip resource={resource} reason=http_404")
+        return imported_rows
+      raise
     for bucket in payload.get("data") or []:
       bucket_start = int(bucket.get("start_time") or 0)
       logged_at = fmt_iso(datetime.fromtimestamp(bucket_start, tz=timezone.utc)) if bucket_start else ""
