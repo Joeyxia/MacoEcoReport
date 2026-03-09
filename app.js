@@ -96,7 +96,11 @@ const i18n = {
     openrouter_models: "Top Models",
     openrouter_apps: "Top Apps",
     openrouter_updated: "Fetched At",
-    openrouter_source: "Source"
+    openrouter_source: "Source",
+    indicator_verification_status: "Indicator Verification Status",
+    data_generated_at: "Data Generated At",
+    signal_guide: "Signal Interpretation Guide",
+    powered_by: "Powered by Nexo Marco Intelligence"
   },
   zh: {
     nav_dashboard: "仪表盘",
@@ -168,8 +172,92 @@ const i18n = {
     openrouter_models: "热门模型",
     openrouter_apps: "热门应用",
     openrouter_updated: "抓取时间",
-    openrouter_source: "来源"
+    openrouter_source: "来源",
+    indicator_verification_status: "指标在线校验状态",
+    data_generated_at: "数据生成时间",
+    signal_guide: "信号解读指南",
+    powered_by: "由 Nexo Marco Intelligence 提供支持"
   }
+};
+
+const dimensionNameMap = {
+  D01: { zh: "货币政策与流动性", en: "Monetary Policy & Liquidity" },
+  D02: { zh: "增长与前瞻", en: "Growth & Forward Signals" },
+  D03: { zh: "通胀与价格压力", en: "Inflation & Price Pressure" },
+  D04: { zh: "就业与居民部门", en: "Labor & Households" },
+  D05: { zh: "企业盈利与信用", en: "Earnings & Credit" },
+  D06: { zh: "房地产与利率敏感部门", en: "Housing & Rate-sensitive Sectors" },
+  D07: { zh: "风险偏好与跨资产波动", en: "Risk Appetite & Cross-asset Volatility" },
+  D08: { zh: "外部部门与美元条件", en: "External Sector & Dollar Conditions" },
+  D09: { zh: "财政政策与债务约束", en: "Fiscal Policy & Debt Constraint" },
+  D10: { zh: "金融条件与信用传导", en: "Financial Conditions & Credit Transmission" },
+  D11: { zh: "大宗商品与能源/地缘风险", en: "Commodities & Geopolitical Risk" },
+  D12: { zh: "信心与不确定性", en: "Confidence & Uncertainty" },
+  D13: { zh: "AI资本开支周期（主题）", en: "AI Capex Cycle (Theme)" },
+  D14: { zh: "加密与稳定币流动性（主题）", en: "Crypto & Stablecoin Liquidity (Theme)" }
+};
+
+const tierMap = {
+  "Core Macro": { zh: "核心宏观", en: "Core Macro" },
+  "Market Mapping": { zh: "市场映射", en: "Market Mapping" },
+  "Policy & External": { zh: "政策与外部", en: "Policy & External" },
+  "Policy&External": { zh: "政策与外部", en: "Policy & External" },
+  "External/Commodities": { zh: "外部/大宗商品", en: "External/Commodities" },
+  "Soft Data": { zh: "软数据", en: "Soft Data" },
+  "Theme Panel": { zh: "主题面板", en: "Theme Panel" }
+};
+
+const statusMap = {
+  "扩张偏热": "Expansion Overheating",
+  "温和扩张": "Moderate Expansion",
+  "中性偏脆弱": "Neutral Fragile",
+  "防御区": "Defensive",
+  "衰退/危机": "Recession/Crisis"
+};
+
+const indicatorNameMap = {
+  "10Y-3M利差（bps）": "10Y-3M Spread (bps)",
+  "SOFR（%）": "SOFR (%)",
+  "美联储总资产（$T）": "Fed Total Assets ($T)",
+  "实际GDP环比折年（%）": "Real GDP SAAR (%)",
+  "制造业PMI": "Manufacturing PMI",
+  "初请失业金四周均值": "Initial Claims 4WMA",
+  "核心CPI同比（%）": "Core CPI YoY (%)",
+  "核心PCE同比（%）": "Core PCE YoY (%)",
+  "5Y5Y通胀预期（%）": "5Y5Y Inflation Expectation (%)",
+  "失业率（%）": "Unemployment Rate (%)",
+  "平均时薪同比（%）": "Average Hourly Earnings YoY (%)",
+  "信用卡拖欠率（%）": "Credit Card Delinquency Rate (%)",
+  "标普500 Forward P/E（x）": "S&P 500 Forward P/E (x)",
+  "EPS修正广度（上调-下调，%）": "EPS Revision Breadth (Up-Down, %)",
+  "高收益信用利差OAS（bps）": "HY Credit Spread OAS (bps)",
+  "30年按揭利率（%）": "30Y Mortgage Rate (%)",
+  "成屋销售折年（百万套）": "Existing Home Sales SAAR (mn)",
+  "新屋开工（百万套）": "Housing Starts (mn)",
+  "VIX": "VIX",
+  "MOVE": "MOVE",
+  "标普500近3个月最大回撤（%）": "S&P 500 Max Drawdown 3M (%)",
+  "美元指数DXY": "US Dollar Index (DXY)",
+  "美日10Y利差（bps）": "US-JP 10Y Spread (bps)",
+  "海外净买入美国资产（自定义）": "Foreign Net Buying of US Assets (custom)",
+  "财政赤字/GDP（%）": "Fiscal Deficit/GDP (%)",
+  "债务/GDP（%）": "Debt/GDP (%)",
+  "利息支出/财政收入（%）": "Interest Expense/Fiscal Revenue (%)",
+  "金融条件指数（FCI）": "Financial Conditions Index (FCI)",
+  "银行信贷增速（% YoY）": "Bank Credit Growth (% YoY)",
+  "TED利差（bps）": "TED Spread (bps)",
+  "WTI原油（$/桶）": "WTI Crude ($/bbl)",
+  "大宗商品指数（CRB）同比（%）": "CRB Commodity Index YoY (%)",
+  "地缘政治风险指数（GPR）": "Geopolitical Risk Index (GPR)",
+  "消费者信心指数": "Consumer Confidence Index",
+  "CEO Confidence": "CEO Confidence",
+  "经济政策不确定性（EPU）": "Economic Policy Uncertainty (EPU)",
+  "云业务增速（加权，% YoY）": "Cloud Revenue Growth (weighted, % YoY)",
+  "AI相关Capex指引（自定义）": "AI-related Capex Guidance (custom)",
+  "半导体景气代理（Book-to-Bill）": "Semiconductor Proxy (Book-to-Bill)",
+  "BTC价格（$）": "BTC Price ($)",
+  "USDC市值（$B）": "USDC Market Cap ($B)",
+  "稳定币总市值（$B）": "Total Stablecoin Market Cap ($B)"
 };
 
 const sampleModel = {
@@ -304,6 +392,79 @@ function setLang(lang) {
 function t(key) {
   const lang = getLang();
   return i18n[lang]?.[key] || i18n.en[key] || key;
+}
+
+function localizeStatus(text) {
+  const raw = asText(text);
+  if (!raw) return raw;
+  if (getLang() === "zh") {
+    const zh = Object.entries(statusMap).find(([, en]) => en.toLowerCase() === raw.toLowerCase());
+    return zh ? zh[0] : raw;
+  }
+  return statusMap[raw] || raw;
+}
+
+function normalizeDimensionIdFromName(name) {
+  const n = asText(name);
+  const matchId = n.match(/\b(D\d{2})\b/i);
+  if (matchId) return matchId[1].toUpperCase();
+  for (const [id, label] of Object.entries(dimensionNameMap)) {
+    if (n === label.zh || n === label.en) return id;
+  }
+  return "";
+}
+
+function localizeDimensionName(name, idHint = "") {
+  const raw = asText(name);
+  const id = asText(idHint) || normalizeDimensionIdFromName(name);
+  const mapped = dimensionNameMap[id];
+  if (!mapped) return raw;
+  const label = getLang() === "zh" ? mapped.zh : mapped.en;
+  return /^D\d{2}\b/i.test(raw) ? `${id} ${label}` : label;
+}
+
+function localizeTierName(name) {
+  const raw = asText(name);
+  const mapped = tierMap[raw];
+  if (!mapped) return raw;
+  return getLang() === "zh" ? mapped.zh : mapped.en;
+}
+
+function localizeIndicatorName(name) {
+  const raw = asText(name);
+  if (!raw) return raw;
+  if (getLang() === "zh") {
+    const zh = Object.entries(indicatorNameMap).find(([, en]) => en.toLowerCase() === raw.toLowerCase());
+    return zh ? zh[0] : raw;
+  }
+  return indicatorNameMap[raw] || raw;
+}
+
+function containsChinese(text) {
+  return /[\u4e00-\u9fff]/.test(asText(text));
+}
+
+function localizeDimensionDefinition(id, raw) {
+  const text = asText(raw);
+  if (getLang() === "zh") return text;
+  if (!containsChinese(text)) return text;
+  const fallback = {
+    D01: "Yield curve, short-end funding, central bank balance sheet, and net liquidity.",
+    D02: "Forward growth indicators such as GDP, PMI, orders, and claims.",
+    D03: "Core inflation and inflation expectations to infer policy/profit pressure.",
+    D04: "Labor, income, and household credit stress.",
+    D05: "Earnings revisions and credit-spread/default stress.",
+    D06: "Mortgage rates, transactions, and housing starts as rate transmission channels.",
+    D07: "Market risk mapping via VIX, MOVE, and drawdown metrics.",
+    D08: "DXY, cross-rate spreads, and capital-flow based external financing conditions.",
+    D09: "Deficit, interest burden, and debt trajectory.",
+    D10: "Financial conditions index, bank credit supply, and funding pressure.",
+    D11: "Commodity and geopolitical shocks to inflation and growth.",
+    D12: "Consumer/business confidence and policy uncertainty.",
+    D13: "Cloud/AI capex and revenue momentum thematic monitor.",
+    D14: "Stablecoin and on-chain liquidity thematic monitor."
+  };
+  return fallback[id] || text;
 }
 
 function applyI18n() {
@@ -942,8 +1103,8 @@ function buildDrivers(dimensions, activeAlerts, totalScore) {
       title: zh ? "主要支撑" : "Primary Support",
       text: best
         ? zh
-          ? `${best.name} 是当前最强维度（${round(best.score)}），对总分形成支撑。`
-          : `${best.name} is the strongest block (${round(best.score)}), supporting the composite.`
+          ? `${localizeDimensionName(best.name, best.id)} 是当前最强维度（${round(best.score)}），对总分形成支撑。`
+          : `${localizeDimensionName(best.name, best.id)} is the strongest block (${round(best.score)}), supporting the composite.`
         : zh
           ? "领先维度对总分形成中性支撑。"
           : "Leading dimensions are providing neutral support."
@@ -952,8 +1113,8 @@ function buildDrivers(dimensions, activeAlerts, totalScore) {
       title: zh ? "主要拖累" : "Primary Drag",
       text: worst
         ? zh
-          ? `${worst.name} 是当前主要拖累项（${round(worst.score)}）。`
-          : `${worst.name} remains the key drag (${round(worst.score)}).`
+          ? `${localizeDimensionName(worst.name, worst.id)} 是当前主要拖累项（${round(worst.score)}）。`
+          : `${localizeDimensionName(worst.name, worst.id)} remains the key drag (${round(worst.score)}).`
         : zh
           ? "弱势维度仍限制风险偏好。"
           : "Weaker dimensions still cap risk appetite."
@@ -975,24 +1136,82 @@ function buildDrivers(dimensions, activeAlerts, totalScore) {
   ];
 }
 
+function pickLocalizedDrivers(inputDrivers, dimensions, activeAlerts, totalScore) {
+  const list = Array.isArray(inputDrivers) ? inputDrivers : [];
+  if (getLang() === "en" && list.some((d) => containsChinese(d?.title) || containsChinese(d?.text) || containsChinese(d?.summary))) {
+    return buildDrivers(dimensions || [], activeAlerts || 0, totalScore || 0);
+  }
+  return list;
+}
+
 function objectRowsToColumns(rows) {
   const cols = new Set();
   (rows || []).forEach((row) => Object.keys(row || {}).forEach((k) => cols.add(k)));
   return [...cols];
 }
 
+function localizeColumnKey(key) {
+  const k = asText(key);
+  const zh = getLang() === "zh";
+  const map = {
+    DimensionID: zh ? "维度ID" : "DimensionID",
+    DimensionName: zh ? "维度名称" : "DimensionName",
+    IndicatorCode: zh ? "指标代码" : "IndicatorCode",
+    IndicatorName: zh ? "指标名称" : "IndicatorName",
+    Status: zh ? "状态" : "Status",
+    Source: zh ? "来源" : "Source",
+    LatestValue: zh ? "最新值" : "LatestValue",
+    LatestDate: zh ? "最新日期" : "LatestDate",
+    ValueDate: zh ? "值日期" : "ValueDate",
+    Score: zh ? "评分" : "Score",
+    Weight: zh ? "权重" : "Weight",
+    Contribution: zh ? "贡献" : "Contribution",
+    Tier: zh ? "层级" : "Tier",
+    Definition: zh ? "定义" : "Definition",
+    Update: zh ? "更新频率" : "Update",
+    GeneratedAt: zh ? "生成时间" : "GeneratedAt"
+  };
+  return map[k] || k;
+}
+
+function localizeCellValue(value, key = "") {
+  const text = asText(value);
+  if (!text) return value;
+  const keyText = asText(key).toLowerCase();
+  if (keyText.includes("dimension") || keyText.includes("维度") || /^d\d{2}$/i.test(text)) return localizeDimensionName(text);
+  if (keyText.includes("indicator") || keyText.includes("指标")) return localizeIndicatorName(text);
+  if (keyText.includes("tier") || keyText.includes("层级")) return localizeTierName(text);
+  if (keyText.includes("status") || keyText.includes("状态")) return localizeStatus(text);
+  const byStatus = localizeStatus(text);
+  if (byStatus !== text) return byStatus;
+  const byDim = localizeDimensionName(text);
+  if (byDim !== text) return byDim;
+  const byInd = localizeIndicatorName(text);
+  if (byInd !== text) return byInd;
+  const byTier = localizeTierName(text);
+  if (byTier !== text) return byTier;
+  return value;
+}
+
 function renderObjectTable(targetId, rows) {
   const root = document.getElementById(targetId);
   if (!root) return;
 
-  const dataRows = Array.isArray(rows) ? rows : [];
-  const columns = objectRowsToColumns(dataRows);
+  const rawRows = Array.isArray(rows) ? rows : [];
+  const dataRows = rawRows.map((row) => {
+    const mapped = {};
+    Object.keys(row || {}).forEach((k) => {
+      mapped[k] = localizeCellValue(row[k], k);
+    });
+    return mapped;
+  });
+  const columns = objectRowsToColumns(rawRows);
   if (!dataRows.length || !columns.length) {
     root.innerHTML = `<p class="table-empty">${getLang() === "zh" ? "暂无数据。" : "No data found."}</p>`;
     return;
   }
 
-  const head = `<thead><tr>${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead>`;
+  const head = `<thead><tr>${columns.map((c) => `<th>${escapeHtml(localizeColumnKey(c))}</th>`).join("")}</tr></thead>`;
   const body = `<tbody>${dataRows
     .map((row) => `<tr>${columns.map((c) => `<td>${escapeHtml(row[c])}</td>`).join("")}</tr>`)
     .join("")}</tbody>`;
@@ -1134,7 +1353,7 @@ function renderDimensionLayers(rows, model) {
 
     layer.innerHTML = `
       <div class="layer-header">
-        <div class="layer-title">${escapeHtml(tier)}</div>
+        <div class="layer-title">${escapeHtml(localizeTierName(tier))}</div>
         <div class="layer-weight">${getLang() === "zh" ? "层级权重" : "Layer Weight"}: ${round(totalWeight, 1)}%</div>
       </div>
       <div class="layer-dimensions"></div>
@@ -1143,9 +1362,9 @@ function renderDimensionLayers(rows, model) {
     const container = layer.querySelector(".layer-dimensions");
     dims.forEach((row) => {
       const id = findValue(row, ["dimensionid", "维度id", "id"]);
-      const name = findValue(row, ["dimensionname", "维度名称", "维度"]);
+      const name = localizeDimensionName(findValue(row, ["dimensionname", "维度名称", "维度"]), id);
       const weight = findValue(row, ["weight", "权重", "%"]);
-      const definition = findValue(row, ["definition", "说明", "定义"]);
+      const definition = localizeDimensionDefinition(id, findValue(row, ["definition", "说明", "定义"]));
       const update = findValue(row, ["typical update", "frequency", "更新"]);
       const metric = findDimensionMetric(model, id, name);
       const trend = scoreTrend(metric.score || 0);
@@ -1156,7 +1375,7 @@ function renderDimensionLayers(rows, model) {
           .filter((x) => asText(x.DimensionID).toLowerCase() === asText(id).toLowerCase())
           .slice(0, 3)
           .map((x) => ({
-            indicatorName: x.IndicatorName || x.IndicatorCode,
+            indicatorName: localizeIndicatorName(x.IndicatorName || x.IndicatorCode),
             value: x.LatestValue
           }));
       } else {
@@ -1168,7 +1387,7 @@ function renderDimensionLayers(rows, model) {
             const indicatorName = findValue(r, ["indicatorname", "指标", "name"]) || code;
             const input = tableInputs.find((x) => asText(x[inputCodeKey]) === code);
             const value = input ? asText(input[inputValKey]) : "";
-            return { indicatorName, value };
+            return { indicatorName: localizeIndicatorName(indicatorName), value };
           });
       }
       const indicatorList = dimIndicators
@@ -1178,7 +1397,7 @@ function renderDimensionLayers(rows, model) {
       const card = document.createElement("article");
       card.className = "dimension-card";
       card.innerHTML = `
-        <h3>${escapeHtml(id)} ${escapeHtml(name)}</h3>
+        <h3>${escapeHtml(id)} ${escapeHtml(localizeDimensionName(name, id))}</h3>
         <div class="dim-row">
           <span class="dim-chip">${getLang() === "zh" ? "权重" : "Weight"}: ${escapeHtml(weight)}</span>
           <span class="dim-chip">${getLang() === "zh" ? "更新" : "Update"}: ${escapeHtml(update)}</span>
@@ -1223,7 +1442,7 @@ function renderKeyIndicators(model) {
 
   const top = indicators.slice(0, 6).map((row) => {
     const code = findValue(row, ["indicatorcode", "code"]);
-    const name = findValue(row, ["indicatorname", "指标", "name"]) || code;
+    const name = localizeIndicatorName(findValue(row, ["indicatorname", "指标", "name"]) || code);
     const source = findValue(row, ["source", "数据源", "主数据源"]);
     const input = inputs.find((x) => asText(x[inputCodeKey]) === code);
     const value = input ? asText(input[inputValueKey]) : "";
@@ -1235,7 +1454,7 @@ function renderKeyIndicators(model) {
     const card = document.createElement("article");
     card.className = "indicator-mini-card";
     card.innerHTML = `
-      <h3>${escapeHtml(item.name)}</h3>
+      <h3>${escapeHtml(localizeIndicatorName(item.name))}</h3>
       <div class="indicator-value">${escapeHtml(item.value || "--")}</div>
       <div class="indicator-source">${escapeHtml(item.source || "")}</div>
     `;
@@ -1259,8 +1478,8 @@ function buildDimensionBundles(model) {
 
   return dims.map((dim) => {
     const id = findValue(dim, ["dimensionid", "维度id", "id"]);
-    const name = findValue(dim, ["dimensionname", "维度名称", "维度"]);
-    const tier = findValue(dim, ["tier", "层级"]);
+    const name = localizeDimensionName(findValue(dim, ["dimensionname", "维度名称", "维度"]), id);
+    const tier = localizeTierName(findValue(dim, ["tier", "层级"]));
     const weight = findValue(dim, ["weight", "权重", "%"]);
     const metric = findDimensionMetric(model, id, name);
 
@@ -1269,7 +1488,7 @@ function buildDimensionBundles(model) {
       .slice(0, 3)
       .map((row) => {
         const code = findValue(row, ["indicatorcode", "code"]);
-        const indicatorName = findValue(row, ["indicatorname", "指标", "name"]) || code;
+        const indicatorName = localizeIndicatorName(findValue(row, ["indicatorname", "指标", "name"]) || code);
         const input = inputs.find((x) => asText(x[inputCodeKey]) === code);
         const value = input ? asText(input[inputValKey]) : "";
         return { indicatorName, value };
@@ -1289,19 +1508,22 @@ async function renderLatestReportSummary(model) {
   const weakDims = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 3);
   const aiInsight = model.latestReportAiInsight || model.aiInsight || {};
   const aiJson = aiInsight.insight || {};
-  const aiShort = getLang() === "zh" ? asText(aiJson.short_summary_zh) : asText(aiJson.short_summary_en);
+  let aiShort = getLang() === "zh" ? asText(aiJson.short_summary_zh) : asText(aiJson.short_summary_en);
+  if (!aiShort) aiShort = asText(aiInsight.short_summary || "");
+  if (getLang() === "en" && containsChinese(aiShort)) aiShort = "";
+  let latestSummary = asText(model.latestReportSummary || "");
+  if (getLang() === "en" && containsChinese(latestSummary)) latestSummary = "";
 
   root.innerHTML = `
-    <div class="summary-score">${round(model.totalScore, 1)}/100 · ${escapeHtml(model.status)}</div>
+    <div class="summary-score">${round(model.totalScore, 1)}/100 · ${escapeHtml(localizeStatus(model.status))}</div>
     <div class="summary-line">${getLang() === "zh" ? "模型更新日" : "Model As-Of"}: ${escapeHtml(model.asOf)}</div>
     <div class="summary-line">${getLang() === "zh" ? "最新报告日期" : "Latest Report Date"}: ${escapeHtml(latest?.date || "--")}</div>
     <div class="summary-line">${getLang() === "zh" ? "简要结论" : "Short Summary"}: ${escapeHtml(
       aiShort ||
-      aiInsight.short_summary ||
-      model.latestReportSummary ||
+      latestSummary ||
         (getLang() === "zh"
-          ? `当前处于${escapeHtml(model.status)}，重点关注${weakDims.map((d) => d.name).join(" / ")}。`
-          : `Current regime is ${escapeHtml(model.status)}; watch ${weakDims.map((d) => d.name).join(" / ")}.`)
+          ? `当前处于${escapeHtml(localizeStatus(model.status))}，重点关注${weakDims.map((d) => localizeDimensionName(d.name, d.id)).join(" / ")}。`
+          : `Current regime is ${escapeHtml(localizeStatus(model.status))}; watch ${weakDims.map((d) => localizeDimensionName(d.name, d.id)).join(" / ")}.`)
     )}</div>
   `;
 
@@ -1310,9 +1532,10 @@ async function renderLatestReportSummary(model) {
   const snapshotWatch = (model.dailyWatchedItems || model.keyWatch || []).map((x) =>
     typeof x === "string" ? x : `${x.label || x.title}: ${x.value ?? x.text ?? ""}`
   );
+  const cleanSnapshotWatch = getLang() === "en" ? snapshotWatch.filter((x) => !containsChinese(x)) : snapshotWatch;
   const items = snapshotWatch.length
-    ? snapshotWatch
-    : [...activeAlerts.map((a) => `${a.id}: ${a.condition}`), ...weakDims.map((d) => `${d.name}: ${round(d.score, 1)}`)];
+    ? cleanSnapshotWatch
+    : [...activeAlerts.map((a) => `${a.id}: ${a.condition}`), ...weakDims.map((d) => `${localizeDimensionName(d.name, d.id)}: ${round(d.score, 1)}`)];
   if (!items.length) items.push(getLang() === "zh" ? "暂无重点关注项。" : "No urgent watch items.");
 
   items.slice(0, 6).forEach((text) => {
@@ -1329,12 +1552,14 @@ function getDailyAiInsightContent(report, analysis) {
     return { shortLine: "", detailed: "", modelLabel: "--", genAt: "--" };
   }
   const insight = ai.insight || ai;
-  const detailed = getLang() === "zh"
+  let detailed = getLang() === "zh"
     ? asText(insight.detailed_interpretation_zh || insight.detailed_interpretation || insight.detailed_text || insight.detailed_markdown_zh)
     : asText(insight.detailed_interpretation_en || insight.detailed_interpretation || insight.detailed_markdown_en || insight.detailed_text);
-  const shortLine = getLang() === "zh"
+  let shortLine = getLang() === "zh"
     ? asText(insight.short_summary_zh || insight.short_summary)
     : asText(insight.short_summary_en || insight.short_summary);
+  if (getLang() === "en" && containsChinese(shortLine)) shortLine = "";
+  if (getLang() === "en" && containsChinese(detailed)) detailed = "";
   const modelLabel = asText(ai.model || "--");
   const genAt = asText(ai.generated_at || report?.generatedAt || "--");
   return { shortLine, detailed, modelLabel, genAt };
@@ -1364,12 +1589,12 @@ function renderDailyReportPreview(model, date, report, analysis) {
     <section class="preview-header">
       <h3>${getLang() === "zh" ? `14维宏观监控模型报告 (${date})` : `14-Dimension Macro Report (${date})`}</h3>
       <div>${getLang() === "zh" ? "综合评分" : "Composite Score"}: ${round(model.totalScore, 1)}/100</div>
-      <div>${getLang() === "zh" ? "投资信号" : "Signal"}: ${escapeHtml(model.status)}</div>
+      <div>${getLang() === "zh" ? "投资信号" : "Signal"}: ${escapeHtml(localizeStatus(model.status))}</div>
     </section>
     <section class="preview-section">
       <h3>${getLang() === "zh" ? "核心结论" : "Core Conclusion"}</h3>
       <ul class="preview-list">
-        ${topWatch.map((d) => `<li>${escapeHtml(d.name)}: ${round(d.score, 1)}</li>`).join("")}
+        ${topWatch.map((d) => `<li>${escapeHtml(localizeDimensionName(d.name, d.id))}: ${round(d.score, 1)}</li>`).join("")}
       </ul>
       ${
         showAi
@@ -1388,17 +1613,17 @@ function renderDailyReportPreview(model, date, report, analysis) {
   for (const [tier, dims] of tierGroups.entries()) {
     const tierNode = document.createElement("section");
     tierNode.className = "preview-tier";
-    tierNode.innerHTML = `<h3>${escapeHtml(tier)}</h3>`;
+    tierNode.innerHTML = `<h3>${escapeHtml(localizeTierName(tier))}</h3>`;
 
     dims.forEach((dim) => {
       const trend = scoreTrend(dim.metric.score || 0);
       const card = document.createElement("div");
       card.className = "preview-dim-card";
       card.innerHTML = `
-        <strong>${escapeHtml(dim.id)} ${escapeHtml(dim.name)}</strong>
+        <strong>${escapeHtml(dim.id)} ${escapeHtml(localizeDimensionName(dim.name, dim.id))}</strong>
         <div>${getLang() === "zh" ? "权重" : "Weight"} ${escapeHtml(dim.weight)} | ${getLang() === "zh" ? "评分" : "Score"} ${round(dim.metric.score, 1)} ${trend.symbol} | ${getLang() === "zh" ? "贡献" : "Contribution"} ${round(dim.metric.contribution, 2)}</div>
         <ul class="preview-list">
-          ${dim.indicators.map((i) => `<li>${escapeHtml(i.indicatorName)}: ${escapeHtml(i.value || "--")}</li>`).join("")}
+          ${dim.indicators.map((i) => `<li>${escapeHtml(localizeIndicatorName(i.indicatorName))}: ${escapeHtml(i.value || "--")}</li>`).join("")}
         </ul>
       `;
       tierNode.appendChild(card);
@@ -1423,7 +1648,7 @@ function renderDashboard(model) {
 
   score.textContent = round(model.totalScore, 1).toFixed(1);
   asOf.textContent = model.asOf;
-  status.textContent = model.status;
+  status.textContent = localizeStatus(model.status);
 
   const active = (model.triggerAlerts || model.alerts || []).filter((a) => a.triggered);
   alertList.innerHTML = "";
@@ -1452,14 +1677,20 @@ function renderDashboard(model) {
       row.className = "bar-row";
       const width = Math.max(0, Math.min(100, Number(item.score) || 0));
       row.innerHTML = `
-        <div class="bar-top"><span>${escapeHtml(item.name)}</span><span>${round(item.score, 1)}</span></div>
+        <div class="bar-top"><span>${escapeHtml(localizeDimensionName(item.name, item.id))}</span><span>${round(item.score, 1)}</span></div>
         <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
       `;
       bars.appendChild(row);
     });
 
   drivers.innerHTML = "";
-  (model.primaryDrivers || model.drivers || []).forEach((item) => {
+  const displayDrivers = pickLocalizedDrivers(
+    model.primaryDrivers || model.drivers || [],
+    model.dimensions || [],
+    active.length,
+    model.totalScore
+  );
+  displayDrivers.forEach((item) => {
     const card = document.createElement("article");
     card.className = "driver-card";
     card.innerHTML = `<h3>${escapeHtml(item.title || "")}</h3><p>${escapeHtml(item.text || item.summary || "")}</p>`;
@@ -1670,7 +1901,7 @@ function renderDashboardSummary(summary) {
   const layers = document.getElementById("dimension-layers");
   if (score) score.textContent = round(summary.totalScore, 1).toFixed(1);
   if (asOf) asOf.textContent = summary.asOf || "--";
-  if (status) status.textContent = summary.status || "--";
+  if (status) status.textContent = localizeStatus(summary.status || "--");
 
   if (alertList) {
     const active = (summary.alerts || []).filter((a) => a.triggered);
@@ -1697,7 +1928,7 @@ function renderDashboardSummary(summary) {
       row.className = "bar-row";
       const width = Math.max(0, Math.min(100, Number(item.score) || 0));
       row.innerHTML = `
-        <div class="bar-top"><span>${escapeHtml(item.name || "--")}</span><span>${round(item.score, 1)}</span></div>
+        <div class="bar-top"><span>${escapeHtml(localizeDimensionName(item.name || "--", item.id || ""))}</span><span>${round(item.score, 1)}</span></div>
         <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
       `;
       bars.appendChild(row);
@@ -1706,7 +1937,13 @@ function renderDashboardSummary(summary) {
 
   if (drivers) {
     drivers.innerHTML = "";
-    (summary.primaryDrivers || []).slice(0, 3).forEach((item) => {
+    const displayDrivers = pickLocalizedDrivers(
+      summary.primaryDrivers || [],
+      summary.topDimensionContributors || [],
+      (summary.alerts || []).filter((a) => a.triggered).length,
+      summary.totalScore
+    );
+    displayDrivers.slice(0, 3).forEach((item) => {
       const card = document.createElement("article");
       card.className = "driver-card";
       card.innerHTML = `<h3>${escapeHtml(item.title || "")}</h3><p>${escapeHtml(item.text || item.summary || "")}</p>`;
@@ -1720,7 +1957,7 @@ function renderDashboardSummary(summary) {
       const card = document.createElement("article");
       card.className = "indicator-mini-card";
       card.innerHTML = `
-        <h3>${escapeHtml(item.title || item.label || "--")}</h3>
+        <h3>${escapeHtml(localizeIndicatorName(item.title || item.label || "--"))}</h3>
         <div class="indicator-value">${escapeHtml(item.value ?? "--")}</div>
         <div class="indicator-source">${escapeHtml(item.source || "")}</div>
       `;
@@ -1830,7 +2067,7 @@ async function setupAiDataAssistant(model) {
       if (status) status.textContent = `${getLang() === "zh" ? "查询失败" : "Query failed"}: ${msg}`;
       return;
     }
-    const meta = `${res.model || "--"} · asOf ${res.asOf || "--"} · ${res.generatedAt || "--"}`;
+    const meta = `${res.model || "--"} · ${getLang() === "zh" ? "更新日" : "As-Of"} ${res.asOf || "--"} · ${res.generatedAt || "--"}`;
     output.innerHTML = `
       <div class="summary-line">${escapeHtml(meta)}</div>
       <div class="summary-line">${escapeHtml(res.answer || "")}</div>
@@ -1863,12 +2100,12 @@ function generateDailyText(model, date, onlineSummary) {
     zh ? "宏观监控每日报告" : "Macro Monitoring Daily Report",
     `${zh ? "报告日期" : "Date"}: ${date}`,
     `${zh ? "模型更新日" : "Model As-Of"}: ${model.asOf}`,
-    `${zh ? "综合得分" : "Composite Score"}: ${round(model.totalScore, 1)} (${model.status})`,
+    `${zh ? "综合得分" : "Composite Score"}: ${round(model.totalScore, 1)} (${localizeStatus(model.status)})`,
     "",
     zh ? "执行摘要" : "Executive Summary",
     zh
-      ? `- 当前模型处于“${model.status}”状态，总分 ${round(model.totalScore, 1)}。`
-      : `- Current regime: ${model.status} with total score ${round(model.totalScore, 1)}.`,
+      ? `- 当前模型处于“${localizeStatus(model.status)}”状态，总分 ${round(model.totalScore, 1)}。`
+      : `- Current regime: ${localizeStatus(model.status)} with total score ${round(model.totalScore, 1)}.`,
     zh
       ? `- 当前触发预警 ${active.length} 条。`
       : `- ${active.length} alert(s) are currently triggered.`
@@ -1883,10 +2120,10 @@ function generateDailyText(model, date, onlineSummary) {
   }
 
   lines.push("", zh ? "主要支撑维度" : "Top Supporting Dimensions");
-  top.forEach((item) => lines.push(`- ${item.name}: ${round(item.score, 1)}`));
+  top.forEach((item) => lines.push(`- ${localizeDimensionName(item.name, item.id)}: ${round(item.score, 1)}`));
 
   lines.push("", zh ? "主要拖累维度" : "Top Dragging Dimensions");
-  bottom.forEach((item) => lines.push(`- ${item.name}: ${round(item.score, 1)}`));
+  bottom.forEach((item) => lines.push(`- ${localizeDimensionName(item.name, item.id)}: ${round(item.score, 1)}`));
 
   lines.push("", zh ? "预警清单" : "Alert Watchlist");
   if (!active.length) {
@@ -2016,7 +2253,7 @@ function renderReportLinks(reports) {
         <div class="report-date">${escapeHtml(report.date)}</div>
         <div class="badge-row">
           <span class="badge">${scoreLabel}: ${escapeHtml(report.meta?.score ?? "--")}</span>
-          <span class="badge">${signalLabel}: ${escapeHtml(report.meta?.status ?? "--")}</span>
+          <span class="badge">${signalLabel}: ${escapeHtml(localizeStatus(report.meta?.status ?? "--"))}</span>
         </div>
       </div>
       <a class="report-open" href="${escapeHtml(report.path || `daily-report.html?date=${encodeURIComponent(report.date)}`)}">${getLang() === "zh" ? "打开" : "Open"}</a>
@@ -2026,30 +2263,32 @@ function renderReportLinks(reports) {
 }
 
 function renderOnlineCheckTable(rows) {
+  const zh = getLang() === "zh";
   const mapped = (rows || []).map((row) => ({
-    Indicator: row.indicator,
-    Source: row.source,
-    Series: row.series,
-    Status: row.status,
-    LatestDate: row.latestDate,
-    LatestValue: row.latestValue,
-    Error: row.error || ""
+    [zh ? "指标" : "Indicator"]: localizeIndicatorName(row.indicator),
+    [zh ? "来源" : "Source"]: row.source,
+    [zh ? "序列" : "Series"]: row.series,
+    [zh ? "状态" : "Status"]: row.status,
+    [zh ? "最新日期" : "LatestDate"]: row.latestDate,
+    [zh ? "最新值" : "LatestValue"]: row.latestValue,
+    [zh ? "错误" : "Error"]: row.error || ""
   }));
   renderObjectTable("online-check-table", mapped);
 }
 
 function renderIndicatorVerificationTable(rows) {
+  const zh = getLang() === "zh";
   const mapped = (rows || []).map((r) => ({
-    IndicatorCode: r.IndicatorCode,
-    IndicatorName: r.IndicatorName,
-    DimensionID: r.DimensionID,
-    LatestValue: r.LatestValue,
-    ValueDate: r.ValueDate,
-    SourceDate: r.SourceDate,
-    VerifiedOnline: r.VerifiedOnline ? "YES" : "NO",
-    VerificationStatus: r.VerificationStatus,
-    VerificationError: r.VerificationError || "",
-    GeneratedAt: r.GeneratedAt || ""
+    [zh ? "指标代码" : "IndicatorCode"]: r.IndicatorCode,
+    [zh ? "指标名称" : "IndicatorName"]: localizeIndicatorName(r.IndicatorName),
+    [zh ? "维度ID" : "DimensionID"]: r.DimensionID,
+    [zh ? "最新值" : "LatestValue"]: r.LatestValue,
+    [zh ? "值日期" : "ValueDate"]: r.ValueDate,
+    [zh ? "来源日期" : "SourceDate"]: r.SourceDate,
+    [zh ? "是否在线校验" : "VerifiedOnline"]: r.VerifiedOnline ? (zh ? "是" : "YES") : (zh ? "否" : "NO"),
+    [zh ? "校验状态" : "VerificationStatus"]: r.VerificationStatus,
+    [zh ? "校验错误" : "VerificationError"]: r.VerificationError || "",
+    [zh ? "生成时间" : "GeneratedAt"]: r.GeneratedAt || ""
   }));
   renderObjectTable("indicator-verification-table", mapped);
 }
@@ -2073,7 +2312,7 @@ async function renderDailyReport(model) {
 
   scoreEl.textContent = round(model.totalScore, 1).toFixed(1);
   dateEl.textContent = date;
-  statusEl.textContent = model.status;
+  statusEl.textContent = localizeStatus(model.status);
 
   let existing = await loadReport(date);
   if (!existing) {
@@ -2098,9 +2337,7 @@ async function renderDailyReport(model) {
   const generatedAtEl = document.getElementById("data-generated-at");
   if (generatedAtEl) {
     const ga = viewModel.generatedAt || model.generatedAt;
-    generatedAtEl.textContent = ga
-      ? `${getLang() === "zh" ? "Data Generated At" : "Data Generated At"}: ${ga}`
-      : `${getLang() === "zh" ? "Data Generated At" : "Data Generated At"}: --`;
+    generatedAtEl.textContent = ga ? `${t("data_generated_at")}: ${ga}` : `${t("data_generated_at")}: --`;
   }
   renderReportLinks(await listReports());
 
@@ -2386,12 +2623,12 @@ function buildGlossaryEntries(model) {
       const name = findValue(row, ["dimensionname", "维度名称", "维度"]);
       const weight = findValue(row, ["weight", "权重", "%"]);
       const tier = findValue(row, ["tier", "层级"]);
-      const definition = findValue(row, ["definition", "定义", "说明"]);
+      const definition = localizeDimensionDefinition(id, findValue(row, ["definition", "定义", "说明"]));
       const update = findValue(row, ["typical update", "frequency", "更新"]);
       const indicators = (model.tables?.indicators || [])
         .filter((i) => findValue(i, ["dimensionid", "维度id", "id"]).toLowerCase() === id.toLowerCase())
         .slice(0, 3)
-        .map((i) => findValue(i, ["indicatorname", "指标", "name"]))
+        .map((i) => localizeIndicatorName(findValue(i, ["indicatorname", "指标", "name"])))
         .filter(Boolean)
         .join(" / ");
 
@@ -2504,7 +2741,35 @@ function renderGlossary(model) {
 }
 
 function renderIndicatorsPage(model) {
-  renderObjectTable("indicators-page-table", model.tables?.indicators || []);
+  const rows = model.tables?.indicators || [];
+  const zh = getLang() === "zh";
+  const mapped = rows.map((row) => {
+    const code = findValue(row, ["indicatorcode", "code"]);
+    const name = localizeIndicatorName(findValue(row, ["indicatorname", "指标", "name"]) || code);
+    const dimId = findValue(row, ["dimensionid", "维度id", "id"]);
+    const dimName = localizeDimensionName(findValue(row, ["dimensionname", "维度名称", "维度"]), dimId);
+    const source = findValue(row, ["source", "数据源", "主数据源"]);
+    const update = findValue(row, ["typical update", "frequency", "更新"]);
+    const direction = findValue(row, ["direction", "方向"]);
+    return zh
+      ? {
+          指标代码: code,
+          指标名称: name,
+          维度: `${dimId} ${dimName}`.trim(),
+          数据源: source,
+          更新频率: update,
+          方向: direction
+        }
+      : {
+          IndicatorCode: code,
+          IndicatorName: name,
+          Dimension: `${dimId} ${dimName}`.trim(),
+          Source: source,
+          Update: update,
+          Direction: direction
+        };
+  });
+  renderObjectTable("indicators-page-table", mapped);
 }
 
 async function renderOpenRouterPage() {
@@ -2588,7 +2853,7 @@ function setupUpload(onLoaded) {
       const buffer = await file.arrayBuffer();
       const model = parseWorkbook(buffer);
       await saveCurrentModel(model);
-      if (status) status.textContent = `Loaded: ${file.name}`;
+      if (status) status.textContent = getLang() === "zh" ? `已加载：${file.name}` : `Loaded: ${file.name}`;
       onLoaded(model);
     } catch {
       if (status) status.textContent = getLang() === "zh" ? "文件解析失败，请重试。" : "Failed to parse file.";
