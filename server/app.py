@@ -439,8 +439,8 @@ def _fetch_openrouter_rankings(view: str = "week", category: str = "all"):
       with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         page = browser.new_page()
-        page.goto(url, wait_until="domcontentloaded", timeout=45000)
-        page.wait_for_timeout(4000)
+        page.goto(url, wait_until="networkidle", timeout=120000)
+        page.wait_for_timeout(6000)
         raw = page.content() or ""
         rendered = _openrouter_extract_rendered_lists(page)
         browser.close()
