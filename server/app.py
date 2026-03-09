@@ -33,6 +33,7 @@ try:
     get_token_usage_daily,
     get_token_usage_minute,
     get_daily_report_ai_insight,
+    get_latest_online_check,
     has_email_event,
     log_page_event,
     log_token_usage,
@@ -61,6 +62,7 @@ except ImportError:
     get_token_usage_daily,
     get_token_usage_minute,
     get_daily_report_ai_insight,
+    get_latest_online_check,
     has_email_event,
     log_page_event,
     log_token_usage,
@@ -1121,6 +1123,16 @@ def checks():
     return jsonify({"error": "missing_checkedAt"}), 400
   save_online_check(checked_at, summary, rows)
   return jsonify({"ok": True})
+
+
+@app.route("/api/checks/latest", methods=["GET", "OPTIONS"])
+def checks_latest():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  row = get_latest_online_check()
+  if not row:
+    return jsonify({"error": "not_found"}), 404
+  return _etag_response(row)
 
 
 @app.route("/api/ai/data-query", methods=["POST", "OPTIONS"])

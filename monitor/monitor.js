@@ -392,8 +392,9 @@ async function initDataTool(){
   const model = await dataGet('/api/model/current?view=core') || await dataGet('/api/model/current') || {};
   const existing = await dataGet(`/api/reports/${encodeURIComponent(date)}`);
   const reports = await dataGet('/api/reports?limit=30');
+  const latestCheck = await dataGet('/api/checks/latest');
   editor.value = asText(existing?.text) || generateToolDraft(model, date, null);
-  renderOnlineCheckTableForTool(model.onlineCheck || []);
+  renderOnlineCheckTableForTool(model.onlineCheck || latestCheck?.rows || []);
   renderToolReportLinks(reports?.reports || []);
 
   btnGen?.addEventListener('click', async()=>{

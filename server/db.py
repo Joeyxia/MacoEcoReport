@@ -515,6 +515,34 @@ def save_online_check(checked_at: str, summary: dict, rows):
   conn.close()
 
 
+def get_latest_online_check():
+  conn = get_conn()
+  row = conn.execute(
+    """
+    SELECT checked_at, summary_json, rows_json
+    FROM online_checks
+    ORDER BY checked_at DESC, id DESC
+    LIMIT 1
+    """
+  ).fetchone()
+  conn.close()
+  if not row:
+    return None
+  try:
+    summary = json.loads(row["summary_json"] or "{}")
+  except Exception:
+    summary = {}
+  try:
+    rows = json.loads(row["rows_json"] or "[]")
+  except Exception:
+    rows = []
+  return {
+    "checkedAt": row["checked_at"] or "",
+    "summary": summary,
+    "rows": rows,
+  }
+
+
 def add_subscriber(email: str, source: str = "web"):
   conn = get_conn()
   ts = now_iso()
