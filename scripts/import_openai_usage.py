@@ -13,7 +13,10 @@ sys.path.insert(0, str(ROOT / "server"))
 from db import delete_token_usage_by_source, init_db, log_token_usage
 
 OPENAI_API_KEY = os.environ.get("OPENAI_ADMIN_API_KEY", "").strip()
-USAGE_URL = "https://api.openai.com/v1/organization/usage/completions"
+USAGE_URLS = {
+  "completions": "https://api.openai.com/v1/organization/usage/completions",
+  "responses": "https://api.openai.com/v1/organization/usage/responses",
+}
 SOURCE_NAME = "openai_usage_api"
 
 
@@ -54,6 +57,25 @@ def normalize_rows(bucket: dict):
   return []
 
 
+def fetch_usage_rows(resource: str, params: dict):
+  imported_rows = []
+  next_page = None
+  while True:
+    query = dict(params)
+    if next_page:
+      query["page"] = next_page
+    payload = fetch_json(f"{USAGE_URLS[resource]}?{urlencode(query)}")
+    for bucket in payload.get("data") or []:
+      bucket_start = int(bucket.get("start_time") or 0)
+      logged_at = fmt_iso(datetime.fromtimestamp(bucket_start, tz=timezone.utc)) if bucket_start else ""
+      for row in normalize_rows(bucket):
+        imported_rows.append((resource, bucket, row, logged_at))
+    next_page = payload.get("next_page")
+    if not next_page:
+      break
+  return imported_rows
+
+
 def main():
   parser = argparse.ArgumentParser(description="Import OpenAI completion usage into monitor_token_usage")
   parser.add_argument("--start-date", default="", help="UTC date, format YYYY-MM-DD")
@@ -61,6 +83,7 @@ def main():
   parser.add_argument("--days", type=int, default=2, help="Fallback lookback days if start/end not provided")
   parser.add_argument("--minutes", type=int, default=0, help="If >0, ignore day window and import recent N minutes")
   parser.add_argument("--bucket-width", default="1m", choices=["1m", "1h", "1d"], help="OpenAI usage bucket width")
+  parser.add_argument("--resource", default="all", choices=["all", "completions", "responses"], help="Usage resource to import")
   args = parser.parse_args()
 
   if not OPENAI_API_KEY:
@@ -92,42 +115,35 @@ def main():
   delete_token_usage_by_source(SOURCE_NAME, start_iso=fmt_iso(start_dt), end_iso=fmt_iso(end_dt))
 
   imported = 0
-  next_page = None
-  while True:
-    query = dict(params)
-    if next_page:
-      query["page"] = next_page
-    payload = fetch_json(f"{USAGE_URL}?{urlencode(query)}")
-    for bucket in payload.get("data") or []:
-      bucket_start = int(bucket.get("start_time") or 0)
-      logged_at = fmt_iso(datetime.fromtimestamp(bucket_start, tz=timezone.utc)) if bucket_start else fmt_iso(start_dt)
-      for row in normalize_rows(bucket):
-        input_tokens = int(row.get("input_tokens") or 0)
-        output_tokens = int(row.get("output_tokens") or 0)
-        total_tokens = int(row.get("total_tokens") or (input_tokens + output_tokens))
-        model = str(row.get("model") or "")
-        meta = {
-          "requests": int(row.get("num_model_requests") or 0),
-          "window_start": logged_at,
-          "window_end": fmt_iso(datetime.fromtimestamp(int(bucket.get("end_time") or 0), tz=timezone.utc)) if bucket.get("end_time") else "",
-        }
-        log_token_usage(
-          source=SOURCE_NAME,
-          model=model,
-          input_tokens=input_tokens,
-          output_tokens=output_tokens,
-          total_tokens=total_tokens,
-          meta=meta,
-          logged_at=logged_at,
-        )
-        imported += 1
-    next_page = payload.get("next_page")
-    if not next_page:
-      break
+  resources = ["completions", "responses"] if args.resource == "all" else [args.resource]
+  for resource in resources:
+    usage_rows = fetch_usage_rows(resource, params)
+    for resource_name, bucket, row, logged_at in usage_rows:
+      logged = logged_at or fmt_iso(start_dt)
+      input_tokens = int(row.get("input_tokens") or 0)
+      output_tokens = int(row.get("output_tokens") or 0)
+      total_tokens = int(row.get("total_tokens") or (input_tokens + output_tokens))
+      model = str(row.get("model") or "")
+      meta = {
+        "resource": resource_name,
+        "requests": int(row.get("num_model_requests") or row.get("num_requests") or 0),
+        "window_start": logged,
+        "window_end": fmt_iso(datetime.fromtimestamp(int(bucket.get("end_time") or 0), tz=timezone.utc)) if bucket.get("end_time") else "",
+      }
+      log_token_usage(
+        source=SOURCE_NAME,
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
+        meta=meta,
+        logged_at=logged,
+      )
+      imported += 1
 
   print(
     f"openai_usage_import_done source={SOURCE_NAME} start={fmt_iso(start_dt)} "
-    f"end={fmt_iso(end_dt)} rows={imported}"
+    f"end={fmt_iso(end_dt)} resources={','.join(resources)} rows={imported}"
   )
 
 
