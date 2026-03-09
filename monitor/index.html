@@ -11,7 +11,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./monitor.css?v=20260310m6" />
-    <script defer src="./monitor.js?v=20260310dt11"></script>
+    <script defer src="./monitor.js?v=20260310dt12"></script>
   </head>
   <body data-page="login">
     <main class="hero">
@@ -22,7 +22,7 @@
         <div class="human-check">
           <label id="human-question" for="human-answer" data-i18n="human_question">Human Verification</label>
           <div class="human-row">
-            <input id="human-answer" type="text" data-i18n-placeholder="human_placeholder" placeholder="Enter answer" autocomplete="off" />
+            <input id="human-answer" type="text" inputmode="numeric" pattern="[0-9]*" data-i18n-placeholder="human_placeholder" placeholder="Enter answer" autocomplete="off" />
             <button id="human-verify" class="btn ghost" type="button" data-i18n="human_verify">Verify</button>
           </div>
         </div>

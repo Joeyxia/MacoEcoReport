@@ -472,6 +472,12 @@ async function initLogin(){
   const answerEl = q('human-answer');
   const verifyBtn = q('human-verify');
   const hasHumanCheck = !!(questionEl && answerEl && verifyBtn && googleBtn);
+  const normalizeNum = (raw) => {
+    const s = String(raw || '').trim();
+    if(!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  };
 
   const updateHumanQuestion = () => {
     if(!hasHumanCheck) return;
@@ -495,14 +501,21 @@ async function initLogin(){
       passHumanCheck();
     }else{
       updateHumanQuestion();
-      verifyBtn.addEventListener('click', ()=>{
-        const v = Number(String(answerEl.value || '').trim());
+      const doVerify = ()=>{
+        const v = normalizeNum(answerEl.value);
         if(Number.isFinite(v) && v === humanAnswer){
           passHumanCheck();
           return;
         }
         if(statusEl) statusEl.textContent = mt('human_fail');
         updateHumanQuestion();
+      };
+      verifyBtn.addEventListener('click', doVerify);
+      answerEl.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          doVerify();
+        }
       });
     }
   }
