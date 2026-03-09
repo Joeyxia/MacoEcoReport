@@ -347,6 +347,79 @@ def _parse_openrouter_section(lines, start_label: str, stop_labels, with_share: 
   return _parse_openrouter_ranked_lines(section, with_share=with_share)
 
 
+def _openrouter_extract_rendered_lists(page):
+  payload = page.evaluate(
+    """
+() => {
+  const normalize = (s) => (s || "").replace(/\\s+/g, " ").trim();
+  const takeUnique = (arr) => {
+    const seen = new Set();
+    const out = [];
+    for (const v of arr) {
+      if (!v || seen.has(v)) continue;
+      seen.add(v);
+      out.push(v);
+    }
+    return out;
+  };
+  const extractRowMetrics = (el) => {
+    let cur = el;
+    for (let i = 0; i < 7 && cur; i += 1) {
+      const txt = normalize(cur.innerText || "");
+      if (/tokens?/i.test(txt) && /\\d/.test(txt)) {
+        const tokenMatch = txt.match(/(\\d+(?:\\.\\d+)?\\s*[KMBT]?\\s*tokens?)/i);
+        const shareMatch = txt.match(/(\\d+(?:\\.\\d+)?)%/);
+        return {
+          tokens: tokenMatch ? tokenMatch[1].replace(/\\s+/g, " ").trim() : "",
+          share: shareMatch ? `${shareMatch[1]}%` : "",
+        };
+      }
+      cur = cur.parentElement;
+    }
+    return { tokens: "", share: "" };
+  };
+
+  const appAnchors = Array.from(document.querySelectorAll('#apps a[href^="/apps?url="]'));
+  const apps = appAnchors.slice(0, 20).map((a, idx) => {
+    const m = extractRowMetrics(a);
+    return { rank: idx + 1, name: normalize(a.textContent), creator: "", tokens: m.tokens, share: "" };
+  });
+
+  const modelIds = takeUnique(
+    Array.from(document.querySelectorAll('[id]'))
+      .map((el) => (el.id || "").trim())
+      .filter((id) => id.includes("/") && id.length <= 80 && !id.startsWith("radix") && !id.startsWith("recharts"))
+  ).slice(0, 20);
+  const models = modelIds.map((id, idx) => {
+    const creator = id.split("/")[0] || "";
+    const namePart = id.split("/").slice(1).join("/");
+    const title = namePart ? `${creator}/${namePart}` : id;
+    return { rank: idx + 1, name: title, creator, tokens: "", share: "" };
+  });
+
+  const filterExcludes = new Set([
+    "OpenRouter", "Models", "Chat", "Rankings", "Apps", "Enterprise", "Pricing", "Docs",
+    "Sign Up", "Show more", "Intelligence Index Score", "Highest throughput",
+    "This Week", "This Month", "All Time", "Today"
+  ]);
+  const filterButtons = takeUnique(
+    Array.from(document.querySelectorAll('button'))
+      .map((b) => normalize(b.textContent))
+      .filter((t) => t && t.length <= 40 && !filterExcludes.has(t))
+  ).slice(0, 20);
+  const prompts = filterButtons.map((name, idx) => ({ rank: idx + 1, name, creator: "", tokens: "", share: "" }));
+
+  return { apps, models, prompts };
+}
+"""
+  ) or {}
+  return {
+    "apps": payload.get("apps") or [],
+    "models": payload.get("models") or [],
+    "prompts": payload.get("prompts") or [],
+  }
+
+
 def _fetch_openrouter_rankings(view: str = "week", category: str = "all"):
   allowed_views = {"day", "week", "month", "all"}
   safe_view = view if view in allowed_views else "week"
@@ -356,14 +429,16 @@ def _fetch_openrouter_rankings(view: str = "week", category: str = "all"):
   url = f"https://openrouter.ai{path}?{q}"
   raw = ""
   parse_mode = "html-fallback"
+  rendered = {"models": [], "apps": [], "prompts": []}
   if OPENROUTER_USE_PLAYWRIGHT and sync_playwright is not None:
     try:
       with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         page = browser.new_page()
         page.goto(url, wait_until="domcontentloaded", timeout=45000)
-        page.wait_for_timeout(2500)
+        page.wait_for_timeout(4000)
         raw = page.content() or ""
+        rendered = _openrouter_extract_rendered_lists(page)
         browser.close()
         parse_mode = "playwright-rendered"
     except Exception:
@@ -388,14 +463,65 @@ def _fetch_openrouter_rankings(view: str = "week", category: str = "all"):
   apps = _parse_openrouter_ranked_lines(apps_hidden, with_share=False) if apps_hidden else []
   prompts = []
   providers = []
+  if rendered.get("models") and not models:
+    models = rendered.get("models") or []
+  if rendered.get("apps") and not apps:
+    apps = rendered.get("apps") or []
+  if rendered.get("prompts"):
+    prompts = rendered.get("prompts") or []
+
   if not models or not apps or not prompts or not providers:
     lines = _normalize_openrouter_text(raw)
     if not models:
       models = _parse_openrouter_section(lines, "Top Models", ("Top Apps", "Top Prompts", "Top Providers"), with_share=True)
     if not apps:
       apps = _parse_openrouter_section(lines, "Top Apps", ("Top Prompts", "Top Providers", "API", "Developer Docs"), with_share=False)
-    prompts = _parse_openrouter_section(lines, "Top Prompts", ("Top Providers", "Top Apps", "API", "Developer Docs"), with_share=True)
+    if not prompts:
+      prompts = _parse_openrouter_section(lines, "Top Prompts", ("Top Providers", "Top Apps", "API", "Developer Docs"), with_share=True)
     providers = _parse_openrouter_section(lines, "Top Providers", ("Top Prompts", "Top Apps", "API", "Developer Docs"), with_share=True)
+
+  if not providers:
+    provider_counts = {}
+    for row in models:
+      creator = (row.get("creator") or "").strip().lower()
+      if not creator:
+        name = (row.get("name") or "").strip()
+        if "/" in name:
+          creator = name.split("/", 1)[0].strip().lower()
+      if not creator:
+        continue
+      provider_counts[creator] = provider_counts.get(creator, 0) + 1
+    if provider_counts:
+      sorted_items = sorted(provider_counts.items(), key=lambda it: (-it[1], it[0]))
+      providers = [
+        {"rank": i + 1, "name": k, "creator": "", "tokens": f"{v} models", "share": ""}
+        for i, (k, v) in enumerate(sorted_items[:20])
+      ]
+
+  if not providers:
+    try:
+      req_providers = urllib.request.Request(
+        "https://openrouter.ai/api/frontend/all-providers",
+        headers={"User-Agent": "Mozilla/5.0 (NexoMacroMonitor; +https://nexo.hk)"},
+        method="GET",
+      )
+      with urllib.request.urlopen(req_providers, timeout=30) as resp:
+        providers_payload = json.loads(resp.read().decode("utf-8", errors="ignore"))
+      plist = (providers_payload or {}).get("data") if isinstance(providers_payload, dict) else []
+      if isinstance(plist, list):
+        providers = [
+          {
+            "rank": i + 1,
+            "name": str(p.get("displayName") or p.get("name") or p.get("slug") or "").strip(),
+            "creator": str(p.get("headquarters") or "").strip(),
+            "tokens": "",
+            "share": "",
+          }
+          for i, p in enumerate(plist[:20])
+          if isinstance(p, dict)
+        ]
+    except Exception:
+      pass
   return {
     "ok": True,
     "sourceUrl": url,
