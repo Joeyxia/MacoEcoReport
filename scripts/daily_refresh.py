@@ -19,16 +19,17 @@ from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV_FILE = Path("/etc/macro-monitor.env")
-if not os.environ.get("MACRO_DB_PATH") and ENV_FILE.exists():
+if ENV_FILE.exists():
     try:
         for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
             k, v = line.split("=", 1)
-            if k.strip() == "MACRO_DB_PATH" and v.strip():
-                os.environ["MACRO_DB_PATH"] = v.strip()
-                break
+            key = k.strip()
+            val = v.strip()
+            if key and val and not os.environ.get(key):
+                os.environ[key] = val
     except Exception:
         pass
 sys.path.insert(0, str(ROOT / "server"))
