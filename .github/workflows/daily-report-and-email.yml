@@ -57,9 +57,13 @@ jobs:
       - name: Refresh data and generate daily report
         id: refresh
         continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: "gpt-5.4"
+          OPENAI_STRICT_ANALYSIS: "true"
         run: |
           if [ "${{ steps.plan.outputs.strict }}" = "1" ]; then
-            python scripts/daily_refresh.py --mode "${{ steps.plan.outputs.mode }}" --strict-freshness
+            python scripts/daily_refresh.py --mode "${{ steps.plan.outputs.mode }}" --strict-freshness --require-openai-ai
           else
             python scripts/daily_refresh.py --mode "${{ steps.plan.outputs.mode }}"
           fi
