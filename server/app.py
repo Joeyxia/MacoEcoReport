@@ -84,6 +84,7 @@ EMAIL_RE = re.compile(r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$", re.I)
 CACHE_TTL_SECONDS = int(os.environ.get("API_CACHE_TTL_SECONDS", "90"))
 MONITOR_ALLOWED_EMAILS = {x.strip().lower() for x in str(os.environ.get("MONITOR_ALLOWED_EMAILS", "")).split(",") if x.strip()}
 MONITOR_ALLOWED_DOMAINS = {x.strip().lower() for x in str(os.environ.get("MONITOR_ALLOWED_DOMAINS", "")).split(",") if x.strip()}
+MONITOR_FIXED_WHITELIST = {"xiayiping@gmail.com", "simobot001@gmail.com"}
 GOOGLE_CLIENT_ID = str(os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")).strip()
 GOOGLE_CLIENT_SECRET = str(os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")).strip()
 GOOGLE_REDIRECT_URI = str(os.environ.get("GOOGLE_OAUTH_REDIRECT_URI", "https://monitor.nexo.hk/monitor-api/auth/google/callback")).strip()
@@ -619,12 +620,9 @@ def _is_monitor_authorized(email: str):
   e = str(email or "").strip().lower()
   if not e:
     return False
-  if MONITOR_ALLOWED_EMAILS and e in MONITOR_ALLOWED_EMAILS:
-    return True
-  if MONITOR_ALLOWED_DOMAINS:
-    domain = e.split("@", 1)[1] if "@" in e else ""
-    return domain in MONITOR_ALLOWED_DOMAINS
-  return True
+  # Security policy: monitor console login must be restricted to the fixed
+  # two-user whitelist regardless of domain-level env configuration.
+  return e in MONITOR_FIXED_WHITELIST
 
 
 def _require_monitor_auth():
