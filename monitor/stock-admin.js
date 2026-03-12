@@ -292,7 +292,11 @@ async function doUpload(){
   const res = await uploadWithProgress("/monitor-api/stocks/admin/import-and-refresh", fd);
   setProgress(100);
   if (!res.ok){
-    setText("upload-status", `failed: ${res.data?.error || res.status}`);
+    if (Number(res.status) === 413){
+      setText("upload-status", "failed: 413 (payload too large, please reduce file size or increase server upload limit)");
+    } else {
+      setText("upload-status", `failed: ${res.data?.error || res.status}`);
+    }
     return;
   }
   setText("upload-status", `ok: imported=${res.data?.importedCount || 0}, failed=${res.data?.failedCount || 0}, rows=${res.data?.totalRows || 0}`);
@@ -334,7 +338,11 @@ async function inspectFiles(){
   const res = await api.postForm("/monitor-api/stocks/admin/upload-csv", fd);
   if (!res?.ok){
     renderRecognition([{ file: "request", type: "error", rowCount: 0, columns: [], ok: false, error: res?.data?.error || String(res?.status || "") }]);
-    setText("upload-status", `inspect failed: ${res?.data?.error || res?.status || "unknown"}`);
+    if (Number(res?.status) === 413){
+      setText("upload-status", "inspect failed: 413 (payload too large)");
+    } else {
+      setText("upload-status", `inspect failed: ${res?.data?.error || res?.status || "unknown"}`);
+    }
     return;
   }
   renderRecognition(res?.data?.recognized || []);

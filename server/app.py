@@ -145,12 +145,18 @@ app.config.update(
   SESSION_COOKIE_HTTPONLY=True,
   SESSION_COOKIE_SAMESITE="Lax",
   SESSION_COOKIE_SECURE=True,
+  MAX_CONTENT_LENGTH=max(1, int(os.environ.get("MAX_UPLOAD_MB", "100"))) * 1024 * 1024,
 )
 init_db()
 _cache = {}
 _cache_lock = Lock()
 _openai_queue_lock = Lock()
 _openai_next_allowed_at = 0.0
+
+
+@app.errorhandler(413)
+def handle_payload_too_large(_err):
+  return jsonify({"ok": False, "error": "payload_too_large", "detail": "request body exceeds upload limit"}), 413
 
 
 def _cache_get(key):
