@@ -25,6 +25,11 @@ except Exception:
   RandomForestRegressor = None
 
 try:
+  import yfinance as yf
+except Exception:
+  yf = None
+
+try:
   from playwright.sync_api import sync_playwright
 except Exception:
   sync_playwright = None
@@ -600,42 +605,77 @@ def _fallback_quarterly_statement_csv(ticker: str, statement_type: str, out_path
   if not mod:
     return False
   url = f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{urllib.parse.quote(ticker)}?modules={mod}"
-  payload = _yahoo_json_get(url, context=context)
-  result = (((payload or {}).get("quoteSummary") or {}).get("result") or [None])[0] or {}
-  block = result.get(mod) or {}
-  raw_list = (
-    block.get("incomeStatementHistory")
-    or block.get("cashflowStatements")
-    or block.get("balanceSheetStatements")
-    or []
-  )
-  if not raw_list:
+  try:
+    payload = _yahoo_json_get(url, context=context)
+    result = (((payload or {}).get("quoteSummary") or {}).get("result") or [None])[0] or {}
+    block = result.get(mod) or {}
+    raw_list = (
+      block.get("incomeStatementHistory")
+      or block.get("cashflowStatements")
+      or block.get("balanceSheetStatements")
+      or []
+    )
+    if raw_list:
+      date_cols = []
+      metrics = {}
+      for row in raw_list:
+        dt_raw = ((row.get("endDate") or {}).get("raw"))
+        if not dt_raw:
+          continue
+        dt = datetime.utcfromtimestamp(int(dt_raw)).date().isoformat()
+        date_cols.append(dt)
+        for k, v in row.items():
+          if k in {"maxAge", "endDate"}:
+            continue
+          val = v.get("raw") if isinstance(v, dict) else None
+          if val is None:
+            continue
+          name = _camel_to_title(k)
+          metrics.setdefault(name, {})[dt] = val
+      date_cols = sorted(set(date_cols), reverse=True)
+      if date_cols and metrics:
+        with out_path.open("w", encoding="utf-8", newline="") as f:
+          w = csv.writer(f)
+          w.writerow(["name", *date_cols])
+          for name, m in metrics.items():
+            w.writerow([name] + [m.get(d, "") for d in date_cols])
+        return out_path.exists() and out_path.stat().st_size > 64
+  except Exception:
+    pass
+
+  if yf is None:
     return False
-  date_cols = []
-  metrics = {}
-  for row in raw_list:
-    dt_raw = ((row.get("endDate") or {}).get("raw"))
-    if not dt_raw:
-      continue
-    dt = datetime.utcfromtimestamp(int(dt_raw)).date().isoformat()
-    date_cols.append(dt)
-    for k, v in row.items():
-      if k in {"maxAge", "endDate"}:
-        continue
-      val = v.get("raw") if isinstance(v, dict) else None
-      if val is None:
-        continue
-      name = _camel_to_title(k)
-      metrics.setdefault(name, {})[dt] = val
-  date_cols = sorted(set(date_cols), reverse=True)
-  if not date_cols or not metrics:
+  try:
+    tk = yf.Ticker(ticker)
+    if statement_type == FILE_TYPE_FINANCIALS:
+      df = tk.quarterly_financials
+    elif statement_type == FILE_TYPE_CASH_FLOW:
+      df = tk.quarterly_cashflow
+    else:
+      df = tk.quarterly_balance_sheet
+    if df is None or df.empty:
+      return False
+    cols = [c for c in df.columns]
+    cols_sorted = sorted(cols, reverse=True)
+    headers = [str(getattr(c, "date", lambda: c)() if hasattr(c, "date") else c)[:10] for c in cols_sorted]
+    with out_path.open("w", encoding="utf-8", newline="") as f:
+      w = csv.writer(f)
+      w.writerow(["name", *headers])
+      for idx in df.index:
+        row = [str(idx)]
+        for c in cols_sorted:
+          v = df.loc[idx, c]
+          if v is None:
+            row.append("")
+          else:
+            try:
+              row.append(float(v))
+            except Exception:
+              row.append("")
+        w.writerow(row)
+    return out_path.exists() and out_path.stat().st_size > 64
+  except Exception:
     return False
-  with out_path.open("w", encoding="utf-8", newline="") as f:
-    w = csv.writer(f)
-    w.writerow(["name", *date_cols])
-    for name, m in metrics.items():
-      w.writerow([name] + [m.get(d, "") for d in date_cols])
-  return out_path.exists() and out_path.stat().st_size > 64
 
 
 def _fallback_monthly_valuation_csv(ticker: str, start_date: str, out_path: Path, context=None):
@@ -653,20 +693,35 @@ def _fallback_monthly_valuation_csv(ticker: str, start_date: str, out_path: Path
   closes = quote.get("close") or []
   if not ts:
     return False
-  modules = "defaultKeyStatistics,financialData,summaryDetail,price"
-  qsum = _yahoo_json_get(f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{urllib.parse.quote(ticker)}?modules={modules}", context=context)
-  qres = (((qsum or {}).get("quoteSummary") or {}).get("result") or [None])[0] or {}
-  dks = qres.get("defaultKeyStatistics") or {}
-  fdata = qres.get("financialData") or {}
-  sdet = qres.get("summaryDetail") or {}
-  price = qres.get("price") or {}
-  shares = ((dks.get("sharesOutstanding") or {}).get("raw")) or ((price.get("sharesOutstanding") or {}).get("raw"))
-  cur_mc = ((price.get("marketCap") or {}).get("raw")) or ((dks.get("marketCap") or {}).get("raw"))
-  cur_ev = ((dks.get("enterpriseValue") or {}).get("raw")) or ((fdata.get("enterpriseValue") or {}).get("raw"))
-  pe = ((sdet.get("trailingPE") or {}).get("raw")) or ((dks.get("trailingPE") or {}).get("raw"))
-  ps = ((sdet.get("priceToSalesTrailing12Months") or {}).get("raw"))
-  pb = ((sdet.get("priceToBook") or {}).get("raw")) or ((dks.get("priceToBook") or {}).get("raw"))
-  cur_price = ((price.get("regularMarketPrice") or {}).get("raw")) or None
+  shares = cur_mc = cur_ev = pe = ps = pb = cur_price = None
+  try:
+    modules = "defaultKeyStatistics,financialData,summaryDetail,price"
+    qsum = _yahoo_json_get(f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{urllib.parse.quote(ticker)}?modules={modules}", context=context)
+    qres = (((qsum or {}).get("quoteSummary") or {}).get("result") or [None])[0] or {}
+    dks = qres.get("defaultKeyStatistics") or {}
+    fdata = qres.get("financialData") or {}
+    sdet = qres.get("summaryDetail") or {}
+    price = qres.get("price") or {}
+    shares = ((dks.get("sharesOutstanding") or {}).get("raw")) or ((price.get("sharesOutstanding") or {}).get("raw"))
+    cur_mc = ((price.get("marketCap") or {}).get("raw")) or ((dks.get("marketCap") or {}).get("raw"))
+    cur_ev = ((dks.get("enterpriseValue") or {}).get("raw")) or ((fdata.get("enterpriseValue") or {}).get("raw"))
+    pe = ((sdet.get("trailingPE") or {}).get("raw")) or ((dks.get("trailingPE") or {}).get("raw"))
+    ps = ((sdet.get("priceToSalesTrailing12Months") or {}).get("raw"))
+    pb = ((sdet.get("priceToBook") or {}).get("raw")) or ((dks.get("priceToBook") or {}).get("raw"))
+    cur_price = ((price.get("regularMarketPrice") or {}).get("raw")) or None
+  except Exception:
+    if yf is not None:
+      try:
+        info = yf.Ticker(ticker).info or {}
+        shares = info.get("sharesOutstanding")
+        cur_mc = info.get("marketCap")
+        cur_ev = info.get("enterpriseValue")
+        pe = info.get("trailingPE")
+        ps = info.get("priceToSalesTrailing12Months")
+        pb = info.get("priceToBook")
+        cur_price = info.get("currentPrice") or info.get("regularMarketPrice")
+      except Exception:
+        pass
   dates = []
   mc_vals = {}
   ev_vals = {}
