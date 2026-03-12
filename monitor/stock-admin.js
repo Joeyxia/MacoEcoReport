@@ -8,13 +8,18 @@ const admI18n = {
     pickFiles: "选择 CSV 文件",
     autoRefresh: "导入后自动训练",
     upload: "上传并导入",
+    fetchYahoo: "Yahoo 自动获取并导入",
     train: "仅训练模型",
+    startDate: "起始日期",
     dbStatus: "数据库状态",
     tickerStatus: "Ticker 状态",
     uploadHistory: "上传与导入历史",
     trainHistory: "训练历史",
     recTitle: "文件识别结果",
     loadedFiles: "已加载文件",
+    autoFetchNote: "自动模式：登录 Yahoo Finance 后抓取 5 份 CSV（历史日线、月度估值、季度财务/现金流/资产负债）并自动导入训练。",
+    autoFetchRunning: "正在自动登录 Yahoo 并抓取 CSV，请稍候...",
+    autoFetchFailed: "自动获取失败",
     loading: "加载中...",
     noData: "暂无数据",
   },
@@ -25,13 +30,18 @@ const admI18n = {
     pickFiles: "Pick CSV Files",
     autoRefresh: "Auto train after import",
     upload: "Upload & Import",
+    fetchYahoo: "Auto Fetch from Yahoo",
     train: "Train Only",
+    startDate: "Start Date",
     dbStatus: "Database Status",
     tickerStatus: "Ticker Status",
     uploadHistory: "Upload/Import History",
     trainHistory: "Training History",
     recTitle: "File Recognition",
     loadedFiles: "Loaded Files",
+    autoFetchNote: "Auto mode logs in to Yahoo Finance, fetches 5 CSVs (daily history, monthly valuation, quarterly financials/cash-flow/balance-sheet), then imports and trains.",
+    autoFetchRunning: "Logging in Yahoo and fetching CSV files, please wait...",
+    autoFetchFailed: "Auto fetch failed",
     loading: "Loading...",
     noData: "No data",
   },
@@ -87,12 +97,16 @@ function applyI18n(){
   setText("pick-files-label", t("pickFiles"));
   setText("auto-refresh-label", t("autoRefresh"));
   setText("upload-btn", t("upload"));
+  setText("fetch-yahoo-btn", t("fetchYahoo"));
   setText("train-btn", t("train"));
+  const s = el("start-date-input");
+  if (s) s.setAttribute("title", t("startDate"));
   setText("data-status-title", t("dbStatus"));
   setText("ticker-status-title", t("tickerStatus"));
   setText("upload-history-title", t("uploadHistory"));
   setText("train-history-title", t("trainHistory"));
   setText("file-rec-title", t("recTitle"));
+  setText("auto-fetch-note", t("autoFetchNote"));
   const loaded = el("loaded-files-box");
   if (loaded && !loaded.dataset.title) loaded.dataset.title = t("loadedFiles");
   const btn = el("lang-toggle");
@@ -319,6 +333,34 @@ async function doTrain(){
   await refreshPanels();
 }
 
+async function doFetchYahoo(){
+  setProgress(0);
+  const ticker = (el("ticker-input")?.value || "").trim().toUpperCase();
+  const startDate = (el("start-date-input")?.value || "2000-01-01").trim();
+  if (!ticker){
+    setText("upload-status", "ticker required");
+    return;
+  }
+  setText("upload-status", t("autoFetchRunning"));
+  const res = await api.postJson("/monitor-api/stocks/admin/fetch-yahoo", {
+    ticker,
+    startDate,
+    autoRefresh: !!el("auto-refresh")?.checked,
+  });
+  setProgress(100);
+  if (!res.ok){
+    setText("upload-status", `${t("autoFetchFailed")}: ${res.data?.detail || res.data?.error || res.status}`);
+    return;
+  }
+  const files = (res.data?.downloadedFiles || []).map((x) => ({ name: x.file || "" })).filter((x) => x.name);
+  renderLoadedFiles(files);
+  setText(
+    "upload-status",
+    `ok: downloaded=${(res.data?.downloadedFiles || []).length}, imported=${res.data?.importedCount || 0}, failed=${res.data?.failedCount || 0}, rows=${res.data?.totalRows || 0}`,
+  );
+  await refreshPanels();
+}
+
 async function inspectFiles(){
   const files = el("csv-files")?.files;
   renderLoadedFiles(files);
@@ -350,6 +392,7 @@ async function inspectFiles(){
 
 function bindEvents(){
   el("upload-btn")?.addEventListener("click", doUpload);
+  el("fetch-yahoo-btn")?.addEventListener("click", doFetchYahoo);
   el("train-btn")?.addEventListener("click", doTrain);
   el("logout-btn")?.addEventListener("click", async () => {
     await api.postJson("/monitor-api/auth/logout", {});
@@ -369,6 +412,9 @@ async function init(){
   const ok = await ensureAuth();
   if (!ok) return;
   bindEvents();
+  if (el("start-date-input") && !el("start-date-input").value){
+    el("start-date-input").value = "2000-01-01";
+  }
   await refreshPanels();
 }
 

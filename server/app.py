@@ -64,6 +64,7 @@ try:
     get_stock_form_rows,
     list_model_runs as list_stock_model_runs,
     inspect_csv_uploads,
+    fetch_yahoo_csv_and_train,
   )
 except ImportError:
   from db import (
@@ -113,6 +114,7 @@ except ImportError:
     get_stock_form_rows,
     list_model_runs as list_stock_model_runs,
     inspect_csv_uploads,
+    fetch_yahoo_csv_and_train,
   )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1686,6 +1688,33 @@ def stocks_admin_import_and_refresh():
     return jsonify({"ok": True, "mode": "import_and_refresh", **result})
   except Exception as e:
     return jsonify({"ok": False, "error": "import_and_refresh_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/stocks/admin/fetch-yahoo", methods=["POST", "OPTIONS"])
+@app.route("/monitor-api/stocks/admin/fetch-yahoo", methods=["POST", "OPTIONS"])
+def stocks_admin_fetch_yahoo():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  _, err = _stocks_admin_guard()
+  if err:
+    return err
+  payload = request.get_json(silent=True) or {}
+  ticker = str(payload.get("ticker") or request.form.get("ticker") or request.args.get("ticker") or "").strip().upper()
+  start_date = str(payload.get("startDate") or request.form.get("startDate") or request.args.get("startDate") or "2000-01-01").strip()
+  auto_refresh = str(payload.get("autoRefresh") if isinstance(payload, dict) else "").strip().lower()
+  if not auto_refresh:
+    auto_refresh = str(request.form.get("autoRefresh") or request.args.get("autoRefresh") or "true").strip().lower()
+  auto_refresh = auto_refresh in {"1", "true", "yes", "on"}
+  if not ticker:
+    return jsonify({"error": "missing_ticker"}), 400
+  try:
+    result = fetch_yahoo_csv_and_train(ticker=ticker, start_date=start_date, auto_refresh=auto_refresh)
+    _invalidate_cache("stocks:")
+    return jsonify({"ok": True, "mode": "fetch_yahoo_auto", **result})
+  except ValueError as e:
+    return jsonify({"ok": False, "error": "invalid_request", "detail": str(e)[:240]}), 400
+  except Exception as e:
+    return jsonify({"ok": False, "error": "fetch_yahoo_failed", "detail": str(e)[:240]}), 500
 
 
 @app.route("/api/stocks/admin/refresh/<ticker>", methods=["POST", "OPTIONS"])

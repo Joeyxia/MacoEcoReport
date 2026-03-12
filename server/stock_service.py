@@ -4,6 +4,9 @@ import io
 import json
 import math
 import os
+import re
+import tempfile
+import urllib.parse
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -20,6 +23,11 @@ except Exception:
   RandomForestClassifier = None
   RandomForestRegressor = None
 
+try:
+  from playwright.sync_api import sync_playwright
+except Exception:
+  sync_playwright = None
+
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = Path(os.environ.get("STOCK_OUTPUT_DIR", str(ROOT / "outputs")))
 MODEL_VERSION = "rf-walkforward-v1"
@@ -27,6 +35,10 @@ RF_ESTIMATORS = max(20, int(os.environ.get("STOCK_RF_ESTIMATORS", "60")))
 RF_MAX_DEPTH = max(3, int(os.environ.get("STOCK_RF_MAX_DEPTH", "5")))
 RF_MIN_SAMPLES_LEAF = max(1, int(os.environ.get("STOCK_RF_MIN_SAMPLES_LEAF", "2")))
 RF_REFIT_EVERY = max(1, int(os.environ.get("STOCK_RF_REFIT_EVERY", "3")))
+YAHOO_TIMEOUT_MS = max(10_000, int(os.environ.get("YAHOO_TIMEOUT_MS", "120000")))
+YAHOO_HEADLESS = str(os.environ.get("YAHOO_HEADLESS", "true")).strip().lower() in {"1", "true", "yes", "on"}
+YAHOO_STORAGE_DIR = Path(os.environ.get("YAHOO_STORAGE_DIR", str(ROOT / "data" / "yahoo_storage")))
+YAHOO_START_DATE = str(os.environ.get("YAHOO_HISTORY_START_DATE", "2000-01-01")).strip() or "2000-01-01"
 
 FILE_TYPE_PRICE = "price"
 FILE_TYPE_VALUATION = "valuation"
@@ -363,6 +375,238 @@ class _PathUpload:
 def import_csv_paths(ticker: str, csv_paths, auto_refresh: bool = False):
   files = [_PathUpload(Path(p)) for p in (csv_paths or [])]
   return import_csv_uploads(ticker=ticker, uploaded_files=files, auto_refresh=auto_refresh)
+
+
+def _safe_ymd(s: str, fallback: str = "2000-01-01"):
+  x = str(s or "").strip()
+  try:
+    datetime.strptime(x, "%Y-%m-%d")
+    return x
+  except Exception:
+    return fallback
+
+
+def _maybe_click(page, pattern: str):
+  try:
+    btn = page.get_by_role("button", name=re.compile(pattern, re.I))
+    if btn.count() > 0:
+      btn.first.click(timeout=4000)
+      return True
+  except Exception:
+    pass
+  return False
+
+
+def _accept_cookies(page):
+  for p in ["accept all", "i agree", "accept", "同意", "接受"]:
+    if _maybe_click(page, p):
+      return
+
+
+def _is_login_page(page):
+  u = str(getattr(page, "url", "") or "").lower()
+  return "login.yahoo.com" in u
+
+
+def _ensure_yahoo_login(page):
+  username = str(os.environ.get("YAHOO_USERNAME") or os.environ.get("YAHOO_EMAIL") or "").strip()
+  password = str(os.environ.get("YAHOO_PASSWORD") or "").strip()
+  if not username or not password:
+    raise ValueError("missing_yahoo_credentials_env")
+  page.goto("https://finance.yahoo.com/", wait_until="domcontentloaded", timeout=YAHOO_TIMEOUT_MS)
+  _accept_cookies(page)
+  if not _is_login_page(page):
+    try:
+      sign_in = page.get_by_role("link", name=re.compile("sign in", re.I))
+      if sign_in.count() > 0:
+        sign_in.first.click(timeout=6000)
+    except Exception:
+      pass
+  if _is_login_page(page):
+    page.locator('input[name="username"]').first.fill(username, timeout=YAHOO_TIMEOUT_MS)
+    page.locator("#login-signin").first.click(timeout=YAHOO_TIMEOUT_MS)
+    page.locator('input[name="password"]').first.wait_for(timeout=YAHOO_TIMEOUT_MS)
+    page.locator('input[name="password"]').first.fill(password, timeout=YAHOO_TIMEOUT_MS)
+    page.locator("#login-signin").first.click(timeout=YAHOO_TIMEOUT_MS)
+    page.wait_for_timeout(2500)
+  if _is_login_page(page):
+    raise RuntimeError("yahoo_login_failed_or_needs_2fa")
+
+
+def _extract_crumb(page):
+  html = page.content()
+  m = re.search(r'"CrumbStore":\{"crumb":"(.*?)"\}', html)
+  if not m:
+    raise RuntimeError("yahoo_crumb_not_found")
+  crumb = m.group(1).encode("utf-8").decode("unicode_escape")
+  return crumb
+
+
+def _download_historical_csv(page, context, ticker: str, start_date: str, out_path: Path):
+  start_dt = datetime.strptime(_safe_ymd(start_date, YAHOO_START_DATE), "%Y-%m-%d")
+  period1 = int(start_dt.timestamp())
+  period2 = int(datetime.utcnow().timestamp())
+  hist_url = f"https://finance.yahoo.com/quote/{ticker}/history?p={ticker}"
+  page.goto(hist_url, wait_until="domcontentloaded", timeout=YAHOO_TIMEOUT_MS)
+  _accept_cookies(page)
+  crumb = _extract_crumb(page)
+  url = (
+    f"https://query1.finance.yahoo.com/v7/finance/download/{urllib.parse.quote(ticker)}"
+    f"?period1={period1}&period2={period2}&interval=1d&events=history&includeAdjustedClose=true&crumb={urllib.parse.quote(crumb)}"
+  )
+  r = context.request.get(url, timeout=YAHOO_TIMEOUT_MS)
+  if not r.ok:
+    raise RuntimeError(f"yahoo_historical_download_failed_{r.status}")
+  out_path.write_bytes(r.body())
+  if out_path.stat().st_size < 64:
+    raise RuntimeError("yahoo_historical_csv_too_small")
+
+
+def _extract_best_table_rows(page, heading_hint: str = ""):
+  hint = str(heading_hint or "").strip().lower()
+  rows = page.evaluate(
+    """(hint) => {
+      const txt = (v) => (v || '').replace(/\\s+/g, ' ').trim();
+      const parseTable = (tbl) => {
+        const out = [];
+        tbl.querySelectorAll('tr').forEach((tr) => {
+          const cells = [...tr.querySelectorAll('th,td')].map((c) => txt(c.textContent));
+          if (cells.some(Boolean)) out.push(cells);
+        });
+        return out;
+      };
+      const score = (rows) => {
+        if (!rows || rows.length < 2) return 0;
+        const cols = Math.max(...rows.map((r) => r.length));
+        return rows.length * cols;
+      };
+      const allTables = [...document.querySelectorAll('table')];
+      let candidates = allTables;
+      if (hint) {
+        const hs = [...document.querySelectorAll('h1,h2,h3,h4,section,article,div,span')].filter((n) => txt(n.textContent).toLowerCase().includes(hint));
+        for (const h of hs) {
+          const box = h.closest('section,article,div') || h.parentElement;
+          const t = box ? [...box.querySelectorAll('table')] : [];
+          if (t.length) {
+            candidates = t;
+            break;
+          }
+        }
+      }
+      let best = null;
+      let bestScore = -1;
+      candidates.forEach((tbl) => {
+        const r = parseTable(tbl);
+        const s = score(r);
+        if (s > bestScore) { best = r; bestScore = s; }
+      });
+      return best || [];
+    }""",
+    hint,
+  )
+  return rows or []
+
+
+def _write_rows_to_csv(rows, out_path: Path):
+  if not rows:
+    raise RuntimeError("yahoo_table_empty")
+  max_cols = max(len(r) for r in rows)
+  normalized = []
+  for r in rows:
+    x = list(r) + [""] * (max_cols - len(r))
+    normalized.append(x)
+  header = normalized[0]
+  if header:
+    header[0] = "name"
+  with out_path.open("w", encoding="utf-8", newline="") as f:
+    w = csv.writer(f)
+    for r in normalized:
+      w.writerow(r)
+
+
+def _download_statement_table_csv(page, url: str, out_path: Path, quarterly: bool = False, heading_hint: str = ""):
+  page.goto(url, wait_until="domcontentloaded", timeout=YAHOO_TIMEOUT_MS)
+  _accept_cookies(page)
+  if quarterly:
+    _maybe_click(page, "quarterly")
+    page.wait_for_timeout(1200)
+  # Prefer Yahoo's own CSV download button if present.
+  try:
+    with page.expect_download(timeout=7000) as dl_info:
+      btn = page.get_by_role("button", name=re.compile("download", re.I))
+      if btn.count() > 0:
+        btn.first.click()
+      else:
+        raise RuntimeError("download_button_not_found")
+    dl = dl_info.value
+    dl.save_as(str(out_path))
+    if out_path.exists() and out_path.stat().st_size > 64:
+      return
+  except Exception:
+    pass
+  rows = _extract_best_table_rows(page, heading_hint=heading_hint)
+  _write_rows_to_csv(rows, out_path)
+
+
+def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_refresh: bool = True):
+  ticker = _safe_ticker(ticker)
+  if sync_playwright is None:
+    raise RuntimeError("playwright_not_installed")
+  start_date = _safe_ymd(start_date, YAHOO_START_DATE)
+  YAHOO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+  run_tag = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+  with tempfile.TemporaryDirectory(prefix=f"yahoo_{ticker}_{run_tag}_") as tmp:
+    tmp_dir = Path(tmp)
+    files = {
+      FILE_TYPE_PRICE: tmp_dir / f"{ticker}.csv",
+      FILE_TYPE_VALUATION: tmp_dir / f"{ticker}_monthly_valuation_measures.csv",
+      FILE_TYPE_FINANCIALS: tmp_dir / f"{ticker}_quarterly_financials.csv",
+      FILE_TYPE_CASH_FLOW: tmp_dir / f"{ticker}_quarterly_cash-flow.csv",
+      FILE_TYPE_BALANCE_SHEET: tmp_dir / f"{ticker}_quarterly_balance-sheet.csv",
+    }
+    with sync_playwright() as p:
+      context = p.chromium.launch_persistent_context(
+        str(YAHOO_STORAGE_DIR),
+        headless=YAHOO_HEADLESS,
+        accept_downloads=True,
+      )
+      page = context.new_page()
+      _ensure_yahoo_login(page)
+      _download_historical_csv(page, context, ticker, start_date, files[FILE_TYPE_PRICE])
+      _download_statement_table_csv(
+        page,
+        f"https://finance.yahoo.com/quote/{ticker}/key-statistics?p={ticker}",
+        files[FILE_TYPE_VALUATION],
+        quarterly=False,
+        heading_hint="valuation",
+      )
+      _download_statement_table_csv(
+        page,
+        f"https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}",
+        files[FILE_TYPE_FINANCIALS],
+        quarterly=True,
+        heading_hint="breakdown",
+      )
+      _download_statement_table_csv(
+        page,
+        f"https://finance.yahoo.com/quote/{ticker}/cash-flow?p={ticker}",
+        files[FILE_TYPE_CASH_FLOW],
+        quarterly=True,
+        heading_hint="breakdown",
+      )
+      _download_statement_table_csv(
+        page,
+        f"https://finance.yahoo.com/quote/{ticker}/balance-sheet?p={ticker}",
+        files[FILE_TYPE_BALANCE_SHEET],
+        quarterly=True,
+        heading_hint="breakdown",
+      )
+      context.close()
+    result = import_csv_paths(ticker=ticker, csv_paths=[str(p) for p in files.values()], auto_refresh=bool(auto_refresh))
+    result["source"] = "yahoo_playwright"
+    result["downloadedFiles"] = [{"file": p.name} for p in files.values()]
+    result["startDate"] = start_date
+    return result
 
 
 def _fetch_price_monthly(conn, ticker: str):
