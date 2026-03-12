@@ -44,6 +44,7 @@ RF_REFIT_EVERY = max(1, int(os.environ.get("STOCK_RF_REFIT_EVERY", "3")))
 YAHOO_TIMEOUT_MS = max(10_000, int(os.environ.get("YAHOO_TIMEOUT_MS", "120000")))
 YAHOO_HEADLESS = str(os.environ.get("YAHOO_HEADLESS", "true")).strip().lower() in {"1", "true", "yes", "on"}
 YAHOO_ALLOW_GUEST_FALLBACK = str(os.environ.get("YAHOO_ALLOW_GUEST_FALLBACK", "true")).strip().lower() in {"1", "true", "yes", "on"}
+YAHOO_ALLOW_EMPTY_STATEMENTS = str(os.environ.get("YAHOO_ALLOW_EMPTY_STATEMENTS", "true")).strip().lower() in {"1", "true", "yes", "on"}
 YAHOO_STORAGE_DIR = Path(os.environ.get("YAHOO_STORAGE_DIR", str(ROOT / "data" / "yahoo_storage")))
 YAHOO_START_DATE = str(os.environ.get("YAHOO_HISTORY_START_DATE", "2000-01-01")).strip() or "2000-01-01"
 
@@ -575,6 +576,12 @@ def _write_rows_to_csv(rows, out_path: Path):
       w.writerow(r)
 
 
+def _write_empty_wide_csv(out_path: Path):
+  with out_path.open("w", encoding="utf-8", newline="") as f:
+    w = csv.writer(f)
+    w.writerow(["name"])
+
+
 def _camel_to_title(k: str):
   s = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", str(k or ""))
   s = s.replace("_", " ").strip()
@@ -830,56 +837,40 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
           raise
         login_status = f"guest_fallback:{str(e)[:80]}"
       _download_historical_csv(page, context, ticker, start_date, files[FILE_TYPE_PRICE])
-      _download_statement_table_csv(
-        page,
-        f"https://finance.yahoo.com/quote/{ticker}/key-statistics?p={ticker}",
-        files[FILE_TYPE_VALUATION],
-        quarterly=False,
-        heading_hint="valuation",
-        ticker=ticker,
-        statement_type=FILE_TYPE_VALUATION,
-        start_date=start_date,
-        context=context,
-      )
-      _download_statement_table_csv(
-        page,
-        f"https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}",
-        files[FILE_TYPE_FINANCIALS],
-        quarterly=True,
-        heading_hint="breakdown",
-        ticker=ticker,
-        statement_type=FILE_TYPE_FINANCIALS,
-        start_date=start_date,
-        context=context,
-      )
-      _download_statement_table_csv(
-        page,
-        f"https://finance.yahoo.com/quote/{ticker}/cash-flow?p={ticker}",
-        files[FILE_TYPE_CASH_FLOW],
-        quarterly=True,
-        heading_hint="breakdown",
-        ticker=ticker,
-        statement_type=FILE_TYPE_CASH_FLOW,
-        start_date=start_date,
-        context=context,
-      )
-      _download_statement_table_csv(
-        page,
-        f"https://finance.yahoo.com/quote/{ticker}/balance-sheet?p={ticker}",
-        files[FILE_TYPE_BALANCE_SHEET],
-        quarterly=True,
-        heading_hint="breakdown",
-        ticker=ticker,
-        statement_type=FILE_TYPE_BALANCE_SHEET,
-        start_date=start_date,
-        context=context,
-      )
+      soft_warnings = []
+      statement_jobs = [
+        (FILE_TYPE_VALUATION, f"https://finance.yahoo.com/quote/{ticker}/key-statistics?p={ticker}", False, "valuation"),
+        (FILE_TYPE_FINANCIALS, f"https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}", True, "breakdown"),
+        (FILE_TYPE_CASH_FLOW, f"https://finance.yahoo.com/quote/{ticker}/cash-flow?p={ticker}", True, "breakdown"),
+        (FILE_TYPE_BALANCE_SHEET, f"https://finance.yahoo.com/quote/{ticker}/balance-sheet?p={ticker}", True, "breakdown"),
+      ]
+      for file_type, url, quarterly, hint in statement_jobs:
+        out_file = files[file_type]
+        try:
+          _download_statement_table_csv(
+            page,
+            url,
+            out_file,
+            quarterly=quarterly,
+            heading_hint=hint,
+            ticker=ticker,
+            statement_type=file_type,
+            start_date=start_date,
+            context=context,
+          )
+        except Exception as e:
+          if not YAHOO_ALLOW_EMPTY_STATEMENTS:
+            raise
+          _write_empty_wide_csv(out_file)
+          soft_warnings.append(f"{file_type}: {str(e)[:120]}")
       context.close()
     result = import_csv_paths(ticker=ticker, csv_paths=[str(p) for p in files.values()], auto_refresh=bool(auto_refresh))
     result["source"] = "yahoo_playwright"
     result["loginStatus"] = login_status
     result["downloadedFiles"] = [{"file": p.name} for p in files.values()]
     result["startDate"] = start_date
+    if 'soft_warnings' in locals() and soft_warnings:
+      result["warnings"] = soft_warnings
     return result
 
 
