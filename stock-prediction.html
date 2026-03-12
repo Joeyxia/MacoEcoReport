@@ -11,9 +11,9 @@
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260312s1" />
+    <link rel="stylesheet" href="styles.css?v=20260312s2" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="stock.js?v=20260312s1" defer></script>
+    <script src="stock.js?v=20260312s2" defer></script>
   </head>
   <body data-page="stock-prediction">
     <div class="bg-layer"></div>
@@ -37,10 +37,12 @@
           <h1 id="stock-page-title">Stock Prediction Dashboard</h1>
           <p class="subtle" id="stock-page-desc">Database-driven prediction, backtest, and feature interpretation.</p>
           <div class="stock-controls">
-            <label for="stock-ticker" id="stock-ticker-label">Ticker</label>
-            <select id="stock-ticker"></select>
+            <label for="stock-ticker-input" id="stock-ticker-label">Ticker</label>
+            <input id="stock-ticker-input" list="stock-ticker-list" type="text" placeholder="e.g. PDD" autocomplete="off" />
+            <datalist id="stock-ticker-list"></datalist>
             <button class="btn ghost" id="stock-refresh">Refresh</button>
           </div>
+          <p class="subtle" id="stock-query-status">--</p>
           <p class="subtle" id="stock-updated-at">--</p>
         </div>
         <div class="score-card small">

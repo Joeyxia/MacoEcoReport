@@ -939,6 +939,27 @@ body[data-page="ai-assistant"] .ai-answer {
   margin-top: 10px;
 }
 
+.stock-controls input[type="text"] {
+  min-width: 220px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.stock-signal-bullish {
+  color: #1a9d4b;
+}
+
+.stock-signal-bearish {
+  color: #c13030;
+}
+
+.stock-signal-neutral {
+  color: #111111;
+}
+
 .stock-controls select {
   min-width: 140px;
   border-radius: 12px;

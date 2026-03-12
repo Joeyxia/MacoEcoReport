@@ -3,6 +3,7 @@ const STOCK_API_BASE = (document.querySelector('meta[name="macro-api-base"]')?.c
 let chartPred = null;
 let chartCum = null;
 let chartFeat = null;
+let knownTickers = [];
 
 const stockI18n = {
   en: {
@@ -29,6 +30,8 @@ const stockI18n = {
     actual: "Actual",
     signal: "Signal",
     strat: "Strategy",
+    tickerNotFound: "No data for this ticker in database",
+    enterTicker: "Enter ticker and click Refresh",
   },
   zh: {
     eyebrow: "量化信号引擎",
@@ -54,6 +57,8 @@ const stockI18n = {
     actual: "实际",
     signal: "信号",
     strat: "策略收益",
+    tickerNotFound: "数据库中暂无此 ticker 数据",
+    enterTicker: "输入 ticker 后点击刷新",
   },
 };
 
@@ -77,6 +82,17 @@ function fmtNum(v, d = 3){
 function setText(id, value){
   const el = document.getElementById(id);
   if (el) el.textContent = value;
+}
+
+function normalizeTicker(v){
+  return String(v || "").trim().toUpperCase();
+}
+
+function signalClass(signal){
+  const s = normalizeTicker(signal);
+  if (s === "BULLISH") return "stock-signal-bullish";
+  if (s === "BEARISH") return "stock-signal-bearish";
+  return "stock-signal-neutral";
 }
 
 function api(path){
@@ -118,6 +134,17 @@ function applyStockI18n(){
   setText("history_title", st("history"));
   const btn = document.getElementById("stock-lang-toggle");
   if (btn) btn.textContent = sLang() === "zh" ? "EN" : "中文";
+  if ((document.getElementById("stock-query-status")?.textContent || "").trim() === "--"){
+    setText("stock-query-status", st("enterTicker"));
+  }
+}
+
+function paintSignal(signal){
+  const signalEl = document.getElementById("stock-latest-signal");
+  if (!signalEl) return;
+  signalEl.classList.remove("stock-signal-bullish", "stock-signal-bearish", "stock-signal-neutral");
+  signalEl.classList.add(signalClass(signal || "Neutral"));
+  signalEl.textContent = signal || "--";
 }
 
 function renderHistory(rows){
@@ -183,26 +210,44 @@ function drawCharts(historyRows, featureRows){
 async function loadTickers(){
   const res = await apiGet("/api/stocks/tickers");
   const list = (res?.tickers || []).map((x) => x.ticker).filter(Boolean);
-  const sel = document.getElementById("stock-ticker");
-  if (!sel) return [];
-  sel.innerHTML = list.map((t) => `<option value="${t}">${t}</option>`).join("");
-  if (!list.length) sel.innerHTML = `<option value="PDD">PDD</option>`;
-  return list;
+  knownTickers = list.length ? list : ["PDD"];
+  const dl = document.getElementById("stock-ticker-list");
+  if (dl) dl.innerHTML = knownTickers.map((t) => `<option value="${t}"></option>`).join("");
+  const input = document.getElementById("stock-ticker-input");
+  if (input && !String(input.value || "").trim()) input.value = knownTickers[0] || "PDD";
+  return knownTickers;
 }
 
 async function loadTickerData(ticker){
+  const input = document.getElementById("stock-ticker-input");
+  const q = normalizeTicker(ticker || input?.value || "");
+  if (!q){
+    setText("stock-query-status", st("enterTicker"));
+    return;
+  }
+  if (input) input.value = q;
   const [latest, history, features] = await Promise.all([
-    apiGet(`/api/stocks/${ticker}/predict/latest`),
-    apiGet(`/api/stocks/${ticker}/backtest/history?limit=120`),
-    apiGet(`/api/stocks/${ticker}/features/latest?limit=12`),
+    apiGet(`/api/stocks/${q}/predict/latest`),
+    apiGet(`/api/stocks/${q}/backtest/history?limit=120`),
+    apiGet(`/api/stocks/${q}/features/latest?limit=12`),
   ]);
   if (!latest?.ok){
-    setText("stock-latest-signal", "--");
+    setText("stock-query-status", `${st("tickerNotFound")}: ${q}`);
+    paintSignal("Neutral");
+    setText("stock-latest-month", "--");
+    setText("kpi-pred", "--");
+    setText("kpi-up", "--");
+    setText("kpi-acc", "--");
+    setText("kpi-scagr", "--");
+    setText("kpi-bcagr", "--");
+    setText("kpi-sharpe", "--");
+    setText("stock-updated-at", `${st("updated")}: --`);
     renderHistory([]);
     drawCharts([], []);
     return;
   }
-  setText("stock-latest-signal", latest.signal || "--");
+  setText("stock-query-status", q);
+  paintSignal(latest.signal || "Neutral");
   setText("stock-latest-month", latest.latest_month || "--");
   setText("kpi-pred", fmtPct(latest.predicted_return));
   setText("kpi-up", fmtPct(latest.up_probability));
@@ -221,20 +266,22 @@ async function initStockPage(){
   applyStockI18n();
   ensureFooter();
   const tickers = await loadTickers();
-  const sel = document.getElementById("stock-ticker");
-  const ticker = sel?.value || tickers[0] || "PDD";
+  const input = document.getElementById("stock-ticker-input");
+  const ticker = normalizeTicker(input?.value || tickers[0] || "PDD");
   await loadTickerData(ticker);
   document.getElementById("stock-refresh")?.addEventListener("click", async () => {
-    await loadTickerData(sel?.value || ticker);
+    await loadTickerData(input?.value || ticker);
   });
-  sel?.addEventListener("change", async () => {
-    await loadTickerData(sel.value);
+  input?.addEventListener("keydown", async (evt) => {
+    if (evt.key !== "Enter") return;
+    evt.preventDefault();
+    await loadTickerData(input?.value || ticker);
   });
   document.getElementById("stock-lang-toggle")?.addEventListener("click", async () => {
     localStorage.setItem(STOCK_LANG_KEY, sLang() === "zh" ? "en" : "zh");
     applyStockI18n();
     ensureFooter();
-    await loadTickerData(sel?.value || ticker);
+    await loadTickerData(input?.value || ticker);
   });
 }
 
