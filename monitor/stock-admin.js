@@ -14,6 +14,7 @@ const admI18n = {
     uploadHistory: "上传与导入历史",
     trainHistory: "训练历史",
     recTitle: "文件识别结果",
+    loadedFiles: "已加载文件",
     loading: "加载中...",
     noData: "暂无数据",
   },
@@ -30,6 +31,7 @@ const admI18n = {
     uploadHistory: "Upload/Import History",
     trainHistory: "Training History",
     recTitle: "File Recognition",
+    loadedFiles: "Loaded Files",
     loading: "Loading...",
     noData: "No data",
   },
@@ -91,6 +93,8 @@ function applyI18n(){
   setText("upload-history-title", t("uploadHistory"));
   setText("train-history-title", t("trainHistory"));
   setText("file-rec-title", t("recTitle"));
+  const loaded = el("loaded-files-box");
+  if (loaded && !loaded.dataset.title) loaded.dataset.title = t("loadedFiles");
   const btn = el("lang-toggle");
   if (btn) btn.textContent = lang() === "zh" ? "EN" : "中文";
 }
@@ -188,13 +192,42 @@ function renderRecognition(rows){
             <td>${r.file || ""}</td>
             <td>${r.type || ""}</td>
             <td>${r.rowCount || 0}</td>
-            <td>${(r.columns || []).length}</td>
+            <td>${r.error ? (r.error || "") : (r.columns || []).length}</td>
             <td>${r.ok ? "Yes" : "No"}</td>
           </tr>
         `).join("")}
       </tbody>
     </table>
   `;
+}
+
+function renderLoadedFiles(files){
+  const root = el("loaded-files-box");
+  if (!root) return;
+  const list = Array.from(files || []);
+  if (!list.length){
+    root.innerHTML = `<p class="subtle">${t("loadedFiles")}: ${t("noData")}</p>`;
+    return;
+  }
+  root.innerHTML = `
+    <p class="subtle">${t("loadedFiles")} (${list.length})</p>
+    <div class="loaded-files-list">
+      ${list.map((f) => `<span class="loaded-file-item">${f.name}</span>`).join("")}
+    </div>
+  `;
+}
+
+function inferTickerFromFiles(files){
+  const list = Array.from(files || []);
+  for (const f of list){
+    const name = String(f?.name || "").trim();
+    if (!name) continue;
+    const base = name.split("/").pop() || name;
+    const first = base.split(/[._\\-\\s]/)[0] || "";
+    const code = first.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (/^[A-Z0-9]{1,8}$/.test(code)) return code;
+  }
+  return "";
 }
 
 function setProgress(pct){
@@ -240,6 +273,7 @@ function uploadWithProgress(path, formData){
 }
 
 async function doUpload(){
+  setProgress(0);
   const ticker = (el("ticker-input")?.value || "").trim().toUpperCase();
   const files = el("csv-files")?.files;
   if (!ticker){
@@ -254,7 +288,6 @@ async function doUpload(){
   fd.append("ticker", ticker);
   fd.append("autoRefresh", String(!!el("auto-refresh")?.checked));
   for (const f of files) fd.append("files", f);
-  setProgress(0);
   setText("upload-status", t("loading"));
   const res = await uploadWithProgress("/monitor-api/stocks/admin/import-and-refresh", fd);
   setProgress(100);
@@ -283,8 +316,13 @@ async function doTrain(){
 }
 
 async function inspectFiles(){
-  const ticker = (el("ticker-input")?.value || "").trim().toUpperCase();
   const files = el("csv-files")?.files;
+  renderLoadedFiles(files);
+  const guessed = inferTickerFromFiles(files);
+  if (!el("ticker-input")?.value?.trim() && guessed){
+    el("ticker-input").value = guessed;
+  }
+  const ticker = (el("ticker-input")?.value || guessed || "").trim().toUpperCase();
   if (!ticker || !files?.length){
     renderRecognition([]);
     return;
@@ -294,6 +332,11 @@ async function inspectFiles(){
   fd.append("mode", "inspect");
   for (const f of files) fd.append("files", f);
   const res = await api.postForm("/monitor-api/stocks/admin/upload-csv", fd);
+  if (!res?.ok){
+    renderRecognition([{ file: "request", type: "error", rowCount: 0, columns: [], ok: false, error: res?.data?.error || String(res?.status || "") }]);
+    setText("upload-status", `inspect failed: ${res?.data?.error || res?.status || "unknown"}`);
+    return;
+  }
   renderRecognition(res?.data?.recognized || []);
 }
 
