@@ -32,10 +32,10 @@ const stockI18n = {
     strat: "Strategy",
     tickerNotFound: "No data for this ticker in database",
     enterTicker: "Enter ticker and click Refresh",
-    metricNoData: "No metric interpretation available.",
-    signalBullish: "Model bias is positive; trend-following entries can be considered with risk controls.",
-    signalBearish: "Model bias is negative; reduce exposure or wait for confirmation.",
-    signalNeutral: "Model has no clear directional edge; position sizing should stay conservative.",
+    metricNoData: "Investor Takeaway: no interpretation available because this metric has no valid data.",
+    signalBullish: "Investor Takeaway: model bias is bullish. You can consider trend-following entries, but keep stop-loss and position limits.",
+    signalBearish: "Investor Takeaway: model bias is bearish. Reduce risk exposure and wait for better entry confirmation.",
+    signalNeutral: "Investor Takeaway: no clear directional edge. Keep positions light and focus on risk management.",
   },
   zh: {
     eyebrow: "量化信号引擎",
@@ -63,10 +63,10 @@ const stockI18n = {
     strat: "策略收益",
     tickerNotFound: "数据库中暂无此 ticker 数据",
     enterTicker: "输入 ticker 后点击刷新",
-    metricNoData: "暂无可解释的指标数据。",
-    signalBullish: "模型偏多，说明趋势信号较强，可考虑顺势配置并控制回撤风险。",
-    signalBearish: "模型偏空，说明下行风险较高，建议降低仓位或等待确认信号。",
-    signalNeutral: "模型方向性优势不明显，建议以轻仓和风控为主。",
+    metricNoData: "投资者解读：该指标暂无有效数据，暂时无法给出解读。",
+    signalBullish: "投资者解读：当前模型偏多，可考虑顺势参与，但要设置止损并控制仓位。",
+    signalBearish: "投资者解读：当前模型偏空，建议先降风险敞口，等待更明确的买点确认。",
+    signalNeutral: "投资者解读：当前缺乏明确方向优势，建议轻仓和严格风控。",
   },
 };
 
@@ -162,47 +162,47 @@ function paintSignal(signal){
 function explainPredReturn(v){
   const n = Number(v);
   if (!Number.isFinite(n)) return st("metricNoData");
-  if (n >= 0.05) return sLang() === "zh" ? "模型预期收益较高，意味着短期上涨空间相对充足，但仍需防范波动回撤。" : "Model expects strong upside; potential return is meaningful, but volatility risk remains.";
-  if (n >= 0) return sLang() === "zh" ? "模型预期为小幅正收益，意味着偏多但优势有限，适合分批和风控交易。" : "Model expects modest gains; bias is positive but edge is limited, favor staged entries and risk control.";
-  return sLang() === "zh" ? "模型预期为负收益，意味着下行压力更大，建议谨慎或降低仓位。" : "Model expects negative return; downside pressure is higher, so caution or smaller exposure is preferred.";
+  if (n >= 0.05) return sLang() === "zh" ? "投资者解读：预期收益较高，说明上行空间相对充足；可考虑进攻型仓位，但要防波动回撤。" : "Investor Takeaway: expected return is strong, suggesting meaningful upside; consider offensive positioning with drawdown controls.";
+  if (n >= 0) return sLang() === "zh" ? "投资者解读：预期小幅正收益，偏多但优势不大，适合分批建仓而非一次性重仓。" : "Investor Takeaway: expected return is modestly positive; prefer staged entries over heavy one-shot allocation.";
+  return sLang() === "zh" ? "投资者解读：预期为负，短线下行压力更大，优先控制仓位和回撤风险。" : "Investor Takeaway: expected return is negative; prioritize downside protection and smaller exposure.";
 }
 
 function explainUpProb(v){
   const n = Number(v);
   if (!Number.isFinite(n)) return st("metricNoData");
-  if (n >= 0.65) return sLang() === "zh" ? "上涨概率较高，说明模型对上涨方向置信度较强。" : "High probability of upside indicates strong model confidence in upward direction.";
-  if (n >= 0.5) return sLang() === "zh" ? "上涨概率略高于中性，方向偏多但优势不大。" : "Upside probability is only slightly above neutral; bullish bias exists but is not strong.";
-  return sLang() === "zh" ? "上涨概率低于 50%，说明短期偏空风险更高。" : "Upside probability is below 50%, implying higher short-term bearish risk.";
+  if (n >= 0.65) return sLang() === "zh" ? "投资者解读：上涨胜率较高，说明多头方向更占优，可适度提高风险预算。" : "Investor Takeaway: upside win-rate is high; bullish side has edge and can justify a slightly higher risk budget.";
+  if (n >= 0.5) return sLang() === "zh" ? "投资者解读：上涨概率略占优，信号偏多但并不强，建议控制交易节奏。" : "Investor Takeaway: upside probability is only mildly favorable; keep entries disciplined.";
+  return sLang() === "zh" ? "投资者解读：上涨概率低于 50%，说明空头风险偏高，宜降低激进仓位。" : "Investor Takeaway: upside probability is below 50%; bearish risk is elevated, so reduce aggressive exposure.";
 }
 
 function explainAccuracy(v){
   const n = Number(v);
   if (!Number.isFinite(n)) return st("metricNoData");
-  if (n >= 0.6) return sLang() === "zh" ? "历史方向准确率较高，模型在该标的上具有较稳定的判断能力。" : "Historical direction accuracy is strong, suggesting stable signal quality for this ticker.";
-  if (n >= 0.52) return sLang() === "zh" ? "方向准确率略优于随机，模型有一定参考价值但不应单独使用。" : "Accuracy is modestly above random; useful as reference but not as a standalone decision tool.";
-  return sLang() === "zh" ? "方向准确率较低，模型稳定性偏弱，建议结合更多信息。" : "Direction accuracy is weak; combine with additional signals before making decisions.";
+  if (n >= 0.6) return sLang() === "zh" ? "投资者解读：历史判断稳定性较好，可作为决策中的核心参考之一。" : "Investor Takeaway: historical signal quality is solid and can be a core input in decision-making.";
+  if (n >= 0.52) return sLang() === "zh" ? "投资者解读：准确率仅小幅领先随机，建议与基本面或技术面信号结合使用。" : "Investor Takeaway: edge over random is limited; combine with fundamental or technical confirmation.";
+  return sLang() === "zh" ? "投资者解读：历史准确率偏弱，单独依赖该模型的风险较高。" : "Investor Takeaway: historical accuracy is weak; relying on this model alone carries higher risk.";
 }
 
 function explainStrategyCagr(v){
   const n = Number(v);
   if (!Number.isFinite(n)) return st("metricNoData");
-  if (n > 0) return sLang() === "zh" ? "策略 CAGR 为正，说明长期复利表现可观，策略具有可持续性潜力。" : "Positive strategy CAGR implies potentially sustainable long-term compounding performance.";
-  return sLang() === "zh" ? "策略 CAGR 为负，说明策略长期收益不足，需要优化或降低使用权重。" : "Negative strategy CAGR suggests weak long-term performance and potential need for strategy adjustments.";
+  if (n > 0) return sLang() === "zh" ? "投资者解读：策略年化复合回报为正，长期执行的收益潜力更好。" : "Investor Takeaway: positive strategy CAGR suggests better long-term compounding potential.";
+  return sLang() === "zh" ? "投资者解读：策略年化复合回报为负，说明现有信号体系需要优化后再加大使用。" : "Investor Takeaway: negative strategy CAGR indicates the signal framework needs improvement before scaling.";
 }
 
 function explainBuyHoldCagr(v){
   const n = Number(v);
   if (!Number.isFinite(n)) return st("metricNoData");
-  if (n > 0) return sLang() === "zh" ? "买入持有 CAGR 为正，标的本身长期趋势偏强，可作为基准对照。" : "Positive buy-and-hold CAGR indicates the underlying has a constructive long-term trend as a benchmark.";
-  return sLang() === "zh" ? "买入持有 CAGR 为负，说明标的长期趋势偏弱，择时和风控更重要。" : "Negative buy-and-hold CAGR indicates weak long-term trend; timing and risk control are more important.";
+  if (n > 0) return sLang() === "zh" ? "投资者解读：标的长期自然上涨趋势较好，长期持有本身就有回报基础。" : "Investor Takeaway: the asset’s own long-term trend is constructive, so passive holding has a return base.";
+  return sLang() === "zh" ? "投资者解读：标的长期自然趋势偏弱，更依赖择时和风控来获取超额收益。" : "Investor Takeaway: long-term baseline trend is weak, so timing and risk control matter more.";
 }
 
 function explainSharpe(v){
   const n = Number(v);
   if (!Number.isFinite(n)) return st("metricNoData");
-  if (n >= 1) return sLang() === "zh" ? "夏普比率较高，说明单位风险对应的收益效率较好。" : "Sharpe ratio is strong, indicating efficient return per unit of risk.";
-  if (n >= 0.5) return sLang() === "zh" ? "夏普比率中等，收益和波动的匹配度一般，需结合回撤管理。" : "Sharpe ratio is moderate; risk-adjusted return is acceptable but requires drawdown control.";
-  return sLang() === "zh" ? "夏普比率偏低，说明风险补偿不足，建议谨慎使用该信号。" : "Sharpe ratio is low, implying limited risk compensation; use the signal cautiously.";
+  if (n >= 1) return sLang() === "zh" ? "投资者解读：风险回报效率较高，说明承担同样波动能换来更好的收益质量。" : "Investor Takeaway: risk-adjusted return is strong; each unit of volatility is compensated better.";
+  if (n >= 0.5) return sLang() === "zh" ? "投资者解读：风险回报效率中等，可用但需严格控制回撤和仓位。" : "Investor Takeaway: risk-adjusted return is moderate; usable with strict drawdown and position control.";
+  return sLang() === "zh" ? "投资者解读：风险回报效率较低，当前阶段更适合保守配置。" : "Investor Takeaway: risk-adjusted return is weak; a conservative stance is preferable.";
 }
 
 function renderHistory(rows){

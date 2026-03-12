@@ -975,7 +975,7 @@ body[data-page="ai-assistant"] .ai-answer {
 
 .score-desc {
   margin-top: 8px;
-  color: var(--subtle);
+  color: #2f4a55;
   font-size: 0.92rem;
   line-height: 1.45;
 }
