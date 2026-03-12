@@ -45,8 +45,23 @@ try:
     upsert_daily_report_ai_insight,
     upsert_daily_report,
     upsert_openrouter_rankings_snapshot,
+    now_iso,
   )
   from .mailer import send_email
+  from .stock_service import (
+    import_csv_uploads,
+    train_and_refresh_ticker,
+    list_tickers as list_stock_tickers,
+    get_ticker_profile as get_stock_ticker_profile,
+    get_latest_prediction_payload,
+    get_backtest_summary as get_stock_backtest_summary,
+    get_backtest_history as get_stock_backtest_history,
+    get_latest_features as get_stock_latest_features,
+    get_admin_data_status as get_stock_admin_data_status,
+    get_ticker_admin_status as get_stock_ticker_admin_status,
+    list_upload_history as list_stock_upload_history,
+    get_stock_form_rows,
+  )
 except ImportError:
   from db import (
     add_subscriber,
@@ -76,8 +91,23 @@ except ImportError:
     upsert_daily_report_ai_insight,
     upsert_daily_report,
     upsert_openrouter_rankings_snapshot,
+    now_iso,
   )
   from mailer import send_email
+  from stock_service import (
+    import_csv_uploads,
+    train_and_refresh_ticker,
+    list_tickers as list_stock_tickers,
+    get_ticker_profile as get_stock_ticker_profile,
+    get_latest_prediction_payload,
+    get_backtest_summary as get_stock_backtest_summary,
+    get_backtest_history as get_stock_backtest_history,
+    get_latest_features as get_stock_latest_features,
+    get_admin_data_status as get_stock_admin_data_status,
+    get_ticker_admin_status as get_stock_ticker_admin_status,
+    list_upload_history as list_stock_upload_history,
+    get_stock_form_rows,
+  )
 
 ROOT = Path(__file__).resolve().parents[1]
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$", re.I)
@@ -1020,6 +1050,7 @@ def monitor_data_forms():
     return err
   model = get_latest_model_snapshot() or {}
   tables = model.get("tables") or {}
+  stock_counts = (get_stock_admin_data_status().get("counts") or {})
   forms = [
     {"name": "dimensions", "label": "Dimensions", "count": len(tables.get("dimensions") or [])},
     {"name": "indicators", "label": "Indicators", "count": len(tables.get("indicators") or [])},
@@ -1028,6 +1059,15 @@ def monitor_data_forms():
     {"name": "alerts", "label": "Alerts", "count": len(tables.get("alerts") or [])},
     {"name": "daily_reports", "label": "Daily Reports", "count": len(list_daily_reports(limit=500))},
     {"name": "subscribers", "label": "Subscribers", "count": len(list_active_subscribers())},
+    {"name": "ticker_profiles", "label": "Ticker Profiles", "count": int(stock_counts.get("ticker_profiles") or 0)},
+    {"name": "stock_prices", "label": "Stock Prices", "count": int(stock_counts.get("stock_prices") or 0)},
+    {"name": "stock_valuations", "label": "Stock Valuations", "count": int(stock_counts.get("stock_valuations") or 0)},
+    {"name": "stock_financials", "label": "Stock Financials", "count": int(stock_counts.get("stock_financials") or 0)},
+    {"name": "uploaded_files", "label": "Uploaded Files", "count": int(stock_counts.get("uploaded_files") or 0)},
+    {"name": "model_runs", "label": "Model Runs", "count": int(stock_counts.get("model_runs") or 0)},
+    {"name": "prediction_results", "label": "Prediction Results", "count": int(stock_counts.get("prediction_results") or 0)},
+    {"name": "feature_importance", "label": "Feature Importance", "count": int(stock_counts.get("feature_importance") or 0)},
+    {"name": "latest_signals", "label": "Latest Signals", "count": int(stock_counts.get("latest_signals") or 0)},
   ]
   return _etag_response({"forms": forms})
 
@@ -1046,6 +1086,18 @@ def monitor_data_form_rows(name):
     return _etag_response({"name": key, "rows": list_daily_reports(limit=500)})
   if key == "subscribers":
     return _etag_response({"name": key, "rows": list_active_subscribers()})
+  if key in {
+    "ticker_profiles",
+    "stock_prices",
+    "stock_valuations",
+    "stock_financials",
+    "uploaded_files",
+    "model_runs",
+    "prediction_results",
+    "feature_importance",
+    "latest_signals",
+  }:
+    return _etag_response({"name": key, "rows": get_stock_form_rows(key, limit=500)})
   return jsonify({"error": "not_found"}), 404
 
 
@@ -1500,6 +1552,129 @@ def openrouter_rankings():
       stale["warning"] = f"stale_cache: {str(e)[:120]}"
       return _etag_response(stale)
     return jsonify({"ok": False, "error": "openrouter_fetch_failed", "detail": str(e)[:180]}), 502
+
+
+@app.route("/api/stocks/health", methods=["GET"])
+def stocks_health():
+  return jsonify({"ok": True, "service": "stocks", "timestamp": now_iso()})
+
+
+@app.route("/api/stocks/tickers", methods=["GET"])
+def stocks_tickers():
+  rows = list_stock_tickers()
+  return _etag_response({"ok": True, "tickers": rows, "count": len(rows)})
+
+
+@app.route("/api/stocks/<ticker>/profile", methods=["GET"])
+def stocks_profile(ticker):
+  row = get_stock_ticker_profile(ticker)
+  if not row:
+    return jsonify({"error": "not_found"}), 404
+  return _etag_response({"ok": True, "profile": row})
+
+
+@app.route("/api/stocks/<ticker>/predict/latest", methods=["GET"])
+def stocks_predict_latest(ticker):
+  row = get_latest_prediction_payload(ticker)
+  if not row:
+    return jsonify({"error": "not_found"}), 404
+  return _etag_response({"ok": True, **row})
+
+
+@app.route("/api/stocks/<ticker>/backtest/summary", methods=["GET"])
+def stocks_backtest_summary(ticker):
+  row = get_stock_backtest_summary(ticker)
+  if not row:
+    return jsonify({"error": "not_found"}), 404
+  return _etag_response({"ok": True, **row})
+
+
+@app.route("/api/stocks/<ticker>/backtest/history", methods=["GET"])
+def stocks_backtest_history(ticker):
+  limit = int(request.args.get("limit") or 120)
+  rows = get_stock_backtest_history(ticker, limit=limit)
+  return _etag_response({"ok": True, "ticker": str(ticker or "").upper(), "rows": rows, "count": len(rows)})
+
+
+@app.route("/api/stocks/<ticker>/features/latest", methods=["GET"])
+def stocks_features_latest(ticker):
+  limit = int(request.args.get("limit") or 10)
+  rows = get_stock_latest_features(ticker, limit=limit)
+  return _etag_response({"ok": True, "ticker": str(ticker or "").upper(), "rows": rows, "count": len(rows)})
+
+
+def _stocks_admin_guard():
+  user, err = _require_monitor_auth()
+  if err:
+    return None, err
+  return user, None
+
+
+@app.route("/api/stocks/admin/upload-csv", methods=["POST", "OPTIONS"])
+@app.route("/monitor-api/stocks/admin/upload-csv", methods=["POST", "OPTIONS"])
+def stocks_admin_upload_csv():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  _, err = _stocks_admin_guard()
+  if err:
+    return err
+  ticker = str(request.form.get("ticker") or request.args.get("ticker") or "").strip().upper()
+  auto_refresh = str(request.form.get("autoRefresh") or request.args.get("autoRefresh") or "").strip().lower() in {"1", "true", "yes", "on"}
+  files = request.files.getlist("files")
+  if not ticker:
+    return jsonify({"error": "missing_ticker"}), 400
+  if not files:
+    return jsonify({"error": "missing_files"}), 400
+  try:
+    result = import_csv_uploads(ticker=ticker, uploaded_files=files, auto_refresh=auto_refresh)
+    _invalidate_cache("stocks:")
+    return jsonify({"ok": True, **result})
+  except Exception as e:
+    return jsonify({"ok": False, "error": "upload_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/stocks/admin/refresh/<ticker>", methods=["POST", "OPTIONS"])
+@app.route("/monitor-api/stocks/admin/refresh/<ticker>", methods=["POST", "OPTIONS"])
+def stocks_admin_refresh(ticker):
+  if request.method == "OPTIONS":
+    return ("", 204)
+  _, err = _stocks_admin_guard()
+  if err:
+    return err
+  result = train_and_refresh_ticker(ticker)
+  _invalidate_cache("stocks:")
+  code = 200 if result.get("ok") else 400
+  return jsonify(result), code
+
+
+@app.route("/api/stocks/admin/data-status", methods=["GET"])
+@app.route("/monitor-api/stocks/admin/data-status", methods=["GET"])
+def stocks_admin_data_status():
+  _, err = _stocks_admin_guard()
+  if err:
+    return err
+  return jsonify({"ok": True, **get_stock_admin_data_status()})
+
+
+@app.route("/api/stocks/admin/tickers/<ticker>/status", methods=["GET"])
+@app.route("/monitor-api/stocks/admin/tickers/<ticker>/status", methods=["GET"])
+def stocks_admin_ticker_status(ticker):
+  _, err = _stocks_admin_guard()
+  if err:
+    return err
+  return jsonify({"ok": True, **get_stock_ticker_admin_status(ticker)})
+
+
+@app.route("/api/stocks/admin/upload-history", methods=["GET"])
+@app.route("/monitor-api/stocks/admin/upload-history", methods=["GET"])
+def stocks_admin_upload_history():
+  _, err = _stocks_admin_guard()
+  if err:
+    return err
+  ticker = str(request.args.get("ticker") or "").strip().upper()
+  limit = int(request.args.get("limit") or 120)
+  rows = list_stock_upload_history(limit=limit, ticker=ticker)
+  return jsonify({"ok": True, "rows": rows, "count": len(rows)})
 
 
 @app.route("/api/migrate", methods=["POST", "OPTIONS"])

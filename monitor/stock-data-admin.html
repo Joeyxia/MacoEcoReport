@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexo Monitor | 股票数据管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./monitor.css?v=20260312s1" />
+    <script defer src="./stock-admin.js?v=20260312s1"></script>
+  </head>
+  <body data-page="stock-admin">
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="./dashboard.html">Nexo Monitor</a>
+      <nav>
+        <a href="./dashboard.html" class="nav-link">运维看板</a>
+        <a href="./subscribers.html" class="nav-link">业务运营</a>
+        <a href="./stock-data-admin.html" class="nav-link active">股票数据</a>
+        <a href="./data-tool.html" class="nav-link">数据生成工具</a>
+        <a href="./forms.html" class="nav-link">数据表单</a>
+      </nav>
+      <div class="userbox"><span id="user-email"></span><button id="logout-btn" class="btn ghost">退出</button></div>
+      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">EN</button>
+    </header>
+    <main class="page wrap">
+      <section class="panel">
+        <h2 id="adm-title">股票 CSV 上传与模型管理</h2>
+        <p class="subtle" id="adm-desc">上传 CSV → 入库 → 训练模型 → 同步到主站股票预测页面。</p>
+        <div class="stock-admin-row">
+          <input id="ticker-input" class="input-text" placeholder="Ticker (e.g. PDD)" />
+          <label class="btn ghost" for="csv-files" id="pick-files-label">选择 CSV 文件</label>
+          <input id="csv-files" type="file" multiple accept=".csv" />
+          <label class="check-row"><input id="auto-refresh" type="checkbox" checked /> <span id="auto-refresh-label">导入后自动训练</span></label>
+          <button id="upload-btn" class="btn">上传并导入</button>
+          <button id="train-btn" class="btn ghost">仅训练模型</button>
+        </div>
+        <p class="subtle" id="upload-status">--</p>
+      </section>
+
+      <section class="grid two">
+        <article class="panel">
+          <h3 id="data-status-title">数据库状态</h3>
+          <div id="db-status-grid" class="list"></div>
+        </article>
+        <article class="panel">
+          <h3 id="ticker-status-title">Ticker 状态</h3>
+          <div id="ticker-status-grid" class="list"></div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h3 id="upload-history-title">上传与导入历史</h3>
+        <div id="upload-history-table" class="table-wrap"></div>
+      </section>
+    </main>
+  </body>
+</html>

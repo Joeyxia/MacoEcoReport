@@ -1,0 +1,86 @@
+{
+  "ticker": "PDD",
+  "run_id": 2,
+  "generated_at": "2026-03-12T04:18:23Z",
+  "latest_month": "2026-02-01",
+  "metrics": {
+    "direction_accuracy": 0.5,
+    "precision": 0.5072463768115942,
+    "recall": 0.8536585365853658,
+    "f1": 0.6363636363636365,
+    "mae": 0.1855705417010479,
+    "rmse": 0.23272626888873746,
+    "strategy_cagr": 0.3927862926580201,
+    "buy_hold_cagr": 0.25759112351512314,
+    "max_drawdown": -0.5729118949279479,
+    "sharpe_ratio": 0.8283275640201077
+  },
+  "latest_prediction": {
+    "predicted_return": -0.007127877311569775,
+    "up_probability": 0.5877575202339734,
+    "down_probability": 0.41224247976602657,
+    "signal": "Neutral"
+  },
+  "top_features": [
+    {
+      "feature_name": "liabilities_to_assets",
+      "importance": 0.11542992919296052,
+      "rank": 1
+    },
+    {
+      "feature_name": "ev_to_mc",
+      "importance": 0.11508879825463589,
+      "rank": 2
+    },
+    {
+      "feature_name": "ocf_growth_yoy",
+      "importance": 0.08725606796050206,
+      "rank": 3
+    },
+    {
+      "feature_name": "net_income_growth_yoy",
+      "importance": 0.06520337839193958,
+      "rank": 4
+    },
+    {
+      "feature_name": "vol_3m",
+      "importance": 0.06271590152619283,
+      "rank": 5
+    },
+    {
+      "feature_name": "ret_12m",
+      "importance": 0.06152083872566035,
+      "rank": 6
+    },
+    {
+      "feature_name": "ma3_dev",
+      "importance": 0.059035682256888745,
+      "rank": 7
+    },
+    {
+      "feature_name": "asset_growth_yoy",
+      "importance": 0.05696474767086472,
+      "rank": 8
+    },
+    {
+      "feature_name": "ret_1m",
+      "importance": 0.05503009687369998,
+      "rank": 9
+    },
+    {
+      "feature_name": "vol_6m",
+      "importance": 0.051965077535705305,
+      "rank": 10
+    },
+    {
+      "feature_name": "momentum",
+      "importance": 0.050530221706175715,
+      "rank": 11
+    },
+    {
+      "feature_name": "reversal",
+      "importance": 0.04839837509520885,
+      "rank": 12
+    }
+  ]
+}

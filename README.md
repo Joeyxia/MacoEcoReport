@@ -67,9 +67,42 @@ Bilingual macro dashboard + daily report system with server and SQLite database.
 export OPENAI_ADMIN_API_KEY="<your_openai_admin_key>"
 python3 scripts/import_openai_usage.py --days 2
 ```
-- Recommended cron (hourly):
+  - Recommended cron (hourly):
 ```bash
 5 * * * * cd /opt/MacoEcoReport && /opt/MacoEcoReport/.venv/bin/python scripts/import_openai_usage.py --days 2 >> /var/log/macro-openai-usage.log 2>&1
+```
+
+12. Stock prediction module (new):
+- Main page: `stock-prediction.html`
+- Monitor admin page: `monitor/stock-data-admin.html`
+- Public APIs:
+  - `GET /api/stocks/health`
+  - `GET /api/stocks/tickers`
+  - `GET /api/stocks/<ticker>/profile`
+  - `GET /api/stocks/<ticker>/predict/latest`
+  - `GET /api/stocks/<ticker>/backtest/summary`
+  - `GET /api/stocks/<ticker>/backtest/history?limit=120`
+  - `GET /api/stocks/<ticker>/features/latest?limit=10`
+- Admin APIs (Google-login protected on monitor domain):
+  - `POST /monitor-api/stocks/admin/upload-csv` (multipart form: `ticker`, `files[]`, `autoRefresh`)
+  - `POST /monitor-api/stocks/admin/refresh/<ticker>`
+  - `GET /monitor-api/stocks/admin/data-status`
+  - `GET /monitor-api/stocks/admin/tickers/<ticker>/status`
+  - `GET /monitor-api/stocks/admin/upload-history`
+- Output artifacts:
+  - `outputs/monthly_feature_table_<TICKER>.csv`
+  - `outputs/prediction_backtest_<TICKER>.csv`
+  - `outputs/prediction_summary_<TICKER>.json`
+  - `outputs/feature_importance_<TICKER>.csv`
+  - `outputs/latest_prediction_<TICKER>.json`
+- Model:
+  - Walk-forward monthly training
+  - `RandomForestRegressor` for 1M return prediction
+  - `RandomForestClassifier` for up/down probability
+
+13. One-command seed from your provided PDD CSV files:
+```bash
+python3 scripts/stock_seed_from_downloads.py --ticker PDD --dir /Users/joe.xia/Downloads --auto-refresh
 ```
 
 ## Pages
@@ -78,6 +111,8 @@ python3 scripts/import_openai_usage.py --days 2
 - `daily-report.html`: report editor + online check + archive links + detailed scores
 - `indicators.html`: full indicators table
 - `glossary.html`: glossary terms
+- `stock-prediction.html`: stock prediction (signal, backtest, features, latest history)
+- `monitor/stock-data-admin.html`: CSV upload/import + model refresh + data status
 
 ## Data file
 

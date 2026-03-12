@@ -1,0 +1,1150 @@
+#!/usr/bin/env python3
+import csv
+import io
+import json
+import math
+import os
+from datetime import date, datetime, timedelta
+from pathlib import Path
+
+try:
+  from .db import get_conn, now_iso
+except ImportError:
+  from db import get_conn, now_iso
+
+try:
+  import numpy as np
+  from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+except Exception:
+  np = None
+  RandomForestClassifier = None
+  RandomForestRegressor = None
+
+ROOT = Path(__file__).resolve().parents[1]
+OUTPUT_DIR = Path(os.environ.get("STOCK_OUTPUT_DIR", str(ROOT / "outputs")))
+MODEL_VERSION = "rf-walkforward-v1"
+
+FILE_TYPE_PRICE = "price"
+FILE_TYPE_VALUATION = "valuation"
+FILE_TYPE_CASH_FLOW = "cash_flow"
+FILE_TYPE_BALANCE_SHEET = "balance_sheet"
+FILE_TYPE_FINANCIALS = "financials"
+REQUIRED_FILE_TYPES = {FILE_TYPE_PRICE, FILE_TYPE_VALUATION, FILE_TYPE_CASH_FLOW, FILE_TYPE_BALANCE_SHEET, FILE_TYPE_FINANCIALS}
+
+FEATURE_NAMES = [
+  "ret_1m",
+  "ret_3m",
+  "ret_6m",
+  "ret_12m",
+  "vol_3m",
+  "vol_6m",
+  "ma3_dev",
+  "ma6_dev",
+  "ma12_dev",
+  "momentum",
+  "trend",
+  "reversal",
+  "pe",
+  "ps",
+  "pb",
+  "ev_to_mc",
+  "revenue_growth_yoy",
+  "net_income_growth_yoy",
+  "ocf_growth_yoy",
+  "liabilities_to_assets",
+  "asset_growth_yoy",
+]
+
+
+def _ensure_output_dir():
+  OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _parse_number(v):
+  if v is None:
+    return None
+  s = str(v).strip()
+  if not s:
+    return None
+  negative = False
+  if s.startswith("(") and s.endswith(")"):
+    negative = True
+    s = s[1:-1]
+  s = s.replace(",", "").replace("$", "").replace("%", "").replace("\u00a0", "")
+  try:
+    num = float(s)
+  except Exception:
+    return None
+  return -num if negative else num
+
+
+def _parse_date(v):
+  if v is None:
+    return None
+  s = str(v).strip()
+  if not s:
+    return None
+  for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y/%m/%d"):
+    try:
+      return datetime.strptime(s, fmt).date()
+    except Exception:
+      pass
+  return None
+
+
+def _month_key(dt: date):
+  return f"{dt.year:04d}-{dt.month:02d}-01"
+
+
+def _last_day_of_month(dt: date):
+  if dt.month == 12:
+    return date(dt.year + 1, 1, 1) - timedelta(days=1)
+  return date(dt.year, dt.month + 1, 1) - timedelta(days=1)
+
+
+def _safe_ticker(ticker: str):
+  t = str(ticker or "").strip().upper()
+  if not t:
+    raise ValueError("ticker is required")
+  return t
+
+
+def detect_file_type(file_name: str, headers=None):
+  name = str(file_name or "").strip().lower()
+  headers = [str(x or "").strip() for x in (headers or [])]
+  header_set = {h.lower() for h in headers}
+  if {"date", "open", "high", "low", "close"}.issubset(header_set):
+    return FILE_TYPE_PRICE
+  if "valuation" in name:
+    return FILE_TYPE_VALUATION
+  if "cash-flow" in name or "cash_flow" in name:
+    return FILE_TYPE_CASH_FLOW
+  if "balance-sheet" in name or "balance_sheet" in name:
+    return FILE_TYPE_BALANCE_SHEET
+  if "financials" in name:
+    return FILE_TYPE_FINANCIALS
+  if "name" in header_set and any(_parse_date(h) for h in headers):
+    return FILE_TYPE_VALUATION
+  return "unknown"
+
+
+def _upsert_ticker_profile(conn, ticker: str):
+  ts = now_iso()
+  conn.execute(
+    """
+    INSERT INTO ticker_profiles (ticker, company_name, exchange, sector, industry, currency, is_active, created_at, updated_at)
+    VALUES (?, ?, '', '', '', 'USD', 1, ?, ?)
+    ON CONFLICT(ticker) DO UPDATE SET
+      is_active=1,
+      updated_at=excluded.updated_at
+    """,
+    (ticker, ticker, ts, ts),
+  )
+
+
+def _create_uploaded_file_row(conn, ticker: str, file_name: str, file_type: str, upload_source: str = "monitor-web"):
+  ts = now_iso()
+  cur = conn.execute(
+    """
+    INSERT INTO uploaded_files (ticker, file_name, file_type, upload_source, file_status, uploaded_at, imported_at, notes)
+    VALUES (?, ?, ?, ?, 'uploaded', ?, NULL, '')
+    """,
+    (ticker, file_name, file_type, upload_source, ts),
+  )
+  return int(cur.lastrowid or 0)
+
+
+def _finish_uploaded_file_row(conn, row_id: int, status: str, notes: str = ""):
+  ts = now_iso()
+  conn.execute(
+    """
+    UPDATE uploaded_files
+    SET file_status = ?, imported_at = ?, notes = ?
+    WHERE id = ?
+    """,
+    (status, ts, str(notes or "")[:800], int(row_id or 0)),
+  )
+
+
+def _import_price_csv(conn, ticker: str, file_name: str, rows):
+  ts = now_iso()
+  count = 0
+  for row in rows:
+    trade_dt = _parse_date(row.get("Date"))
+    if not trade_dt:
+      continue
+    conn.execute(
+      """
+      INSERT INTO stock_prices (ticker, trade_date, open, high, low, close, adj_close, volume, source_file, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(ticker, trade_date) DO UPDATE SET
+        open=excluded.open,
+        high=excluded.high,
+        low=excluded.low,
+        close=excluded.close,
+        adj_close=excluded.adj_close,
+        volume=excluded.volume,
+        source_file=excluded.source_file,
+        updated_at=excluded.updated_at
+      """,
+      (
+        ticker,
+        trade_dt.isoformat(),
+        _parse_number(row.get("Open")),
+        _parse_number(row.get("High")),
+        _parse_number(row.get("Low")),
+        _parse_number(row.get("Close")),
+        _parse_number(row.get("Adj Close")),
+        _parse_number(row.get("Volume")),
+        file_name,
+        ts,
+        ts,
+      ),
+    )
+    count += 1
+  return count
+
+
+def _import_wide_metric_csv(conn, ticker: str, file_name: str, rows, statement_type: str = ""):
+  ts = now_iso()
+  count = 0
+  for row in rows:
+    metric_name = str(row.get("name") or "").strip().replace("\t", "")
+    if not metric_name:
+      continue
+    for k, v in row.items():
+      if str(k).strip().lower() in {"name", "ttm"}:
+        continue
+      dt = _parse_date(k)
+      if not dt:
+        continue
+      val = _parse_number(v)
+      if val is None:
+        continue
+      if statement_type:
+        conn.execute(
+          """
+          INSERT INTO stock_financials (ticker, report_date, statement_type, metric_name, metric_value, source_file, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(ticker, report_date, statement_type, metric_name) DO UPDATE SET
+            metric_value=excluded.metric_value,
+            source_file=excluded.source_file,
+            updated_at=excluded.updated_at
+          """,
+          (ticker, dt.isoformat(), statement_type, metric_name, val, file_name, ts, ts),
+        )
+      else:
+        conn.execute(
+          """
+          INSERT INTO stock_valuations (ticker, valuation_date, metric_name, metric_value, source_file, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(ticker, valuation_date, metric_name) DO UPDATE SET
+            metric_value=excluded.metric_value,
+            source_file=excluded.source_file,
+            updated_at=excluded.updated_at
+          """,
+          (ticker, dt.isoformat(), metric_name, val, file_name, ts, ts),
+        )
+      count += 1
+  return count
+
+
+def _parse_csv_stream(file_storage):
+  raw = file_storage.read()
+  file_storage.seek(0)
+  text = raw.decode("utf-8-sig", errors="ignore")
+  reader = csv.DictReader(io.StringIO(text))
+  rows = list(reader)
+  return reader.fieldnames or [], rows
+
+
+def import_csv_uploads(ticker: str, uploaded_files, auto_refresh: bool = False):
+  ticker = _safe_ticker(ticker)
+  conn = get_conn()
+  _upsert_ticker_profile(conn, ticker)
+  imported = []
+  failed = []
+  total_rows = 0
+  try:
+    for f in uploaded_files:
+      file_name = str(getattr(f, "filename", "") or "").strip()
+      if not file_name:
+        continue
+      headers, rows = _parse_csv_stream(f)
+      file_type = detect_file_type(file_name, headers)
+      upload_id = _create_uploaded_file_row(conn, ticker, file_name, file_type)
+      try:
+        if file_type == FILE_TYPE_PRICE:
+          rows_count = _import_price_csv(conn, ticker, file_name, rows)
+        elif file_type == FILE_TYPE_VALUATION:
+          rows_count = _import_wide_metric_csv(conn, ticker, file_name, rows, statement_type="")
+        elif file_type == FILE_TYPE_CASH_FLOW:
+          rows_count = _import_wide_metric_csv(conn, ticker, file_name, rows, statement_type=FILE_TYPE_CASH_FLOW)
+        elif file_type == FILE_TYPE_BALANCE_SHEET:
+          rows_count = _import_wide_metric_csv(conn, ticker, file_name, rows, statement_type=FILE_TYPE_BALANCE_SHEET)
+        elif file_type == FILE_TYPE_FINANCIALS:
+          rows_count = _import_wide_metric_csv(conn, ticker, file_name, rows, statement_type=FILE_TYPE_FINANCIALS)
+        else:
+          raise ValueError("unsupported_file_type")
+        _finish_uploaded_file_row(conn, upload_id, "imported", f"rows={rows_count}")
+        imported.append({"file": file_name, "type": file_type, "rows": rows_count})
+        total_rows += rows_count
+      except Exception as e:
+        _finish_uploaded_file_row(conn, upload_id, "failed", str(e))
+        failed.append({"file": file_name, "type": file_type, "error": str(e)})
+    conn.commit()
+  finally:
+    conn.close()
+
+  run_result = None
+  if auto_refresh and not failed:
+    run_result = train_and_refresh_ticker(ticker)
+
+  return {
+    "ticker": ticker,
+    "importedCount": len(imported),
+    "failedCount": len(failed),
+    "totalRows": total_rows,
+    "imported": imported,
+    "failed": failed,
+    "modelRun": run_result,
+  }
+
+
+class _PathUpload:
+  def __init__(self, path: Path):
+    self.path = Path(path)
+    self.filename = self.path.name
+    self._raw = self.path.read_bytes()
+
+  def read(self):
+    return self._raw
+
+  def seek(self, _pos: int):
+    return 0
+
+
+def import_csv_paths(ticker: str, csv_paths, auto_refresh: bool = False):
+  files = [_PathUpload(Path(p)) for p in (csv_paths or [])]
+  return import_csv_uploads(ticker=ticker, uploaded_files=files, auto_refresh=auto_refresh)
+
+
+def _fetch_price_monthly(conn, ticker: str):
+  rows = conn.execute(
+    """
+    SELECT trade_date, close, volume
+    FROM stock_prices
+    WHERE ticker = ?
+    ORDER BY trade_date ASC
+    """,
+    (ticker,),
+  ).fetchall()
+  by_month = {}
+  for r in rows:
+    dt = _parse_date(r["trade_date"])
+    close = _parse_number(r["close"])
+    if not dt or close is None:
+      continue
+    k = _month_key(dt)
+    cur = by_month.get(k)
+    if (not cur) or (dt > cur["date"]):
+      by_month[k] = {
+        "month": k,
+        "date": dt,
+        "close": float(close),
+        "volume": float(_parse_number(r["volume"]) or 0.0),
+      }
+  out = list(by_month.values())
+  out.sort(key=lambda x: x["month"])
+  return out
+
+
+def _fetch_long_metrics(conn, ticker: str, table_name: str, date_col: str, where=""):
+  rows = conn.execute(
+    f"""
+    SELECT {date_col} AS dt, metric_name AS metric, metric_value AS value
+    FROM {table_name}
+    WHERE ticker = ? {where}
+    ORDER BY {date_col} ASC
+    """,
+    (ticker,),
+  ).fetchall()
+  data = {}
+  for r in rows:
+    dt = _parse_date(r["dt"])
+    metric = str(r["metric"] or "").strip().lower()
+    val = _parse_number(r["value"])
+    if not dt or not metric or val is None:
+      continue
+    data.setdefault(metric, []).append((dt, float(val)))
+  return data
+
+
+def _latest_before(metric_series, dt: date):
+  if not metric_series:
+    return None
+  out = None
+  for k, v in metric_series:
+    if k <= dt:
+      out = v
+    else:
+      break
+  return out
+
+
+def _pct_change(current, prior):
+  if current is None or prior is None:
+    return 0.0
+  if abs(prior) < 1e-12:
+    return 0.0
+  return (current / prior) - 1.0
+
+
+def _stdev(vals):
+  if not vals or len(vals) < 2:
+    return 0.0
+  m = sum(vals) / len(vals)
+  var = sum((x - m) ** 2 for x in vals) / (len(vals) - 1)
+  return math.sqrt(max(var, 0.0))
+
+
+def _build_feature_rows(conn, ticker: str):
+  monthly = _fetch_price_monthly(conn, ticker)
+  if len(monthly) < 24:
+    return []
+  valuation = _fetch_long_metrics(conn, ticker, "stock_valuations", "valuation_date")
+  financials = _fetch_long_metrics(conn, ticker, "stock_financials", "report_date")
+
+  ev_series = valuation.get("enterprisevalue", [])
+  mc_series = valuation.get("marketcap", [])
+  pe_series = valuation.get("trailing pe", []) or valuation.get("pe ratio", []) or valuation.get("pe", [])
+  ps_series = valuation.get("price to sales ratio", []) or valuation.get("ps", [])
+  pb_series = valuation.get("price to book ratio", []) or valuation.get("pb", [])
+  rev_series = financials.get("total revenue", [])
+  ni_series = financials.get("net income", []) or financials.get("net income common stockholders", [])
+  ocf_series = financials.get("operating cash flow", [])
+  assets_series = financials.get("total assets", [])
+  liabilities_series = financials.get("total liabilities net minority interest", []) or financials.get("total liabilities", [])
+
+  rows = []
+  rets = []
+  for i, m in enumerate(monthly):
+    if i == 0:
+      rets.append(0.0)
+    else:
+      rets.append(_pct_change(m["close"], monthly[i - 1]["close"]))
+
+  for i in range(12, len(monthly) - 1):
+    m = monthly[i]
+    dt = _last_day_of_month(_parse_date(m["month"]))
+    r1 = rets[i]
+    r3 = _pct_change(m["close"], monthly[i - 3]["close"]) if i >= 3 else 0.0
+    r6 = _pct_change(m["close"], monthly[i - 6]["close"]) if i >= 6 else 0.0
+    r12 = _pct_change(m["close"], monthly[i - 12]["close"]) if i >= 12 else 0.0
+    vol3 = _stdev(rets[max(1, i - 2):i + 1])
+    vol6 = _stdev(rets[max(1, i - 5):i + 1])
+    ma3 = sum(x["close"] for x in monthly[i - 2:i + 1]) / 3.0
+    ma6 = sum(x["close"] for x in monthly[i - 5:i + 1]) / 6.0
+    ma12 = sum(x["close"] for x in monthly[i - 11:i + 1]) / 12.0
+
+    ev = _latest_before(ev_series, dt)
+    mc = _latest_before(mc_series, dt)
+    pe = _latest_before(pe_series, dt)
+    ps = _latest_before(ps_series, dt)
+    pb = _latest_before(pb_series, dt)
+
+    lag_dt = dt - timedelta(days=45)
+    lag_prev = lag_dt - timedelta(days=365)
+    rev = _latest_before(rev_series, lag_dt)
+    rev_prev = _latest_before(rev_series, lag_prev)
+    ni = _latest_before(ni_series, lag_dt)
+    ni_prev = _latest_before(ni_series, lag_prev)
+    ocf = _latest_before(ocf_series, lag_dt)
+    ocf_prev = _latest_before(ocf_series, lag_prev)
+    assets = _latest_before(assets_series, lag_dt)
+    assets_prev = _latest_before(assets_series, lag_prev)
+    liabilities = _latest_before(liabilities_series, lag_dt)
+
+    feature = {
+      "month": m["month"],
+      "ret_1m": r1,
+      "ret_3m": r3,
+      "ret_6m": r6,
+      "ret_12m": r12,
+      "vol_3m": vol3,
+      "vol_6m": vol6,
+      "ma3_dev": _pct_change(m["close"], ma3),
+      "ma6_dev": _pct_change(m["close"], ma6),
+      "ma12_dev": _pct_change(m["close"], ma12),
+      "momentum": r6 - r1,
+      "trend": _pct_change(m["close"], ma3) + _pct_change(m["close"], ma6),
+      "reversal": -r1,
+      "pe": (pe or 0.0),
+      "ps": (ps or 0.0),
+      "pb": (pb or 0.0),
+      "ev_to_mc": (ev / mc - 1.0) if (ev and mc and abs(mc) > 1e-12) else 0.0,
+      "revenue_growth_yoy": _pct_change(rev, rev_prev),
+      "net_income_growth_yoy": _pct_change(ni, ni_prev),
+      "ocf_growth_yoy": _pct_change(ocf, ocf_prev),
+      "liabilities_to_assets": (liabilities / assets) if (liabilities is not None and assets and abs(assets) > 1e-12) else 0.0,
+      "asset_growth_yoy": _pct_change(assets, assets_prev),
+      "target_return": _pct_change(monthly[i + 1]["close"], m["close"]),
+    }
+    rows.append(feature)
+  return rows
+
+
+def _to_signal(pred_ret: float):
+  if pred_ret > 0.03:
+    return "Bullish"
+  if pred_ret < -0.03:
+    return "Bearish"
+  return "Neutral"
+
+
+def _fallback_walkforward(features):
+  # If sklearn is unavailable, keep system running with deterministic fallback.
+  out = []
+  for row in features:
+    pred = (
+      0.18 * row["ret_1m"] +
+      0.25 * row["ret_3m"] +
+      0.25 * row["ret_6m"] +
+      0.08 * row["ret_12m"] +
+      0.08 * row["revenue_growth_yoy"] +
+      0.07 * row["net_income_growth_yoy"] +
+      0.06 * row["ocf_growth_yoy"] -
+      0.08 * row["vol_3m"] -
+      0.05 * row["vol_6m"]
+    )
+    pred = max(min(pred, 0.30), -0.30)
+    up = 1.0 / (1.0 + math.exp(-pred * 18.0))
+    out.append((pred, up, 1.0 - up, _to_signal(pred)))
+  imps = sorted([(k, abs(float(features[-1].get(k) or 0.0))) for k in FEATURE_NAMES], key=lambda x: x[1], reverse=True)
+  return out, imps
+
+
+def _rf_walkforward(features):
+  if not features:
+    return [], []
+
+  if np is None or RandomForestRegressor is None or RandomForestClassifier is None:
+    return _fallback_walkforward(features)
+
+  X = np.array([[float(row.get(f) or 0.0) for f in FEATURE_NAMES] for row in features], dtype=float)
+  y_ret = np.array([float(row.get("target_return") or 0.0) for row in features], dtype=float)
+  y_cls = np.array([1 if y > 0 else 0 for y in y_ret], dtype=int)
+
+  n = len(features)
+  min_train = 24
+  if n <= min_train:
+    min_train = max(12, n // 2)
+  predictions = []
+  last_importances = None
+
+  for i in range(min_train, n):
+    x_train = X[:i]
+    y_train_ret = y_ret[:i]
+    y_train_cls = y_cls[:i]
+
+    reg = RandomForestRegressor(
+      n_estimators=200,
+      max_depth=6,
+      min_samples_leaf=2,
+      random_state=42,
+      n_jobs=-1,
+    )
+    reg.fit(x_train, y_train_ret)
+    pred = float(reg.predict(X[i:i + 1])[0])
+
+    if len(set(y_train_cls.tolist())) >= 2:
+      clf = RandomForestClassifier(
+        n_estimators=200,
+        max_depth=6,
+        min_samples_leaf=2,
+        random_state=42,
+        n_jobs=-1,
+        class_weight="balanced_subsample",
+      )
+      clf.fit(x_train, y_train_cls)
+      probs = clf.predict_proba(X[i:i + 1])[0]
+      up_prob = float(probs[1]) if len(probs) > 1 else float(probs[0])
+    else:
+      up_prob = 1.0 if int(y_train_cls[-1]) == 1 else 0.0
+
+    pred = max(min(pred, 0.30), -0.30)
+    predictions.append((pred, up_prob, 1.0 - up_prob, _to_signal(pred), i))
+    last_importances = reg.feature_importances_
+
+  # For initial warmup periods, fill with fallback to keep full timeline.
+  if min_train > 0:
+    warmup = _fallback_walkforward(features[:min_train])[0]
+    for idx, item in enumerate(warmup):
+      predictions.insert(idx, (*item, idx))
+
+  if last_importances is None:
+    imps = _fallback_walkforward(features)[1]
+  else:
+    imps = sorted([(FEATURE_NAMES[i], float(last_importances[i])) for i in range(len(FEATURE_NAMES))], key=lambda x: x[1], reverse=True)
+
+  # Strip idx helper.
+  cleaned = [(p[0], p[1], p[2], p[3]) for p in predictions]
+  return cleaned, imps
+
+
+def _calc_backtest_metrics(results):
+  if not results:
+    return {
+      "direction_accuracy": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "mae": 0.0,
+      "rmse": 0.0,
+      "strategy_cagr": 0.0,
+      "buy_hold_cagr": 0.0,
+      "max_drawdown": 0.0,
+      "sharpe_ratio": 0.0,
+    }
+  n = len(results)
+  hit = 0
+  tp = fp = fn = 0
+  abs_err = []
+  sq_err = []
+  strat = []
+  bh = []
+  for r in results:
+    pr = float(r["predicted_return"] or 0.0)
+    ar = float(r["actual_return"] or 0.0)
+    if (pr >= 0 and ar >= 0) or (pr < 0 and ar < 0):
+      hit += 1
+    pred_up = pr > 0
+    act_up = ar > 0
+    if pred_up and act_up:
+      tp += 1
+    elif pred_up and not act_up:
+      fp += 1
+    elif (not pred_up) and act_up:
+      fn += 1
+    abs_err.append(abs(pr - ar))
+    sq_err.append((pr - ar) ** 2)
+    strat.append(float(r["strategy_return"] or 0.0))
+    bh.append(ar)
+
+  precision = (tp / (tp + fp)) if (tp + fp) > 0 else 0.0
+  recall = (tp / (tp + fn)) if (tp + fn) > 0 else 0.0
+  f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+  mae = sum(abs_err) / n
+  rmse = math.sqrt(sum(sq_err) / n)
+
+  def _cagr(returns):
+    wealth = 1.0
+    for x in returns:
+      wealth *= (1.0 + x)
+    years = max(n / 12.0, 1e-9)
+    return wealth ** (1.0 / years) - 1.0
+
+  def _mdd(returns):
+    wealth = 1.0
+    peak = 1.0
+    mdd = 0.0
+    for x in returns:
+      wealth *= (1.0 + x)
+      peak = max(peak, wealth)
+      dd = (wealth / peak) - 1.0
+      mdd = min(mdd, dd)
+    return mdd
+
+  strat_mean = sum(strat) / n
+  strat_std = _stdev(strat)
+  sharpe = (strat_mean / strat_std * math.sqrt(12.0)) if strat_std > 1e-12 else 0.0
+  return {
+    "direction_accuracy": hit / n,
+    "precision": precision,
+    "recall": recall,
+    "f1": f1,
+    "mae": mae,
+    "rmse": rmse,
+    "strategy_cagr": _cagr(strat),
+    "buy_hold_cagr": _cagr(bh),
+    "max_drawdown": _mdd(strat),
+    "sharpe_ratio": sharpe,
+  }
+
+
+def train_and_refresh_ticker(ticker: str):
+  ticker = _safe_ticker(ticker)
+  _ensure_output_dir()
+  conn = get_conn()
+  ts = now_iso()
+  run_id = 0
+  try:
+    cur = conn.execute(
+      """
+      INSERT INTO model_runs (ticker, run_time, model_version, train_start, status, notes)
+      VALUES (?, ?, ?, ?, 'running', '')
+      """,
+      (ticker, ts, MODEL_VERSION, ts),
+    )
+    run_id = int(cur.lastrowid or 0)
+
+    features = _build_feature_rows(conn, ticker)
+    if len(features) < 18:
+      conn.execute(
+        "UPDATE model_runs SET train_end=?, sample_count=?, feature_count=?, status='failed', notes=? WHERE id=?",
+        (now_iso(), len(features), 0, "insufficient_monthly_samples", run_id),
+      )
+      conn.commit()
+      return {"ok": False, "ticker": ticker, "runId": run_id, "error": "insufficient_monthly_samples"}
+
+    preds, feature_importances = _rf_walkforward(features)
+    results = []
+    cum_strat = 1.0
+    cum_bh = 1.0
+    for row, pred_row in zip(features, preds):
+      pred, up, down, signal = pred_row
+      ar = float(row.get("target_return") or 0.0)
+      sr = ar if signal == "Bullish" else 0.0
+      cum_strat *= (1.0 + sr)
+      cum_bh *= (1.0 + ar)
+      results.append(
+        {
+          "month": row["month"],
+          "predicted_return": float(pred),
+          "up_probability": float(max(0.0, min(1.0, up))),
+          "down_probability": float(max(0.0, min(1.0, down))),
+          "signal": signal,
+          "actual_return": ar,
+          "strategy_return": sr,
+          "cumulative_strategy": cum_strat - 1.0,
+          "cumulative_buy_hold": cum_bh - 1.0,
+          "feature_row": row,
+        }
+      )
+
+    metrics = _calc_backtest_metrics(results)
+    latest = results[-1]
+    latest_month = latest["month"]
+    top_feature_rows = [(n, float(v)) for n, v in feature_importances[:12]]
+
+    conn.execute("DELETE FROM prediction_results WHERE ticker = ?", (ticker,))
+    for r in results:
+      conn.execute(
+        """
+        INSERT INTO prediction_results
+        (ticker, prediction_month, predicted_return, up_probability, down_probability, signal, actual_return, strategy_return, cumulative_strategy, cumulative_buy_hold, run_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+          ticker,
+          r["month"],
+          r["predicted_return"],
+          r["up_probability"],
+          r["down_probability"],
+          r["signal"],
+          r["actual_return"],
+          r["strategy_return"],
+          r["cumulative_strategy"],
+          r["cumulative_buy_hold"],
+          run_id,
+          now_iso(),
+        ),
+      )
+
+    conn.execute("DELETE FROM feature_importance WHERE ticker = ?", (ticker,))
+    for i, (name, imp) in enumerate(top_feature_rows, start=1):
+      conn.execute(
+        """
+        INSERT INTO feature_importance (ticker, run_id, prediction_month, feature_name, importance, rank_num, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (ticker, run_id, latest_month, name, float(imp), i, now_iso()),
+      )
+
+    conn.execute(
+      """
+      INSERT INTO latest_signals
+      (ticker, latest_month, predicted_return, up_probability, down_probability, signal, direction_accuracy, precision_score, recall_score, f1_score, mae, rmse, strategy_cagr, buy_hold_cagr, max_drawdown, sharpe_ratio, run_id, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(ticker) DO UPDATE SET
+        latest_month=excluded.latest_month,
+        predicted_return=excluded.predicted_return,
+        up_probability=excluded.up_probability,
+        down_probability=excluded.down_probability,
+        signal=excluded.signal,
+        direction_accuracy=excluded.direction_accuracy,
+        precision_score=excluded.precision_score,
+        recall_score=excluded.recall_score,
+        f1_score=excluded.f1_score,
+        mae=excluded.mae,
+        rmse=excluded.rmse,
+        strategy_cagr=excluded.strategy_cagr,
+        buy_hold_cagr=excluded.buy_hold_cagr,
+        max_drawdown=excluded.max_drawdown,
+        sharpe_ratio=excluded.sharpe_ratio,
+        run_id=excluded.run_id,
+        updated_at=excluded.updated_at
+      """,
+      (
+        ticker,
+        latest_month,
+        latest["predicted_return"],
+        latest["up_probability"],
+        latest["down_probability"],
+        latest["signal"],
+        metrics["direction_accuracy"],
+        metrics["precision"],
+        metrics["recall"],
+        metrics["f1"],
+        metrics["mae"],
+        metrics["rmse"],
+        metrics["strategy_cagr"],
+        metrics["buy_hold_cagr"],
+        metrics["max_drawdown"],
+        metrics["sharpe_ratio"],
+        run_id,
+        now_iso(),
+      ),
+    )
+
+    conn.execute(
+      """
+      UPDATE model_runs
+      SET train_end=?, sample_count=?, feature_count=?, status='success', notes=?
+      WHERE id=?
+      """,
+      (
+        now_iso(),
+        len(features),
+        len(top_feature_rows),
+        json.dumps({"latestMonth": latest_month, "mode": "rf_walkforward"}, ensure_ascii=False),
+        run_id,
+      ),
+    )
+    conn.commit()
+    _export_outputs(ticker, features, results, metrics, top_feature_rows, run_id, ts)
+    return {"ok": True, "ticker": ticker, "runId": run_id, "latestMonth": latest_month}
+  except Exception as e:
+    if run_id:
+      conn.execute(
+        "UPDATE model_runs SET train_end=?, status='failed', notes=? WHERE id=?",
+        (now_iso(), str(e)[:500], run_id),
+      )
+      conn.commit()
+    return {"ok": False, "ticker": ticker, "runId": run_id, "error": str(e)}
+  finally:
+    conn.close()
+
+
+def _export_outputs(ticker, features, results, metrics, top_feature_rows, run_id: int, generated_at: str):
+  _ensure_output_dir()
+  t = ticker.upper()
+  feature_file = OUTPUT_DIR / f"monthly_feature_table_{t}.csv"
+  pred_file = OUTPUT_DIR / f"prediction_backtest_{t}.csv"
+  summary_file = OUTPUT_DIR / f"prediction_summary_{t}.json"
+  fi_file = OUTPUT_DIR / f"feature_importance_{t}.csv"
+  latest_file = OUTPUT_DIR / f"latest_prediction_{t}.json"
+
+  if features:
+    with feature_file.open("w", newline="", encoding="utf-8") as f:
+      w = csv.DictWriter(f, fieldnames=list(features[0].keys()))
+      w.writeheader()
+      w.writerows(features)
+
+  if results:
+    with pred_file.open("w", newline="", encoding="utf-8") as f:
+      fieldnames = ["month", "predicted_return", "actual_return", "up_probability", "down_probability", "signal", "strategy_return", "cumulative_strategy", "cumulative_buy_hold"]
+      w = csv.DictWriter(f, fieldnames=fieldnames)
+      w.writeheader()
+      for r in results:
+        w.writerow({k: r.get(k) for k in fieldnames})
+
+  with fi_file.open("w", newline="", encoding="utf-8") as f:
+    w = csv.writer(f)
+    w.writerow(["feature_name", "importance", "rank"])
+    for i, (name, imp) in enumerate(top_feature_rows, start=1):
+      w.writerow([name, imp, i])
+
+  latest = results[-1] if results else {}
+  summary = {
+    "ticker": t,
+    "run_id": run_id,
+    "generated_at": generated_at,
+    "latest_month": latest.get("month", ""),
+    "metrics": metrics,
+    "latest_prediction": {
+      "predicted_return": latest.get("predicted_return", 0.0),
+      "up_probability": latest.get("up_probability", 0.0),
+      "down_probability": latest.get("down_probability", 0.0),
+      "signal": latest.get("signal", "Neutral"),
+    },
+    "top_features": [{"feature_name": n, "importance": v, "rank": i + 1} for i, (n, v) in enumerate(top_feature_rows)],
+  }
+  summary_file.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+  latest_file.write_text(json.dumps(summary.get("latest_prediction") or {}, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _query_one(conn, sql, params=()):
+  row = conn.execute(sql, params).fetchone()
+  return dict(row) if row else None
+
+
+def list_tickers():
+  conn = get_conn()
+  rows = conn.execute(
+    "SELECT ticker, company_name, exchange, sector, industry, currency, is_active, updated_at FROM ticker_profiles WHERE is_active = 1 ORDER BY ticker ASC"
+  ).fetchall()
+  conn.close()
+  return [dict(r) for r in rows]
+
+
+def get_ticker_profile(ticker: str):
+  ticker = _safe_ticker(ticker)
+  conn = get_conn()
+  row = _query_one(
+    conn,
+    "SELECT ticker, company_name, exchange, sector, industry, currency, is_active, created_at, updated_at FROM ticker_profiles WHERE ticker = ? LIMIT 1",
+    (ticker,),
+  )
+  conn.close()
+  return row
+
+
+def get_latest_prediction_payload(ticker: str):
+  ticker = _safe_ticker(ticker)
+  conn = get_conn()
+  sig = _query_one(
+    conn,
+    """
+    SELECT ticker, latest_month, predicted_return, up_probability, down_probability, signal,
+           direction_accuracy, precision_score, recall_score, f1_score, mae, rmse,
+           strategy_cagr, buy_hold_cagr, max_drawdown, sharpe_ratio, run_id, updated_at
+    FROM latest_signals
+    WHERE ticker = ?
+    LIMIT 1
+    """,
+    (ticker,),
+  )
+  profile = _query_one(
+    conn,
+    "SELECT ticker, company_name, exchange, sector, industry, currency FROM ticker_profiles WHERE ticker = ? LIMIT 1",
+    (ticker,),
+  )
+  features = conn.execute(
+    """
+    SELECT feature_name, importance, rank_num
+    FROM feature_importance
+    WHERE ticker = ?
+    ORDER BY rank_num ASC, id ASC
+    LIMIT 12
+    """,
+    (ticker,),
+  ).fetchall()
+  conn.close()
+  if not sig:
+    return None
+  return {
+    "ticker": ticker,
+    "company_name": (profile or {}).get("company_name") or ticker,
+    "latest_month": sig.get("latest_month") or "",
+    "predicted_return": float(sig.get("predicted_return") or 0.0),
+    "up_probability": float(sig.get("up_probability") or 0.0),
+    "down_probability": float(sig.get("down_probability") or 0.0),
+    "signal": sig.get("signal") or "Neutral",
+    "top_features": [{"feature_name": f["feature_name"], "importance": float(f["importance"] or 0.0), "rank": int(f["rank_num"] or 0)} for f in features],
+    "model_metrics": {
+      "direction_accuracy": float(sig.get("direction_accuracy") or 0.0),
+      "precision": float(sig.get("precision_score") or 0.0),
+      "recall": float(sig.get("recall_score") or 0.0),
+      "f1": float(sig.get("f1_score") or 0.0),
+      "mae": float(sig.get("mae") or 0.0),
+      "rmse": float(sig.get("rmse") or 0.0),
+      "strategy_cagr": float(sig.get("strategy_cagr") or 0.0),
+      "buy_hold_cagr": float(sig.get("buy_hold_cagr") or 0.0),
+      "max_drawdown": float(sig.get("max_drawdown") or 0.0),
+      "sharpe_ratio": float(sig.get("sharpe_ratio") or 0.0),
+    },
+    "run_id": int(sig.get("run_id") or 0),
+    "updated_at": sig.get("updated_at") or "",
+  }
+
+
+def get_backtest_summary(ticker: str):
+  p = get_latest_prediction_payload(ticker)
+  if not p:
+    return None
+  return p.get("model_metrics") or {}
+
+
+def get_backtest_history(ticker: str, limit: int = 120):
+  ticker = _safe_ticker(ticker)
+  conn = get_conn()
+  rows = conn.execute(
+    """
+    SELECT prediction_month, predicted_return, actual_return, up_probability, down_probability, signal, strategy_return, cumulative_strategy, cumulative_buy_hold
+    FROM prediction_results
+    WHERE ticker = ?
+    ORDER BY prediction_month DESC
+    LIMIT ?
+    """,
+    (ticker, max(1, int(limit))),
+  ).fetchall()
+  conn.close()
+  out = []
+  for r in rows:
+    out.append(
+      {
+        "month": r["prediction_month"],
+        "predicted_return": float(r["predicted_return"] or 0.0),
+        "actual_return": float(r["actual_return"] or 0.0),
+        "up_probability": float(r["up_probability"] or 0.0),
+        "down_probability": float(r["down_probability"] or 0.0),
+        "signal": r["signal"] or "Neutral",
+        "strategy_return": float(r["strategy_return"] or 0.0),
+        "cumulative_strategy": float(r["cumulative_strategy"] or 0.0),
+        "cumulative_buy_hold": float(r["cumulative_buy_hold"] or 0.0),
+      }
+    )
+  return out
+
+
+def get_latest_features(ticker: str, limit: int = 10):
+  ticker = _safe_ticker(ticker)
+  conn = get_conn()
+  rows = conn.execute(
+    """
+    SELECT feature_name, importance, rank_num, prediction_month
+    FROM feature_importance
+    WHERE ticker = ?
+    ORDER BY rank_num ASC, id ASC
+    LIMIT ?
+    """,
+    (ticker, max(1, int(limit))),
+  ).fetchall()
+  conn.close()
+  return [
+    {
+      "feature_name": r["feature_name"],
+      "importance": float(r["importance"] or 0.0),
+      "rank": int(r["rank_num"] or 0),
+      "prediction_month": r["prediction_month"] or "",
+    }
+    for r in rows
+  ]
+
+
+def get_admin_data_status():
+  conn = get_conn()
+
+  def _count(table_name):
+    row = conn.execute(f"SELECT COUNT(*) AS n FROM {table_name}").fetchone()
+    return int((row["n"] if row else 0) or 0)
+
+  counts = {
+    "ticker_profiles": _count("ticker_profiles"),
+    "stock_prices": _count("stock_prices"),
+    "stock_valuations": _count("stock_valuations"),
+    "stock_financials": _count("stock_financials"),
+    "uploaded_files": _count("uploaded_files"),
+    "model_runs": _count("model_runs"),
+    "prediction_results": _count("prediction_results"),
+    "feature_importance": _count("feature_importance"),
+    "latest_signals": _count("latest_signals"),
+  }
+  latest_dates = {
+    "price": (_query_one(conn, "SELECT MAX(trade_date) AS v FROM stock_prices") or {}).get("v") or "",
+    "valuation": (_query_one(conn, "SELECT MAX(valuation_date) AS v FROM stock_valuations") or {}).get("v") or "",
+    "financial": (_query_one(conn, "SELECT MAX(report_date) AS v FROM stock_financials") or {}).get("v") or "",
+    "upload": (_query_one(conn, "SELECT MAX(uploaded_at) AS v FROM uploaded_files") or {}).get("v") or "",
+    "model_run": (_query_one(conn, "SELECT MAX(run_time) AS v FROM model_runs") or {}).get("v") or "",
+  }
+  conn.close()
+  return {"counts": counts, "latest_dates": latest_dates}
+
+
+def get_ticker_admin_status(ticker: str):
+  ticker = _safe_ticker(ticker)
+  conn = get_conn()
+  file_rows = conn.execute(
+    """
+    SELECT file_type, MAX(uploaded_at) AS latest_upload
+    FROM uploaded_files
+    WHERE ticker = ? AND file_status = 'imported'
+    GROUP BY file_type
+    """,
+    (ticker,),
+  ).fetchall()
+  imported_types = {str(r["file_type"] or "") for r in file_rows}
+  latest_import = ""
+  for r in file_rows:
+    v = str(r["latest_upload"] or "")
+    if v > latest_import:
+      latest_import = v
+  latest_run = _query_one(conn, "SELECT run_time, status FROM model_runs WHERE ticker = ? ORDER BY run_time DESC LIMIT 1", (ticker,))
+  sig = _query_one(conn, "SELECT updated_at, latest_month, signal FROM latest_signals WHERE ticker = ? LIMIT 1", (ticker,))
+  conn.close()
+  return {
+    "ticker": ticker,
+    "missing_file_types": sorted(list(REQUIRED_FILE_TYPES - imported_types)),
+    "uploaded_file_types": sorted(list(imported_types)),
+    "is_uploaded_complete": REQUIRED_FILE_TYPES.issubset(imported_types),
+    "is_imported": bool(imported_types),
+    "is_trained": bool(latest_run and latest_run.get("status") == "success"),
+    "has_latest_signal": bool(sig),
+    "latest_import_time": latest_import,
+    "latest_train_time": (latest_run or {}).get("run_time") or "",
+    "latest_train_status": (latest_run or {}).get("status") or "",
+    "latest_signal_time": (sig or {}).get("updated_at") or "",
+    "latest_signal_month": (sig or {}).get("latest_month") or "",
+    "latest_signal": (sig or {}).get("signal") or "",
+  }
+
+
+def list_upload_history(limit: int = 100, ticker: str = ""):
+  conn = get_conn()
+  if ticker:
+    rows = conn.execute(
+      """
+      SELECT id, ticker, file_name, file_type, upload_source, file_status, uploaded_at, imported_at, notes
+      FROM uploaded_files
+      WHERE ticker = ?
+      ORDER BY uploaded_at DESC, id DESC
+      LIMIT ?
+      """,
+      (_safe_ticker(ticker), max(1, int(limit))),
+    ).fetchall()
+  else:
+    rows = conn.execute(
+      """
+      SELECT id, ticker, file_name, file_type, upload_source, file_status, uploaded_at, imported_at, notes
+      FROM uploaded_files
+      ORDER BY uploaded_at DESC, id DESC
+      LIMIT ?
+      """,
+      (max(1, int(limit)),),
+    ).fetchall()
+  conn.close()
+  return [dict(r) for r in rows]
+
+
+def get_stock_form_rows(form_name: str, limit: int = 500):
+  key = str(form_name or "").strip().lower()
+  conn = get_conn()
+  table_map = {
+    "ticker_profiles": ("SELECT * FROM ticker_profiles ORDER BY ticker ASC LIMIT ?", (max(1, int(limit)),)),
+    "stock_prices": ("SELECT * FROM stock_prices ORDER BY trade_date DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
+    "stock_valuations": ("SELECT * FROM stock_valuations ORDER BY valuation_date DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
+    "stock_financials": ("SELECT * FROM stock_financials ORDER BY report_date DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
+    "uploaded_files": ("SELECT * FROM uploaded_files ORDER BY uploaded_at DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
+    "model_runs": ("SELECT * FROM model_runs ORDER BY run_time DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
+    "prediction_results": ("SELECT * FROM prediction_results ORDER BY prediction_month DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
+    "feature_importance": ("SELECT * FROM feature_importance ORDER BY created_at DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
+    "latest_signals": ("SELECT * FROM latest_signals ORDER BY updated_at DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
+  }
+  if key not in table_map:
+    conn.close()
+    return []
+  sql, params = table_map[key]
+  rows = conn.execute(sql, params).fetchall()
+  conn.close()
+  return [dict(r) for r in rows]

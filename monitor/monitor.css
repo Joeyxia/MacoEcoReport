@@ -764,3 +764,40 @@ body[data-page="login"] .site-footer-note {
   z-index: 3;
   padding: 0 12px;
 }
+
+.stock-admin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.input-text {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #12242d;
+  padding: 10px 12px;
+  min-width: 180px;
+  font: inherit;
+}
+
+#csv-files {
+  display: none;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+@media (max-width: 640px) {
+  .stock-admin-row .btn,
+  .stock-admin-row .input-text {
+    width: 100%;
+  }
+}

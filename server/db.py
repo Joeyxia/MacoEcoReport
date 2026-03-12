@@ -223,6 +223,142 @@ def init_db():
       FOREIGN KEY(fetch_run_id) REFERENCES openrouter_fetch_runs(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_openrouter_top_prompts_run ON openrouter_top_prompts(fetch_run_id, rank_num);
+
+    CREATE TABLE IF NOT EXISTS ticker_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker TEXT NOT NULL UNIQUE,
+      company_name TEXT,
+      exchange TEXT,
+      sector TEXT,
+      industry TEXT,
+      currency TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS stock_prices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker TEXT NOT NULL,
+      trade_date TEXT NOT NULL,
+      open REAL,
+      high REAL,
+      low REAL,
+      close REAL,
+      adj_close REAL,
+      volume REAL,
+      source_file TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_prices_unique ON stock_prices(ticker, trade_date);
+    CREATE INDEX IF NOT EXISTS idx_stock_prices_ticker_date ON stock_prices(ticker, trade_date DESC);
+
+    CREATE TABLE IF NOT EXISTS stock_valuations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker TEXT NOT NULL,
+      valuation_date TEXT NOT NULL,
+      metric_name TEXT NOT NULL,
+      metric_value REAL,
+      source_file TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_valuations_unique ON stock_valuations(ticker, valuation_date, metric_name);
+    CREATE INDEX IF NOT EXISTS idx_stock_valuations_ticker_date ON stock_valuations(ticker, valuation_date DESC);
+
+    CREATE TABLE IF NOT EXISTS stock_financials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker TEXT NOT NULL,
+      report_date TEXT NOT NULL,
+      statement_type TEXT NOT NULL,
+      metric_name TEXT NOT NULL,
+      metric_value REAL,
+      source_file TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_financials_unique ON stock_financials(ticker, report_date, statement_type, metric_name);
+    CREATE INDEX IF NOT EXISTS idx_stock_financials_ticker_date ON stock_financials(ticker, report_date DESC);
+
+    CREATE TABLE IF NOT EXISTS uploaded_files (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      file_type TEXT NOT NULL,
+      upload_source TEXT,
+      file_status TEXT NOT NULL,
+      uploaded_at TEXT NOT NULL,
+      imported_at TEXT,
+      notes TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_uploaded_files_ticker_time ON uploaded_files(ticker, uploaded_at DESC);
+
+    CREATE TABLE IF NOT EXISTS model_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker TEXT NOT NULL,
+      run_time TEXT NOT NULL,
+      model_version TEXT,
+      train_start TEXT,
+      train_end TEXT,
+      sample_count INTEGER DEFAULT 0,
+      feature_count INTEGER DEFAULT 0,
+      status TEXT NOT NULL,
+      notes TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_model_runs_ticker_time ON model_runs(ticker, run_time DESC);
+
+    CREATE TABLE IF NOT EXISTS prediction_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker TEXT NOT NULL,
+      prediction_month TEXT NOT NULL,
+      predicted_return REAL,
+      up_probability REAL,
+      down_probability REAL,
+      signal TEXT,
+      actual_return REAL,
+      strategy_return REAL,
+      cumulative_strategy REAL,
+      cumulative_buy_hold REAL,
+      run_id INTEGER,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_prediction_results_ticker_month ON prediction_results(ticker, prediction_month DESC);
+    CREATE INDEX IF NOT EXISTS idx_prediction_results_run_id ON prediction_results(run_id);
+
+    CREATE TABLE IF NOT EXISTS feature_importance (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker TEXT NOT NULL,
+      run_id INTEGER,
+      prediction_month TEXT,
+      feature_name TEXT NOT NULL,
+      importance REAL,
+      rank_num INTEGER,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_feature_importance_ticker_run ON feature_importance(ticker, run_id, rank_num);
+
+    CREATE TABLE IF NOT EXISTS latest_signals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker TEXT NOT NULL UNIQUE,
+      latest_month TEXT,
+      predicted_return REAL,
+      up_probability REAL,
+      down_probability REAL,
+      signal TEXT,
+      direction_accuracy REAL,
+      precision_score REAL,
+      recall_score REAL,
+      f1_score REAL,
+      mae REAL,
+      rmse REAL,
+      strategy_cagr REAL,
+      buy_hold_cagr REAL,
+      max_drawdown REAL,
+      sharpe_ratio REAL,
+      run_id INTEGER,
+      updated_at TEXT NOT NULL
+    );
     """
   )
   for ddl in [

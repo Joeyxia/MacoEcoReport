@@ -930,3 +930,41 @@ body[data-page="ai-assistant"] .ai-answer {
   line-height: 1.4;
   padding: 0.9rem 0.9rem 4.2em;
 }
+
+.stock-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.stock-controls select {
+  min-width: 140px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.score-value-sm {
+  font-size: clamp(1.8rem, 3.6vw, 2.4rem);
+}
+
+#stock-chart-pred,
+#stock-chart-cum,
+#stock-chart-feat {
+  width: 100%;
+  min-height: 320px;
+  max-height: 420px;
+}
+
+@media (max-width: 920px) {
+  #stock-chart-pred,
+  #stock-chart-cum,
+  #stock-chart-feat {
+    min-height: 260px;
+    max-height: 320px;
+  }
+}

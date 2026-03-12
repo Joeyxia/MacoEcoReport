@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="macro-api-base" content="https://api.nexo.hk" />
+    <title>Macro Risk Monitor | Stock Prediction</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=20260312s1" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="stock.js?v=20260312s1" defer></script>
+  </head>
+  <body data-page="stock-prediction">
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="index.html">Macro Risk Monitor</a>
+      <nav>
+        <a class="nav-link" href="dashboard.html">Dashboard</a>
+        <a class="nav-link" href="daily-report.html">Daily Report</a>
+        <a class="nav-link" href="indicators.html">Indicators</a>
+        <a class="nav-link" href="glossary.html">Glossary</a>
+        <a class="nav-link" href="subscribe.html">Subscribe</a>
+        <a class="nav-link active" href="stock-prediction.html">Stock Prediction</a>
+      </nav>
+      <button id="stock-lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
+    </header>
+
+    <main class="page">
+      <section class="panel hero compact">
+        <div>
+          <p class="eyebrow" id="stock-eyebrow">Quant Signal Engine</p>
+          <h1 id="stock-page-title">Stock Prediction Dashboard</h1>
+          <p class="subtle" id="stock-page-desc">Database-driven prediction, backtest, and feature interpretation.</p>
+          <div class="stock-controls">
+            <label for="stock-ticker" id="stock-ticker-label">Ticker</label>
+            <select id="stock-ticker"></select>
+            <button class="btn ghost" id="stock-refresh">Refresh</button>
+          </div>
+          <p class="subtle" id="stock-updated-at">--</p>
+        </div>
+        <div class="score-card small">
+          <p class="score-label" id="stock-latest-signal-label">Latest Signal</p>
+          <div class="score-value" id="stock-latest-signal">--</div>
+          <p class="score-meta"><span id="stock-latest-month">--</span></p>
+        </div>
+      </section>
+
+      <section class="grid three-col">
+        <article class="panel"><p class="score-label" id="kpi_pred_label">Predicted Return</p><div class="score-value score-value-sm" id="kpi-pred">--</div></article>
+        <article class="panel"><p class="score-label" id="kpi_up_label">Up Probability</p><div class="score-value score-value-sm" id="kpi-up">--</div></article>
+        <article class="panel"><p class="score-label" id="kpi_acc_label">Direction Accuracy</p><div class="score-value score-value-sm" id="kpi-acc">--</div></article>
+      </section>
+
+      <section class="grid three-col">
+        <article class="panel"><p class="score-label" id="kpi_scagr_label">Strategy CAGR</p><div class="score-value score-value-sm" id="kpi-scagr">--</div></article>
+        <article class="panel"><p class="score-label" id="kpi_bcagr_label">Buy & Hold CAGR</p><div class="score-value score-value-sm" id="kpi-bcagr">--</div></article>
+        <article class="panel"><p class="score-label" id="kpi_sharpe_label">Sharpe Ratio</p><div class="score-value score-value-sm" id="kpi-sharpe">--</div></article>
+      </section>
+
+      <section class="grid two-col">
+        <article class="panel">
+          <h2 id="chart_pred_title">Predicted vs Actual Returns</h2>
+          <canvas id="stock-chart-pred"></canvas>
+        </article>
+        <article class="panel">
+          <h2 id="chart_cum_title">Strategy vs Buy & Hold</h2>
+          <canvas id="stock-chart-cum"></canvas>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2 id="chart_feat_title">Top Features</h2>
+        <canvas id="stock-chart-feat"></canvas>
+      </section>
+
+      <section class="panel">
+        <h2 id="history_title">Latest 12 Predictions</h2>
+        <div id="stock-history-table" class="table-wrap"></div>
+      </section>
+    </main>
+  </body>
+</html>
