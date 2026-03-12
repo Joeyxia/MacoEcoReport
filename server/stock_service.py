@@ -37,6 +37,7 @@ RF_MIN_SAMPLES_LEAF = max(1, int(os.environ.get("STOCK_RF_MIN_SAMPLES_LEAF", "2"
 RF_REFIT_EVERY = max(1, int(os.environ.get("STOCK_RF_REFIT_EVERY", "3")))
 YAHOO_TIMEOUT_MS = max(10_000, int(os.environ.get("YAHOO_TIMEOUT_MS", "120000")))
 YAHOO_HEADLESS = str(os.environ.get("YAHOO_HEADLESS", "true")).strip().lower() in {"1", "true", "yes", "on"}
+YAHOO_ALLOW_GUEST_FALLBACK = str(os.environ.get("YAHOO_ALLOW_GUEST_FALLBACK", "true")).strip().lower() in {"1", "true", "yes", "on"}
 YAHOO_STORAGE_DIR = Path(os.environ.get("YAHOO_STORAGE_DIR", str(ROOT / "data" / "yahoo_storage")))
 YAHOO_START_DATE = str(os.environ.get("YAHOO_HISTORY_START_DATE", "2000-01-01")).strip() or "2000-01-01"
 
@@ -571,7 +572,13 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
         accept_downloads=True,
       )
       page = context.new_page()
-      _ensure_yahoo_login(page)
+      login_status = "logged_in"
+      try:
+        _ensure_yahoo_login(page)
+      except Exception as e:
+        if not YAHOO_ALLOW_GUEST_FALLBACK:
+          raise
+        login_status = f"guest_fallback:{str(e)[:80]}"
       _download_historical_csv(page, context, ticker, start_date, files[FILE_TYPE_PRICE])
       _download_statement_table_csv(
         page,
@@ -604,6 +611,7 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
       context.close()
     result = import_csv_paths(ticker=ticker, csv_paths=[str(p) for p in files.values()], auto_refresh=bool(auto_refresh))
     result["source"] = "yahoo_playwright"
+    result["loginStatus"] = login_status
     result["downloadedFiles"] = [{"file": p.name} for p in files.values()]
     result["startDate"] = start_date
     return result
