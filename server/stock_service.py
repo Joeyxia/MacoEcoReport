@@ -23,6 +23,10 @@ except Exception:
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = Path(os.environ.get("STOCK_OUTPUT_DIR", str(ROOT / "outputs")))
 MODEL_VERSION = "rf-walkforward-v1"
+RF_ESTIMATORS = max(20, int(os.environ.get("STOCK_RF_ESTIMATORS", "60")))
+RF_MAX_DEPTH = max(3, int(os.environ.get("STOCK_RF_MAX_DEPTH", "5")))
+RF_MIN_SAMPLES_LEAF = max(1, int(os.environ.get("STOCK_RF_MIN_SAMPLES_LEAF", "2")))
+RF_REFIT_EVERY = max(1, int(os.environ.get("STOCK_RF_REFIT_EVERY", "3")))
 
 FILE_TYPE_PRICE = "price"
 FILE_TYPE_VALUATION = "valuation"
@@ -574,31 +578,36 @@ def _rf_walkforward(features):
   predictions = []
   last_importances = None
 
+  reg = None
+  clf = None
   for i in range(min_train, n):
     x_train = X[:i]
     y_train_ret = y_ret[:i]
     y_train_cls = y_cls[:i]
 
-    reg = RandomForestRegressor(
-      n_estimators=200,
-      max_depth=6,
-      min_samples_leaf=2,
-      random_state=42,
-      n_jobs=-1,
-    )
-    reg.fit(x_train, y_train_ret)
+    should_refit = (reg is None) or ((i - min_train) % RF_REFIT_EVERY == 0)
+    if should_refit:
+      reg = RandomForestRegressor(
+        n_estimators=RF_ESTIMATORS,
+        max_depth=RF_MAX_DEPTH,
+        min_samples_leaf=RF_MIN_SAMPLES_LEAF,
+        random_state=42,
+        n_jobs=1,
+      )
+      reg.fit(x_train, y_train_ret)
     pred = float(reg.predict(X[i:i + 1])[0])
 
     if len(set(y_train_cls.tolist())) >= 2:
-      clf = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=6,
-        min_samples_leaf=2,
-        random_state=42,
-        n_jobs=-1,
-        class_weight="balanced_subsample",
-      )
-      clf.fit(x_train, y_train_cls)
+      if should_refit or clf is None:
+        clf = RandomForestClassifier(
+          n_estimators=RF_ESTIMATORS,
+          max_depth=RF_MAX_DEPTH,
+          min_samples_leaf=RF_MIN_SAMPLES_LEAF,
+          random_state=42,
+          n_jobs=1,
+          class_weight="balanced_subsample",
+        )
+        clf.fit(x_train, y_train_cls)
       probs = clf.predict_proba(X[i:i + 1])[0]
       up_prob = float(probs[1]) if len(probs) > 1 else float(probs[0])
     else:
