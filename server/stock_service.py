@@ -576,13 +576,21 @@ def _camel_to_title(k: str):
   return s[:1].upper() + s[1:] if s else s
 
 
-def _yahoo_json_get(url: str):
+def _yahoo_json_get(url: str, context=None):
+  if context is not None:
+    r = context.request.get(url, timeout=YAHOO_TIMEOUT_MS)
+    if not r.ok:
+      raise RuntimeError(f"yahoo_json_http_{r.status}")
+    try:
+      return r.json()
+    except Exception:
+      return json.loads((r.text() or "{}"))
   req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
   with urllib.request.urlopen(req, timeout=max(20, int(YAHOO_TIMEOUT_MS / 1000))) as resp:
     return json.loads(resp.read().decode("utf-8", errors="ignore"))
 
 
-def _fallback_quarterly_statement_csv(ticker: str, statement_type: str, out_path: Path):
+def _fallback_quarterly_statement_csv(ticker: str, statement_type: str, out_path: Path, context=None):
   module_map = {
     FILE_TYPE_FINANCIALS: "incomeStatementHistoryQuarterly",
     FILE_TYPE_CASH_FLOW: "cashflowStatementHistoryQuarterly",
@@ -592,7 +600,7 @@ def _fallback_quarterly_statement_csv(ticker: str, statement_type: str, out_path
   if not mod:
     return False
   url = f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{urllib.parse.quote(ticker)}?modules={mod}"
-  payload = _yahoo_json_get(url)
+  payload = _yahoo_json_get(url, context=context)
   result = (((payload or {}).get("quoteSummary") or {}).get("result") or [None])[0] or {}
   block = result.get(mod) or {}
   raw_list = (
@@ -630,7 +638,7 @@ def _fallback_quarterly_statement_csv(ticker: str, statement_type: str, out_path
   return out_path.exists() and out_path.stat().st_size > 64
 
 
-def _fallback_monthly_valuation_csv(ticker: str, start_date: str, out_path: Path):
+def _fallback_monthly_valuation_csv(ticker: str, start_date: str, out_path: Path, context=None):
   start_dt = datetime.strptime(_safe_ymd(start_date, YAHOO_START_DATE), "%Y-%m-%d")
   period1 = int(start_dt.timestamp())
   period2 = int(datetime.utcnow().timestamp())
@@ -638,7 +646,7 @@ def _fallback_monthly_valuation_csv(ticker: str, start_date: str, out_path: Path
     f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(ticker)}"
     f"?period1={period1}&period2={period2}&interval=1mo&events=history&includeAdjustedClose=true"
   )
-  chart = _yahoo_json_get(chart_url)
+  chart = _yahoo_json_get(chart_url, context=context)
   result = (((chart or {}).get("chart") or {}).get("result") or [None])[0] or {}
   ts = result.get("timestamp") or []
   quote = (((result.get("indicators") or {}).get("quote") or [None])[0] or {})
@@ -646,7 +654,7 @@ def _fallback_monthly_valuation_csv(ticker: str, start_date: str, out_path: Path
   if not ts:
     return False
   modules = "defaultKeyStatistics,financialData,summaryDetail,price"
-  qsum = _yahoo_json_get(f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{urllib.parse.quote(ticker)}?modules={modules}")
+  qsum = _yahoo_json_get(f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{urllib.parse.quote(ticker)}?modules={modules}", context=context)
   qres = (((qsum or {}).get("quoteSummary") or {}).get("result") or [None])[0] or {}
   dks = qres.get("defaultKeyStatistics") or {}
   fdata = qres.get("financialData") or {}
@@ -703,7 +711,7 @@ def _fallback_monthly_valuation_csv(ticker: str, start_date: str, out_path: Path
   return out_path.exists() and out_path.stat().st_size > 64
 
 
-def _download_statement_table_csv(page, url: str, out_path: Path, quarterly: bool = False, heading_hint: str = "", ticker: str = "", statement_type: str = "", start_date: str = "2000-01-01"):
+def _download_statement_table_csv(page, url: str, out_path: Path, quarterly: bool = False, heading_hint: str = "", ticker: str = "", statement_type: str = "", start_date: str = "2000-01-01", context=None):
   page.goto(url, wait_until="domcontentloaded", timeout=YAHOO_TIMEOUT_MS)
   _accept_cookies(page)
   if quarterly:
@@ -729,9 +737,9 @@ def _download_statement_table_csv(page, url: str, out_path: Path, quarterly: boo
     return
   ok = False
   if statement_type == FILE_TYPE_VALUATION:
-    ok = _fallback_monthly_valuation_csv(ticker, start_date, out_path)
+    ok = _fallback_monthly_valuation_csv(ticker, start_date, out_path, context=context)
   elif statement_type in {FILE_TYPE_FINANCIALS, FILE_TYPE_CASH_FLOW, FILE_TYPE_BALANCE_SHEET}:
-    ok = _fallback_quarterly_statement_csv(ticker, statement_type, out_path)
+    ok = _fallback_quarterly_statement_csv(ticker, statement_type, out_path, context=context)
   if not ok:
     raise RuntimeError("yahoo_table_empty")
 
@@ -776,6 +784,7 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
         ticker=ticker,
         statement_type=FILE_TYPE_VALUATION,
         start_date=start_date,
+        context=context,
       )
       _download_statement_table_csv(
         page,
@@ -786,6 +795,7 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
         ticker=ticker,
         statement_type=FILE_TYPE_FINANCIALS,
         start_date=start_date,
+        context=context,
       )
       _download_statement_table_csv(
         page,
@@ -796,6 +806,7 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
         ticker=ticker,
         statement_type=FILE_TYPE_CASH_FLOW,
         start_date=start_date,
+        context=context,
       )
       _download_statement_table_csv(
         page,
@@ -806,6 +817,7 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
         ticker=ticker,
         statement_type=FILE_TYPE_BALANCE_SHEET,
         start_date=start_date,
+        context=context,
       )
       context.close()
     result = import_csv_paths(ticker=ticker, csv_paths=[str(p) for p in files.values()], auto_refresh=bool(auto_refresh))
