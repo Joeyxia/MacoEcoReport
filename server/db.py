@@ -1166,9 +1166,10 @@ def get_page_visit_daily(days: int = 30):
   conn = get_conn()
   rows = conn.execute(
     """
-    SELECT substr(visited_at,1,10) AS day, COUNT(*) AS visits
+    SELECT strftime('%Y-%m-%d', datetime(replace(replace(visited_at, 'T', ' '), 'Z', ''), '+8 hours')) AS day,
+           COUNT(*) AS visits
     FROM monitor_page_events
-    WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
+    WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', ''), '+8 hours') >= datetime('now', '+8 hours', ?)
     GROUP BY day
     ORDER BY day ASC
     """,
@@ -1182,10 +1183,10 @@ def get_page_visit_minute(minutes: int = 180):
   conn = get_conn()
   rows = conn.execute(
     """
-    SELECT strftime('%Y-%m-%d %H:%M', datetime(replace(replace(visited_at, 'T', ' '), 'Z', ''))) AS minute,
+    SELECT strftime('%Y-%m-%d %H:%M', datetime(replace(replace(visited_at, 'T', ' '), 'Z', ''), '+8 hours')) AS minute,
            COUNT(*) AS visits
     FROM monitor_page_events
-    WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
+    WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', ''), '+8 hours') >= datetime('now', '+8 hours', ?)
     GROUP BY minute
     ORDER BY minute ASC
     """,
@@ -1213,7 +1214,7 @@ def get_page_visit_by_path(days: int = 30, limit: int = 50):
       """
       SELECT path, COUNT(*) AS visits
       FROM monitor_page_events
-      WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
+      WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', ''), '+8 hours') >= datetime('now', '+8 hours', ?)
       GROUP BY path
       ORDER BY visits DESC
       LIMIT ?
@@ -1228,12 +1229,12 @@ def get_token_usage_daily(days: int = 30):
   conn = get_conn()
   rows = conn.execute(
     """
-    SELECT substr(logged_at,1,10) AS day,
+    SELECT strftime('%Y-%m-%d', datetime(replace(replace(logged_at, 'T', ' '), 'Z', ''), '+8 hours')) AS day,
            SUM(input_tokens) AS input_tokens,
            SUM(output_tokens) AS output_tokens,
            SUM(total_tokens) AS total_tokens
     FROM monitor_token_usage
-    WHERE datetime(replace(replace(logged_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
+    WHERE datetime(replace(replace(logged_at, 'T', ' '), 'Z', ''), '+8 hours') >= datetime('now', '+8 hours', ?)
     GROUP BY day
     ORDER BY day ASC
     """,
@@ -1247,12 +1248,12 @@ def get_token_usage_minute(minutes: int = 180):
   conn = get_conn()
   rows = conn.execute(
     """
-    SELECT strftime('%Y-%m-%d %H:%M', datetime(replace(replace(logged_at, 'T', ' '), 'Z', ''))) AS minute,
+    SELECT strftime('%Y-%m-%d %H:%M', datetime(replace(replace(logged_at, 'T', ' '), 'Z', ''), '+8 hours')) AS minute,
            SUM(input_tokens) AS input_tokens,
            SUM(output_tokens) AS output_tokens,
            SUM(total_tokens) AS total_tokens
     FROM monitor_token_usage
-    WHERE datetime(replace(replace(logged_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
+    WHERE datetime(replace(replace(logged_at, 'T', ' '), 'Z', ''), '+8 hours') >= datetime('now', '+8 hours', ?)
     GROUP BY minute
     ORDER BY minute ASC
     """,
