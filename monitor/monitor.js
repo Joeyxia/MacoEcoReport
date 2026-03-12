@@ -52,6 +52,7 @@ const monitorI18n = {
     human_pass: '验证通过，可以登录。',
     human_fail: '答案错误，请重试。',
     ops_page_visits: '页面访问量',
+    ops_since_launch: '上线累计',
     ops_input_tokens: '输入 Token',
     ops_output_tokens: '输出 Token',
     ops_total_tokens: '总 Token',
@@ -120,6 +121,7 @@ const monitorI18n = {
     human_pass: 'Verification passed. You can sign in now.',
     human_fail: 'Wrong answer, please try again.',
     ops_page_visits: 'Page Visits',
+    ops_since_launch: 'Since Launch',
     ops_input_tokens: 'Input Tokens',
     ops_output_tokens: 'Output Tokens',
     ops_total_tokens: 'Total Tokens',
@@ -548,7 +550,7 @@ async function initOps(){
   q('kpi-input').textContent = data.totals.inputTokens;
   q('kpi-output').textContent = data.totals.outputTokens;
   q('kpi-total').textContent = data.totals.totalTokens;
-  if(q('ops-window-label')) q('ops-window-label').textContent = `${data.minutes || OPS_WINDOW_MINUTES}m`;
+  if(q('ops-window-label')) q('ops-window-label').textContent = mt('ops_since_launch');
   q('top-pages').innerHTML = tableFromRows(data.visitsByPath || []);
 
   const vctx = q('visits-chart');

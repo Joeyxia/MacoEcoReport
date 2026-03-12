@@ -31,6 +31,7 @@ try:
     get_page_visit_daily,
     get_page_visit_minute,
     get_page_visit_by_path,
+    get_monitor_totals_all_time,
     get_token_usage_daily,
     get_token_usage_minute,
     get_daily_report_ai_insight,
@@ -79,6 +80,7 @@ except ImportError:
     get_page_visit_daily,
     get_page_visit_minute,
     get_page_visit_by_path,
+    get_monitor_totals_all_time,
     get_token_usage_daily,
     get_token_usage_minute,
     get_daily_report_ai_insight,
@@ -1006,15 +1008,10 @@ def monitor_ops_overview():
   minutes = max(5, min(minutes, 24 * 60))
   visits_daily = get_page_visit_daily(days=max(1, min(days, 365)))
   visits_minute = get_page_visit_minute(minutes=minutes)
-  visits_by_path = get_page_visit_by_path(days=max(1, min(days, 365)), limit=30)
+  visits_by_path = get_page_visit_by_path(days=0, limit=30)
   tokens_daily = get_token_usage_daily(days=max(1, min(days, 365)))
   tokens_minute = get_token_usage_minute(minutes=minutes)
-  totals = {
-    "pageVisits": sum(int(x.get("visits") or 0) for x in visits_minute),
-    "inputTokens": sum(int(x.get("input_tokens") or 0) for x in tokens_minute),
-    "outputTokens": sum(int(x.get("output_tokens") or 0) for x in tokens_minute),
-    "totalTokens": sum(int(x.get("total_tokens") or 0) for x in tokens_minute),
-  }
+  totals = get_monitor_totals_all_time()
   return _etag_response(
     {
       "days": days,

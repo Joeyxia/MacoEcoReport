@@ -1197,17 +1197,29 @@ def get_page_visit_minute(minutes: int = 180):
 
 def get_page_visit_by_path(days: int = 30, limit: int = 50):
   conn = get_conn()
-  rows = conn.execute(
-    """
-    SELECT path, COUNT(*) AS visits
-    FROM monitor_page_events
-    WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
-    GROUP BY path
-    ORDER BY visits DESC
-    LIMIT ?
-    """,
-    (f"-{max(1,int(days))} day", max(1, int(limit))),
-  ).fetchall()
+  if int(days or 0) <= 0:
+    rows = conn.execute(
+      """
+      SELECT path, COUNT(*) AS visits
+      FROM monitor_page_events
+      GROUP BY path
+      ORDER BY visits DESC
+      LIMIT ?
+      """,
+      (max(1, int(limit)),),
+    ).fetchall()
+  else:
+    rows = conn.execute(
+      """
+      SELECT path, COUNT(*) AS visits
+      FROM monitor_page_events
+      WHERE datetime(replace(replace(visited_at, 'T', ' '), 'Z', '')) >= datetime('now', ?)
+      GROUP BY path
+      ORDER BY visits DESC
+      LIMIT ?
+      """,
+      (f"-{max(1,int(days))} day", max(1, int(limit))),
+    ).fetchall()
   conn.close()
   return [dict(r) for r in rows]
 
@@ -1248,3 +1260,32 @@ def get_token_usage_minute(minutes: int = 180):
   ).fetchall()
   conn.close()
   return [dict(r) for r in rows]
+
+
+def get_monitor_totals_all_time():
+  conn = get_conn()
+  page_row = conn.execute(
+    """
+    SELECT COUNT(*) AS page_visits, MIN(visited_at) AS first_page_visit
+    FROM monitor_page_events
+    """
+  ).fetchone()
+  token_row = conn.execute(
+    """
+    SELECT
+      COALESCE(SUM(input_tokens), 0) AS input_tokens,
+      COALESCE(SUM(output_tokens), 0) AS output_tokens,
+      COALESCE(SUM(total_tokens), 0) AS total_tokens,
+      MIN(logged_at) AS first_token_log
+    FROM monitor_token_usage
+    """
+  ).fetchone()
+  conn.close()
+  return {
+    "pageVisits": int((page_row["page_visits"] if page_row else 0) or 0),
+    "inputTokens": int((token_row["input_tokens"] if token_row else 0) or 0),
+    "outputTokens": int((token_row["output_tokens"] if token_row else 0) or 0),
+    "totalTokens": int((token_row["total_tokens"] if token_row else 0) or 0),
+    "firstPageVisit": str((page_row["first_page_visit"] if page_row else "") or ""),
+    "firstTokenLog": str((token_row["first_token_log"] if token_row else "") or ""),
+  }
