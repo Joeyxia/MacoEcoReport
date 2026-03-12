@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="styles.css?v=20260312s3" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="stock.js?v=20260312s3" defer></script>
+    <script src="stock.js?v=20260312s4" defer></script>
   </head>
   <body data-page="stock-prediction">
     <div class="bg-layer"></div>
@@ -69,10 +69,12 @@
         <article class="panel">
           <h2 id="chart_pred_title">Predicted vs Actual Returns</h2>
           <canvas id="stock-chart-pred"></canvas>
+          <p class="score-desc" id="chart_pred_desc">--</p>
         </article>
         <article class="panel">
           <h2 id="chart_cum_title">Strategy vs Buy & Hold</h2>
           <canvas id="stock-chart-cum"></canvas>
+          <p class="score-desc" id="chart_cum_desc">--</p>
         </article>
       </section>
 

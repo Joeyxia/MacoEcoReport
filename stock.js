@@ -21,7 +21,9 @@ const stockI18n = {
     bcagr: "Buy & Hold CAGR",
     sharpe: "Sharpe Ratio",
     predChart: "Predicted vs Actual Returns",
+    predChartDesc: "Investor Guide: compare the model forecast (Predicted) with realized return (Actual). If Predicted and Actual move in similar direction for consecutive months, model timing is more reliable; persistent divergence means signal confidence should be reduced.",
     cumChart: "Strategy vs Buy & Hold",
+    cumChartDesc: "Investor Guide: this chart shows cumulative performance paths. If Strategy stays above Buy & Hold over time, active signal trading is creating excess return; if it stays below, passive holding may be the better baseline.",
     featChart: "Top Features",
     history: "Latest 12 Predictions",
     noData: "No data available",
@@ -52,7 +54,9 @@ const stockI18n = {
     bcagr: "买入持有 CAGR",
     sharpe: "夏普比率",
     predChart: "预测收益率 vs 实际收益率",
+    predChartDesc: "投资者解读：这张图对比“模型预测”和“实际结果”。若两条线长期同向，说明模型择时稳定；若长期背离，说明信号可靠性下降，需要降低仓位。",
     cumChart: "策略累计收益 vs 买入持有",
+    cumChartDesc: "投资者解读：这张图对比两种路径的累计收益。若策略线长期高于买入持有，说明主动信号在创造超额收益；若长期低于，则被动持有可能更优。",
     featChart: "关键驱动因子",
     history: "最近 12 期预测",
     noData: "暂无可用数据",
@@ -137,7 +141,9 @@ function applyStockI18n(){
   setText("kpi_bcagr_label", st("bcagr"));
   setText("kpi_sharpe_label", st("sharpe"));
   setText("chart_pred_title", st("predChart"));
+  setText("chart_pred_desc", st("predChartDesc"));
   setText("chart_cum_title", st("cumChart"));
+  setText("chart_cum_desc", st("cumChartDesc"));
   setText("chart_feat_title", st("featChart"));
   setText("history_title", st("history"));
   const btn = document.getElementById("stock-lang-toggle");
