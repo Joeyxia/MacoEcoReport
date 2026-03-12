@@ -973,6 +973,13 @@ body[data-page="ai-assistant"] .ai-answer {
   font-size: clamp(1.8rem, 3.6vw, 2.4rem);
 }
 
+.score-desc {
+  margin-top: 8px;
+  color: var(--subtle);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
 #stock-chart-pred,
 #stock-chart-cum,
 #stock-chart-feat {

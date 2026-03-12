@@ -32,6 +32,10 @@ const stockI18n = {
     strat: "Strategy",
     tickerNotFound: "No data for this ticker in database",
     enterTicker: "Enter ticker and click Refresh",
+    metricNoData: "No metric interpretation available.",
+    signalBullish: "Model bias is positive; trend-following entries can be considered with risk controls.",
+    signalBearish: "Model bias is negative; reduce exposure or wait for confirmation.",
+    signalNeutral: "Model has no clear directional edge; position sizing should stay conservative.",
   },
   zh: {
     eyebrow: "量化信号引擎",
@@ -59,6 +63,10 @@ const stockI18n = {
     strat: "策略收益",
     tickerNotFound: "数据库中暂无此 ticker 数据",
     enterTicker: "输入 ticker 后点击刷新",
+    metricNoData: "暂无可解释的指标数据。",
+    signalBullish: "模型偏多，说明趋势信号较强，可考虑顺势配置并控制回撤风险。",
+    signalBearish: "模型偏空，说明下行风险较高，建议降低仓位或等待确认信号。",
+    signalNeutral: "模型方向性优势不明显，建议以轻仓和风控为主。",
   },
 };
 
@@ -145,6 +153,56 @@ function paintSignal(signal){
   signalEl.classList.remove("stock-signal-bullish", "stock-signal-bearish", "stock-signal-neutral");
   signalEl.classList.add(signalClass(signal || "Neutral"));
   signalEl.textContent = signal || "--";
+  const s = normalizeTicker(signal || "Neutral");
+  if (s === "BULLISH") setText("stock-latest-signal-desc", st("signalBullish"));
+  else if (s === "BEARISH") setText("stock-latest-signal-desc", st("signalBearish"));
+  else setText("stock-latest-signal-desc", st("signalNeutral"));
+}
+
+function explainPredReturn(v){
+  const n = Number(v);
+  if (!Number.isFinite(n)) return st("metricNoData");
+  if (n >= 0.05) return sLang() === "zh" ? "模型预期收益较高，意味着短期上涨空间相对充足，但仍需防范波动回撤。" : "Model expects strong upside; potential return is meaningful, but volatility risk remains.";
+  if (n >= 0) return sLang() === "zh" ? "模型预期为小幅正收益，意味着偏多但优势有限，适合分批和风控交易。" : "Model expects modest gains; bias is positive but edge is limited, favor staged entries and risk control.";
+  return sLang() === "zh" ? "模型预期为负收益，意味着下行压力更大，建议谨慎或降低仓位。" : "Model expects negative return; downside pressure is higher, so caution or smaller exposure is preferred.";
+}
+
+function explainUpProb(v){
+  const n = Number(v);
+  if (!Number.isFinite(n)) return st("metricNoData");
+  if (n >= 0.65) return sLang() === "zh" ? "上涨概率较高，说明模型对上涨方向置信度较强。" : "High probability of upside indicates strong model confidence in upward direction.";
+  if (n >= 0.5) return sLang() === "zh" ? "上涨概率略高于中性，方向偏多但优势不大。" : "Upside probability is only slightly above neutral; bullish bias exists but is not strong.";
+  return sLang() === "zh" ? "上涨概率低于 50%，说明短期偏空风险更高。" : "Upside probability is below 50%, implying higher short-term bearish risk.";
+}
+
+function explainAccuracy(v){
+  const n = Number(v);
+  if (!Number.isFinite(n)) return st("metricNoData");
+  if (n >= 0.6) return sLang() === "zh" ? "历史方向准确率较高，模型在该标的上具有较稳定的判断能力。" : "Historical direction accuracy is strong, suggesting stable signal quality for this ticker.";
+  if (n >= 0.52) return sLang() === "zh" ? "方向准确率略优于随机，模型有一定参考价值但不应单独使用。" : "Accuracy is modestly above random; useful as reference but not as a standalone decision tool.";
+  return sLang() === "zh" ? "方向准确率较低，模型稳定性偏弱，建议结合更多信息。" : "Direction accuracy is weak; combine with additional signals before making decisions.";
+}
+
+function explainStrategyCagr(v){
+  const n = Number(v);
+  if (!Number.isFinite(n)) return st("metricNoData");
+  if (n > 0) return sLang() === "zh" ? "策略 CAGR 为正，说明长期复利表现可观，策略具有可持续性潜力。" : "Positive strategy CAGR implies potentially sustainable long-term compounding performance.";
+  return sLang() === "zh" ? "策略 CAGR 为负，说明策略长期收益不足，需要优化或降低使用权重。" : "Negative strategy CAGR suggests weak long-term performance and potential need for strategy adjustments.";
+}
+
+function explainBuyHoldCagr(v){
+  const n = Number(v);
+  if (!Number.isFinite(n)) return st("metricNoData");
+  if (n > 0) return sLang() === "zh" ? "买入持有 CAGR 为正，标的本身长期趋势偏强，可作为基准对照。" : "Positive buy-and-hold CAGR indicates the underlying has a constructive long-term trend as a benchmark.";
+  return sLang() === "zh" ? "买入持有 CAGR 为负，说明标的长期趋势偏弱，择时和风控更重要。" : "Negative buy-and-hold CAGR indicates weak long-term trend; timing and risk control are more important.";
+}
+
+function explainSharpe(v){
+  const n = Number(v);
+  if (!Number.isFinite(n)) return st("metricNoData");
+  if (n >= 1) return sLang() === "zh" ? "夏普比率较高，说明单位风险对应的收益效率较好。" : "Sharpe ratio is strong, indicating efficient return per unit of risk.";
+  if (n >= 0.5) return sLang() === "zh" ? "夏普比率中等，收益和波动的匹配度一般，需结合回撤管理。" : "Sharpe ratio is moderate; risk-adjusted return is acceptable but requires drawdown control.";
+  return sLang() === "zh" ? "夏普比率偏低，说明风险补偿不足，建议谨慎使用该信号。" : "Sharpe ratio is low, implying limited risk compensation; use the signal cautiously.";
 }
 
 function renderHistory(rows){
@@ -242,6 +300,12 @@ async function loadTickerData(ticker){
     setText("kpi-bcagr", "--");
     setText("kpi-sharpe", "--");
     setText("stock-updated-at", `${st("updated")}: --`);
+    setText("kpi-pred-desc", st("metricNoData"));
+    setText("kpi-up-desc", st("metricNoData"));
+    setText("kpi-acc-desc", st("metricNoData"));
+    setText("kpi-scagr-desc", st("metricNoData"));
+    setText("kpi-bcagr-desc", st("metricNoData"));
+    setText("kpi-sharpe-desc", st("metricNoData"));
     renderHistory([]);
     drawCharts([], []);
     return;
@@ -251,10 +315,20 @@ async function loadTickerData(ticker){
   setText("stock-latest-month", latest.latest_month || "--");
   setText("kpi-pred", fmtPct(latest.predicted_return));
   setText("kpi-up", fmtPct(latest.up_probability));
-  setText("kpi-acc", fmtPct(latest.model_metrics?.direction_accuracy));
-  setText("kpi-scagr", fmtPct(latest.model_metrics?.strategy_cagr));
-  setText("kpi-bcagr", fmtPct(latest.model_metrics?.buy_hold_cagr));
-  setText("kpi-sharpe", fmtNum(latest.model_metrics?.sharpe_ratio, 2));
+  const acc = Number(latest.model_metrics?.direction_accuracy);
+  const scagr = Number(latest.model_metrics?.strategy_cagr);
+  const bcagr = Number(latest.model_metrics?.buy_hold_cagr);
+  const sharpe = Number(latest.model_metrics?.sharpe_ratio);
+  setText("kpi-acc", fmtPct(acc));
+  setText("kpi-scagr", fmtPct(scagr));
+  setText("kpi-bcagr", fmtPct(bcagr));
+  setText("kpi-sharpe", fmtNum(sharpe, 2));
+  setText("kpi-pred-desc", explainPredReturn(Number(latest.predicted_return)));
+  setText("kpi-up-desc", explainUpProb(Number(latest.up_probability)));
+  setText("kpi-acc-desc", explainAccuracy(acc));
+  setText("kpi-scagr-desc", explainStrategyCagr(scagr));
+  setText("kpi-bcagr-desc", explainBuyHoldCagr(bcagr));
+  setText("kpi-sharpe-desc", explainSharpe(sharpe));
   setText("stock-updated-at", `${st("updated")}: ${latest.updated_at || "--"}`);
   const rows = history?.rows || [];
   const feat = features?.rows || latest.top_features || [];
