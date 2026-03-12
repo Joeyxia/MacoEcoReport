@@ -570,7 +570,140 @@ def _write_rows_to_csv(rows, out_path: Path):
       w.writerow(r)
 
 
-def _download_statement_table_csv(page, url: str, out_path: Path, quarterly: bool = False, heading_hint: str = ""):
+def _camel_to_title(k: str):
+  s = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", str(k or ""))
+  s = s.replace("_", " ").strip()
+  return s[:1].upper() + s[1:] if s else s
+
+
+def _yahoo_json_get(url: str):
+  req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+  with urllib.request.urlopen(req, timeout=max(20, int(YAHOO_TIMEOUT_MS / 1000))) as resp:
+    return json.loads(resp.read().decode("utf-8", errors="ignore"))
+
+
+def _fallback_quarterly_statement_csv(ticker: str, statement_type: str, out_path: Path):
+  module_map = {
+    FILE_TYPE_FINANCIALS: "incomeStatementHistoryQuarterly",
+    FILE_TYPE_CASH_FLOW: "cashflowStatementHistoryQuarterly",
+    FILE_TYPE_BALANCE_SHEET: "balanceSheetHistoryQuarterly",
+  }
+  mod = module_map.get(statement_type)
+  if not mod:
+    return False
+  url = f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{urllib.parse.quote(ticker)}?modules={mod}"
+  payload = _yahoo_json_get(url)
+  result = (((payload or {}).get("quoteSummary") or {}).get("result") or [None])[0] or {}
+  block = result.get(mod) or {}
+  raw_list = (
+    block.get("incomeStatementHistory")
+    or block.get("cashflowStatements")
+    or block.get("balanceSheetStatements")
+    or []
+  )
+  if not raw_list:
+    return False
+  date_cols = []
+  metrics = {}
+  for row in raw_list:
+    dt_raw = ((row.get("endDate") or {}).get("raw"))
+    if not dt_raw:
+      continue
+    dt = datetime.utcfromtimestamp(int(dt_raw)).date().isoformat()
+    date_cols.append(dt)
+    for k, v in row.items():
+      if k in {"maxAge", "endDate"}:
+        continue
+      val = v.get("raw") if isinstance(v, dict) else None
+      if val is None:
+        continue
+      name = _camel_to_title(k)
+      metrics.setdefault(name, {})[dt] = val
+  date_cols = sorted(set(date_cols), reverse=True)
+  if not date_cols or not metrics:
+    return False
+  with out_path.open("w", encoding="utf-8", newline="") as f:
+    w = csv.writer(f)
+    w.writerow(["name", *date_cols])
+    for name, m in metrics.items():
+      w.writerow([name] + [m.get(d, "") for d in date_cols])
+  return out_path.exists() and out_path.stat().st_size > 64
+
+
+def _fallback_monthly_valuation_csv(ticker: str, start_date: str, out_path: Path):
+  start_dt = datetime.strptime(_safe_ymd(start_date, YAHOO_START_DATE), "%Y-%m-%d")
+  period1 = int(start_dt.timestamp())
+  period2 = int(datetime.utcnow().timestamp())
+  chart_url = (
+    f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(ticker)}"
+    f"?period1={period1}&period2={period2}&interval=1mo&events=history&includeAdjustedClose=true"
+  )
+  chart = _yahoo_json_get(chart_url)
+  result = (((chart or {}).get("chart") or {}).get("result") or [None])[0] or {}
+  ts = result.get("timestamp") or []
+  quote = (((result.get("indicators") or {}).get("quote") or [None])[0] or {})
+  closes = quote.get("close") or []
+  if not ts:
+    return False
+  modules = "defaultKeyStatistics,financialData,summaryDetail,price"
+  qsum = _yahoo_json_get(f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{urllib.parse.quote(ticker)}?modules={modules}")
+  qres = (((qsum or {}).get("quoteSummary") or {}).get("result") or [None])[0] or {}
+  dks = qres.get("defaultKeyStatistics") or {}
+  fdata = qres.get("financialData") or {}
+  sdet = qres.get("summaryDetail") or {}
+  price = qres.get("price") or {}
+  shares = ((dks.get("sharesOutstanding") or {}).get("raw")) or ((price.get("sharesOutstanding") or {}).get("raw"))
+  cur_mc = ((price.get("marketCap") or {}).get("raw")) or ((dks.get("marketCap") or {}).get("raw"))
+  cur_ev = ((dks.get("enterpriseValue") or {}).get("raw")) or ((fdata.get("enterpriseValue") or {}).get("raw"))
+  pe = ((sdet.get("trailingPE") or {}).get("raw")) or ((dks.get("trailingPE") or {}).get("raw"))
+  ps = ((sdet.get("priceToSalesTrailing12Months") or {}).get("raw"))
+  pb = ((sdet.get("priceToBook") or {}).get("raw")) or ((dks.get("priceToBook") or {}).get("raw"))
+  cur_price = ((price.get("regularMarketPrice") or {}).get("raw")) or None
+  dates = []
+  mc_vals = {}
+  ev_vals = {}
+  pe_vals = {}
+  ps_vals = {}
+  pb_vals = {}
+  for i, tsv in enumerate(ts):
+    c = closes[i] if i < len(closes) else None
+    if c is None:
+      continue
+    d = datetime.utcfromtimestamp(int(tsv)).date().isoformat()
+    dates.append(d)
+    if shares:
+      mc = float(shares) * float(c)
+    elif cur_mc and cur_price and float(cur_price) != 0:
+      mc = float(cur_mc) * (float(c) / float(cur_price))
+    else:
+      mc = None
+    if mc is not None:
+      mc_vals[d] = mc
+    if cur_ev and cur_mc and mc is not None:
+      ev_vals[d] = float(mc) + float(cur_ev) - float(cur_mc)
+    elif cur_ev:
+      ev_vals[d] = float(cur_ev)
+    if pe is not None:
+      pe_vals[d] = float(pe)
+    if ps is not None:
+      ps_vals[d] = float(ps)
+    if pb is not None:
+      pb_vals[d] = float(pb)
+  dates = sorted(set(dates), reverse=True)
+  if not dates:
+    return False
+  with out_path.open("w", encoding="utf-8", newline="") as f:
+    w = csv.writer(f)
+    w.writerow(["name", *dates])
+    w.writerow(["EnterpriseValue"] + [ev_vals.get(d, "") for d in dates])
+    w.writerow(["MarketCap"] + [mc_vals.get(d, "") for d in dates])
+    w.writerow(["Trailing PE"] + [pe_vals.get(d, "") for d in dates])
+    w.writerow(["Price to Sales Ratio"] + [ps_vals.get(d, "") for d in dates])
+    w.writerow(["Price to Book Ratio"] + [pb_vals.get(d, "") for d in dates])
+  return out_path.exists() and out_path.stat().st_size > 64
+
+
+def _download_statement_table_csv(page, url: str, out_path: Path, quarterly: bool = False, heading_hint: str = "", ticker: str = "", statement_type: str = "", start_date: str = "2000-01-01"):
   page.goto(url, wait_until="domcontentloaded", timeout=YAHOO_TIMEOUT_MS)
   _accept_cookies(page)
   if quarterly:
@@ -591,7 +724,16 @@ def _download_statement_table_csv(page, url: str, out_path: Path, quarterly: boo
   except Exception:
     pass
   rows = _extract_best_table_rows(page, heading_hint=heading_hint)
-  _write_rows_to_csv(rows, out_path)
+  if rows:
+    _write_rows_to_csv(rows, out_path)
+    return
+  ok = False
+  if statement_type == FILE_TYPE_VALUATION:
+    ok = _fallback_monthly_valuation_csv(ticker, start_date, out_path)
+  elif statement_type in {FILE_TYPE_FINANCIALS, FILE_TYPE_CASH_FLOW, FILE_TYPE_BALANCE_SHEET}:
+    ok = _fallback_quarterly_statement_csv(ticker, statement_type, out_path)
+  if not ok:
+    raise RuntimeError("yahoo_table_empty")
 
 
 def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_refresh: bool = True):
@@ -631,6 +773,9 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
         files[FILE_TYPE_VALUATION],
         quarterly=False,
         heading_hint="valuation",
+        ticker=ticker,
+        statement_type=FILE_TYPE_VALUATION,
+        start_date=start_date,
       )
       _download_statement_table_csv(
         page,
@@ -638,6 +783,9 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
         files[FILE_TYPE_FINANCIALS],
         quarterly=True,
         heading_hint="breakdown",
+        ticker=ticker,
+        statement_type=FILE_TYPE_FINANCIALS,
+        start_date=start_date,
       )
       _download_statement_table_csv(
         page,
@@ -645,6 +793,9 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
         files[FILE_TYPE_CASH_FLOW],
         quarterly=True,
         heading_hint="breakdown",
+        ticker=ticker,
+        statement_type=FILE_TYPE_CASH_FLOW,
+        start_date=start_date,
       )
       _download_statement_table_csv(
         page,
@@ -652,6 +803,9 @@ def fetch_yahoo_csv_and_train(ticker: str, start_date: str = "2000-01-01", auto_
         files[FILE_TYPE_BALANCE_SHEET],
         quarterly=True,
         heading_hint="breakdown",
+        ticker=ticker,
+        statement_type=FILE_TYPE_BALANCE_SHEET,
+        start_date=start_date,
       )
       context.close()
     result = import_csv_paths(ticker=ticker, csv_paths=[str(p) for p in files.values()], auto_refresh=bool(auto_refresh))
