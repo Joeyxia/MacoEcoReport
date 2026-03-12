@@ -10,7 +10,7 @@ import secrets
 import urllib.parse
 import urllib.request
 import urllib.error
-from threading import Lock
+from threading import Lock, Thread
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
@@ -156,6 +156,20 @@ _cache = {}
 _cache_lock = Lock()
 _openai_queue_lock = Lock()
 _openai_next_allowed_at = 0.0
+_stock_train_lock = Lock()
+
+
+def _start_stock_train_async(ticker: str):
+  t = str(ticker or "").strip().upper()
+  if not t:
+    return
+  def _runner():
+    try:
+      train_and_refresh_ticker(t)
+    except Exception:
+      pass
+  th = Thread(target=_runner, daemon=True, name=f"stock-train-{t}")
+  th.start()
 
 
 @app.errorhandler(413)
@@ -1708,7 +1722,11 @@ def stocks_admin_fetch_yahoo():
   if not ticker:
     return jsonify({"error": "missing_ticker"}), 400
   try:
-    result = fetch_yahoo_csv_and_train(ticker=ticker, start_date=start_date, auto_refresh=auto_refresh)
+    # Avoid request timeout on large tickers: import in-request, train in background.
+    result = fetch_yahoo_csv_and_train(ticker=ticker, start_date=start_date, auto_refresh=False)
+    if auto_refresh:
+      _start_stock_train_async(ticker)
+      result["modelRun"] = {"ok": True, "status": "queued_async"}
     _invalidate_cache("stocks:")
     return jsonify({"ok": True, "mode": "fetch_yahoo_auto", **result})
   except ValueError as e:
