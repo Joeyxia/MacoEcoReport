@@ -7,6 +7,7 @@ import os
 import re
 import tempfile
 import urllib.parse
+import urllib.request
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -450,15 +451,59 @@ def _download_historical_csv(page, context, ticker: str, start_date: str, out_pa
   hist_url = f"https://finance.yahoo.com/quote/{ticker}/history?p={ticker}"
   page.goto(hist_url, wait_until="domcontentloaded", timeout=YAHOO_TIMEOUT_MS)
   _accept_cookies(page)
-  crumb = _extract_crumb(page)
-  url = (
-    f"https://query1.finance.yahoo.com/v7/finance/download/{urllib.parse.quote(ticker)}"
-    f"?period1={period1}&period2={period2}&interval=1d&events=history&includeAdjustedClose=true&crumb={urllib.parse.quote(crumb)}"
+  try:
+    crumb = _extract_crumb(page)
+    url = (
+      f"https://query1.finance.yahoo.com/v7/finance/download/{urllib.parse.quote(ticker)}"
+      f"?period1={period1}&period2={period2}&interval=1d&events=history&includeAdjustedClose=true&crumb={urllib.parse.quote(crumb)}"
+    )
+    r = context.request.get(url, timeout=YAHOO_TIMEOUT_MS)
+    if not r.ok:
+      raise RuntimeError(f"yahoo_historical_download_failed_{r.status}")
+    out_path.write_bytes(r.body())
+    if out_path.stat().st_size < 64:
+      raise RuntimeError("yahoo_historical_csv_too_small")
+    return
+  except Exception:
+    pass
+
+  chart_url = (
+    f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(ticker)}"
+    f"?period1={period1}&period2={period2}&interval=1d&events=history&includeAdjustedClose=true"
   )
-  r = context.request.get(url, timeout=YAHOO_TIMEOUT_MS)
-  if not r.ok:
-    raise RuntimeError(f"yahoo_historical_download_failed_{r.status}")
-  out_path.write_bytes(r.body())
+  req = urllib.request.Request(chart_url, headers={"User-Agent": "Mozilla/5.0"})
+  with urllib.request.urlopen(req, timeout=max(20, int(YAHOO_TIMEOUT_MS / 1000))) as resp:
+    payload = json.loads(resp.read().decode("utf-8", errors="ignore"))
+  result = (((payload or {}).get("chart") or {}).get("result") or [None])[0] or {}
+  ts = result.get("timestamp") or []
+  quote = (((result.get("indicators") or {}).get("quote") or [None])[0] or {})
+  adj = (((result.get("indicators") or {}).get("adjclose") or [None])[0] or {}).get("adjclose") or []
+  opens = quote.get("open") or []
+  highs = quote.get("high") or []
+  lows = quote.get("low") or []
+  closes = quote.get("close") or []
+  vols = quote.get("volume") or []
+  if not ts:
+    raise RuntimeError("yahoo_chart_no_data")
+  with out_path.open("w", encoding="utf-8", newline="") as f:
+    w = csv.writer(f)
+    w.writerow(["Date", "Open", "High", "Low", "Close", "Adj Close", "Volume"])
+    for i, tsv in enumerate(ts):
+      try:
+        d = datetime.utcfromtimestamp(int(tsv)).date().isoformat()
+      except Exception:
+        continue
+      w.writerow(
+        [
+          d,
+          opens[i] if i < len(opens) else "",
+          highs[i] if i < len(highs) else "",
+          lows[i] if i < len(lows) else "",
+          closes[i] if i < len(closes) else "",
+          adj[i] if i < len(adj) else (closes[i] if i < len(closes) else ""),
+          vols[i] if i < len(vols) else "",
+        ]
+      )
   if out_path.stat().st_size < 64:
     raise RuntimeError("yahoo_historical_csv_too_small")
 
