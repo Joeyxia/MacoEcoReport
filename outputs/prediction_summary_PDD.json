@@ -1,7 +1,7 @@
 {
   "ticker": "PDD",
-  "run_id": 2,
-  "generated_at": "2026-03-12T04:18:23Z",
+  "run_id": 3,
+  "generated_at": "2026-03-12T05:24:32Z",
   "latest_month": "2026-02-01",
   "metrics": {
     "direction_accuracy": 0.5,

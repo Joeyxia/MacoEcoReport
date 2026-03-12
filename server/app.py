@@ -61,6 +61,8 @@ try:
     get_ticker_admin_status as get_stock_ticker_admin_status,
     list_upload_history as list_stock_upload_history,
     get_stock_form_rows,
+    list_model_runs as list_stock_model_runs,
+    inspect_csv_uploads,
   )
 except ImportError:
   from db import (
@@ -107,6 +109,8 @@ except ImportError:
     get_ticker_admin_status as get_stock_ticker_admin_status,
     list_upload_history as list_stock_upload_history,
     get_stock_form_rows,
+    list_model_runs as list_stock_model_runs,
+    inspect_csv_uploads,
   )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1621,16 +1625,64 @@ def stocks_admin_upload_csv():
   ticker = str(request.form.get("ticker") or request.args.get("ticker") or "").strip().upper()
   auto_refresh = str(request.form.get("autoRefresh") or request.args.get("autoRefresh") or "").strip().lower() in {"1", "true", "yes", "on"}
   files = request.files.getlist("files")
+  mode = str(request.form.get("mode") or request.args.get("mode") or "").strip().lower()
   if not ticker:
     return jsonify({"error": "missing_ticker"}), 400
   if not files:
     return jsonify({"error": "missing_files"}), 400
   try:
+    if mode == "inspect":
+      rows = inspect_csv_uploads(files)
+      return jsonify({"ok": True, "ticker": ticker, "mode": "inspect", "recognized": rows, "count": len(rows)})
     result = import_csv_uploads(ticker=ticker, uploaded_files=files, auto_refresh=auto_refresh)
     _invalidate_cache("stocks:")
     return jsonify({"ok": True, **result})
   except Exception as e:
     return jsonify({"ok": False, "error": "upload_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/stocks/admin/import-csv", methods=["POST", "OPTIONS"])
+@app.route("/monitor-api/stocks/admin/import-csv", methods=["POST", "OPTIONS"])
+def stocks_admin_import_csv():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  _, err = _stocks_admin_guard()
+  if err:
+    return err
+  ticker = str(request.form.get("ticker") or request.args.get("ticker") or "").strip().upper()
+  files = request.files.getlist("files")
+  if not ticker:
+    return jsonify({"error": "missing_ticker"}), 400
+  if not files:
+    return jsonify({"error": "missing_files"}), 400
+  try:
+    result = import_csv_uploads(ticker=ticker, uploaded_files=files, auto_refresh=False)
+    _invalidate_cache("stocks:")
+    return jsonify({"ok": True, "mode": "import_only", **result})
+  except Exception as e:
+    return jsonify({"ok": False, "error": "import_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/stocks/admin/import-and-refresh", methods=["POST", "OPTIONS"])
+@app.route("/monitor-api/stocks/admin/import-and-refresh", methods=["POST", "OPTIONS"])
+def stocks_admin_import_and_refresh():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  _, err = _stocks_admin_guard()
+  if err:
+    return err
+  ticker = str(request.form.get("ticker") or request.args.get("ticker") or "").strip().upper()
+  files = request.files.getlist("files")
+  if not ticker:
+    return jsonify({"error": "missing_ticker"}), 400
+  if not files:
+    return jsonify({"error": "missing_files"}), 400
+  try:
+    result = import_csv_uploads(ticker=ticker, uploaded_files=files, auto_refresh=True)
+    _invalidate_cache("stocks:")
+    return jsonify({"ok": True, "mode": "import_and_refresh", **result})
+  except Exception as e:
+    return jsonify({"ok": False, "error": "import_and_refresh_failed", "detail": str(e)[:240]}), 500
 
 
 @app.route("/api/stocks/admin/refresh/<ticker>", methods=["POST", "OPTIONS"])
@@ -1674,6 +1726,18 @@ def stocks_admin_upload_history():
   ticker = str(request.args.get("ticker") or "").strip().upper()
   limit = int(request.args.get("limit") or 120)
   rows = list_stock_upload_history(limit=limit, ticker=ticker)
+  return jsonify({"ok": True, "rows": rows, "count": len(rows)})
+
+
+@app.route("/api/stocks/admin/train-history", methods=["GET"])
+@app.route("/monitor-api/stocks/admin/train-history", methods=["GET"])
+def stocks_admin_train_history():
+  _, err = _stocks_admin_guard()
+  if err:
+    return err
+  ticker = str(request.args.get("ticker") or "").strip().upper()
+  limit = int(request.args.get("limit") or 80)
+  rows = list_stock_model_runs(limit=limit, ticker=ticker)
   return jsonify({"ok": True, "rows": rows, "count": len(rows)})
 
 

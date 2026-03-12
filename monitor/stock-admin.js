@@ -12,6 +12,8 @@ const admI18n = {
     dbStatus: "数据库状态",
     tickerStatus: "Ticker 状态",
     uploadHistory: "上传与导入历史",
+    trainHistory: "训练历史",
+    recTitle: "文件识别结果",
     loading: "加载中...",
     noData: "暂无数据",
   },
@@ -26,6 +28,8 @@ const admI18n = {
     dbStatus: "Database Status",
     tickerStatus: "Ticker Status",
     uploadHistory: "Upload/Import History",
+    trainHistory: "Training History",
+    recTitle: "File Recognition",
     loading: "Loading...",
     noData: "No data",
   },
@@ -85,6 +89,8 @@ function applyI18n(){
   setText("data-status-title", t("dbStatus"));
   setText("ticker-status-title", t("tickerStatus"));
   setText("upload-history-title", t("uploadHistory"));
+  setText("train-history-title", t("trainHistory"));
+  setText("file-rec-title", t("recTitle"));
   const btn = el("lang-toggle");
   if (btn) btn.textContent = lang() === "zh" ? "EN" : "中文";
 }
@@ -138,12 +144,73 @@ function renderUploadHistory(rows){
   `;
 }
 
+function renderTrainHistory(rows){
+  const root = el("train-history-table");
+  if (!root) return;
+  if (!rows?.length){
+    root.innerHTML = `<p class="subtle">${t("noData")}</p>`;
+    return;
+  }
+  root.innerHTML = `
+    <table>
+      <thead><tr><th>ID</th><th>Ticker</th><th>Run Time</th><th>Version</th><th>Status</th><th>Samples</th><th>Features</th><th>Notes</th></tr></thead>
+      <tbody>
+        ${rows.map((r) => `
+          <tr>
+            <td>${r.id || ""}</td>
+            <td>${r.ticker || ""}</td>
+            <td>${r.run_time || ""}</td>
+            <td>${r.model_version || ""}</td>
+            <td>${r.status || ""}</td>
+            <td>${r.sample_count || ""}</td>
+            <td>${r.feature_count || ""}</td>
+            <td>${r.notes || ""}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderRecognition(rows){
+  const root = el("file-rec-table");
+  if (!root) return;
+  if (!rows?.length){
+    root.innerHTML = `<p class="subtle">${t("noData")}</p>`;
+    return;
+  }
+  root.innerHTML = `
+    <table>
+      <thead><tr><th>File</th><th>Type</th><th>Rows</th><th>Columns</th><th>OK</th></tr></thead>
+      <tbody>
+        ${rows.map((r) => `
+          <tr>
+            <td>${r.file || ""}</td>
+            <td>${r.type || ""}</td>
+            <td>${r.rowCount || 0}</td>
+            <td>${(r.columns || []).length}</td>
+            <td>${r.ok ? "Yes" : "No"}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function setProgress(pct){
+  const p = Math.max(0, Math.min(100, Number(pct || 0)));
+  const bar = el("upload-progress-bar");
+  if (bar) bar.style.width = `${p}%`;
+  setText("upload-progress-text", `${Math.round(p)}%`);
+}
+
 async function refreshPanels(){
   const ticker = (el("ticker-input")?.value || "PDD").trim().toUpperCase();
-  const [status, tStatus, history] = await Promise.all([
+  const [status, tStatus, history, runs] = await Promise.all([
     api.get("/monitor-api/stocks/admin/data-status"),
     api.get(`/monitor-api/stocks/admin/tickers/${encodeURIComponent(ticker)}/status`),
     api.get(`/monitor-api/stocks/admin/upload-history?limit=60&ticker=${encodeURIComponent(ticker)}`),
+    api.get(`/monitor-api/stocks/admin/train-history?limit=60&ticker=${encodeURIComponent(ticker)}`),
   ]);
   renderKV("db-status-grid", {
     ...(status?.counts || {}),
@@ -151,6 +218,25 @@ async function refreshPanels(){
   });
   renderKV("ticker-status-grid", tStatus || {});
   renderUploadHistory(history?.rows || []);
+  renderTrainHistory(runs?.rows || []);
+}
+
+function uploadWithProgress(path, formData){
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", path, true);
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = (evt) => {
+      if (evt.lengthComputable) setProgress((evt.loaded / evt.total) * 100.0);
+    };
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState !== 4) return;
+      let data = null;
+      try { data = JSON.parse(xhr.responseText || "{}"); } catch (_) {}
+      resolve({ ok: xhr.status >= 200 && xhr.status < 300, data, status: xhr.status });
+    };
+    xhr.send(formData);
+  });
 }
 
 async function doUpload(){
@@ -168,8 +254,10 @@ async function doUpload(){
   fd.append("ticker", ticker);
   fd.append("autoRefresh", String(!!el("auto-refresh")?.checked));
   for (const f of files) fd.append("files", f);
+  setProgress(0);
   setText("upload-status", t("loading"));
-  const res = await api.postForm("/monitor-api/stocks/admin/upload-csv", fd);
+  const res = await uploadWithProgress("/monitor-api/stocks/admin/import-and-refresh", fd);
+  setProgress(100);
   if (!res.ok){
     setText("upload-status", `failed: ${res.data?.error || res.status}`);
     return;
@@ -194,6 +282,21 @@ async function doTrain(){
   await refreshPanels();
 }
 
+async function inspectFiles(){
+  const ticker = (el("ticker-input")?.value || "").trim().toUpperCase();
+  const files = el("csv-files")?.files;
+  if (!ticker || !files?.length){
+    renderRecognition([]);
+    return;
+  }
+  const fd = new FormData();
+  fd.append("ticker", ticker);
+  fd.append("mode", "inspect");
+  for (const f of files) fd.append("files", f);
+  const res = await api.postForm("/monitor-api/stocks/admin/upload-csv", fd);
+  renderRecognition(res?.data?.recognized || []);
+}
+
 function bindEvents(){
   el("upload-btn")?.addEventListener("click", doUpload);
   el("train-btn")?.addEventListener("click", doTrain);
@@ -206,6 +309,7 @@ function bindEvents(){
     applyI18n();
     ensureFooter();
   });
+  el("csv-files")?.addEventListener("change", inspectFiles);
 }
 
 async function init(){

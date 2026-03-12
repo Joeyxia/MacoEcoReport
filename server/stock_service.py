@@ -311,6 +311,38 @@ def import_csv_uploads(ticker: str, uploaded_files, auto_refresh: bool = False):
   }
 
 
+def inspect_csv_uploads(uploaded_files):
+  out = []
+  for f in (uploaded_files or []):
+    file_name = str(getattr(f, "filename", "") or "").strip()
+    if not file_name:
+      continue
+    try:
+      headers, rows = _parse_csv_stream(f)
+      file_type = detect_file_type(file_name, headers)
+      out.append(
+        {
+          "file": file_name,
+          "type": file_type,
+          "rowCount": len(rows),
+          "columns": headers,
+          "ok": file_type in REQUIRED_FILE_TYPES,
+        }
+      )
+    except Exception as e:
+      out.append(
+        {
+          "file": file_name,
+          "type": "unknown",
+          "rowCount": 0,
+          "columns": [],
+          "ok": False,
+          "error": str(e)[:180],
+        }
+      )
+  return out
+
+
 class _PathUpload:
   def __init__(self, path: Path):
     self.path = Path(path)
@@ -1119,6 +1151,33 @@ def list_upload_history(limit: int = 100, ticker: str = ""):
       SELECT id, ticker, file_name, file_type, upload_source, file_status, uploaded_at, imported_at, notes
       FROM uploaded_files
       ORDER BY uploaded_at DESC, id DESC
+      LIMIT ?
+      """,
+      (max(1, int(limit)),),
+    ).fetchall()
+  conn.close()
+  return [dict(r) for r in rows]
+
+
+def list_model_runs(limit: int = 100, ticker: str = ""):
+  conn = get_conn()
+  if ticker:
+    rows = conn.execute(
+      """
+      SELECT id, ticker, run_time, model_version, train_start, train_end, sample_count, feature_count, status, notes
+      FROM model_runs
+      WHERE ticker = ?
+      ORDER BY run_time DESC, id DESC
+      LIMIT ?
+      """,
+      (_safe_ticker(ticker), max(1, int(limit))),
+    ).fetchall()
+  else:
+    rows = conn.execute(
+      """
+      SELECT id, ticker, run_time, model_version, train_start, train_end, sample_count, feature_count, status, notes
+      FROM model_runs
+      ORDER BY run_time DESC, id DESC
       LIMIT ?
       """,
       (max(1, int(limit)),),

@@ -39,7 +39,16 @@
           <button id="upload-btn" class="btn">上传并导入</button>
           <button id="train-btn" class="btn ghost">仅训练模型</button>
         </div>
+        <div class="stock-admin-progress-wrap">
+          <div id="upload-progress-bar" class="stock-admin-progress-bar"></div>
+        </div>
+        <p class="subtle" id="upload-progress-text">0%</p>
         <p class="subtle" id="upload-status">--</p>
+      </section>
+
+      <section class="panel">
+        <h3 id="file-rec-title">文件识别结果</h3>
+        <div id="file-rec-table" class="table-wrap"></div>
       </section>
 
       <section class="grid two">
@@ -56,6 +65,11 @@
       <section class="panel">
         <h3 id="upload-history-title">上传与导入历史</h3>
         <div id="upload-history-table" class="table-wrap"></div>
+      </section>
+
+      <section class="panel">
+        <h3 id="train-history-title">训练历史</h3>
+        <div id="train-history-table" class="table-wrap"></div>
       </section>
     </main>
   </body>
