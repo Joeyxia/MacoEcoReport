@@ -66,6 +66,22 @@ try:
     inspect_csv_uploads,
     fetch_yahoo_csv_and_train,
   )
+  from .polymarket_service import (
+    ensure_demo_data as polymarket_ensure_demo_data,
+    account_connect as polymarket_account_connect,
+    derive_credentials as polymarket_derive_credentials,
+    get_account_status as polymarket_get_account_status,
+    set_auto_trading as polymarket_set_auto_trading,
+    emergency_cancel_all as polymarket_emergency_cancel_all,
+    scan_opportunities as polymarket_scan_opportunities,
+    get_opportunities as polymarket_get_opportunities,
+    get_opportunity_detail as polymarket_get_opportunity_detail,
+    toggle_strategy as polymarket_toggle_strategy,
+    risk_overview as polymarket_risk_overview,
+    evaluate_and_execute as polymarket_evaluate_and_execute,
+    list_executions as polymarket_list_executions,
+    replay_summary as polymarket_replay_summary,
+  )
 except ImportError:
   from db import (
     add_subscriber,
@@ -115,6 +131,22 @@ except ImportError:
     list_model_runs as list_stock_model_runs,
     inspect_csv_uploads,
     fetch_yahoo_csv_and_train,
+  )
+  from polymarket_service import (
+    ensure_demo_data as polymarket_ensure_demo_data,
+    account_connect as polymarket_account_connect,
+    derive_credentials as polymarket_derive_credentials,
+    get_account_status as polymarket_get_account_status,
+    set_auto_trading as polymarket_set_auto_trading,
+    emergency_cancel_all as polymarket_emergency_cancel_all,
+    scan_opportunities as polymarket_scan_opportunities,
+    get_opportunities as polymarket_get_opportunities,
+    get_opportunity_detail as polymarket_get_opportunity_detail,
+    toggle_strategy as polymarket_toggle_strategy,
+    risk_overview as polymarket_risk_overview,
+    evaluate_and_execute as polymarket_evaluate_and_execute,
+    list_executions as polymarket_list_executions,
+    replay_summary as polymarket_replay_summary,
   )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1789,6 +1821,150 @@ def stocks_admin_train_history():
   limit = int(request.args.get("limit") or 80)
   rows = list_stock_model_runs(limit=limit, ticker=ticker)
   return jsonify({"ok": True, "rows": rows, "count": len(rows)})
+
+
+@app.route("/api/v1/system/seed-demo", methods=["POST", "GET"])
+def polymarket_seed_demo():
+  try:
+    result = polymarket_ensure_demo_data()
+    return jsonify({"ok": True, **result})
+  except Exception as e:
+    return jsonify({"ok": False, "error": "seed_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/v1/accounts/polymarket/connect", methods=["POST"])
+def polymarket_accounts_connect():
+  payload = request.get_json(silent=True) or {}
+  user_id = str(payload.get("user_id") or "default-user").strip()
+  account_type = str(payload.get("account_type") or "wallet").strip()
+  signer_address = str(payload.get("signer_address") or "").strip()
+  funder_address = str(payload.get("funder_address") or "").strip()
+  signature_type = str(payload.get("signature_type") or "eoa").strip()
+  if not signer_address:
+    return jsonify({"ok": False, "error": "missing_signer_address"}), 400
+  if not funder_address:
+    funder_address = signer_address
+  try:
+    out = polymarket_account_connect(user_id, account_type, signer_address, funder_address, signature_type)
+    return jsonify(out), (200 if out.get("ok") else 400)
+  except Exception as e:
+    return jsonify({"ok": False, "error": "connect_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/v1/accounts/polymarket/derive-credentials", methods=["POST"])
+def polymarket_accounts_derive_credentials():
+  payload = request.get_json(silent=True) or {}
+  account_id = str(payload.get("account_id") or "").strip()
+  if not account_id:
+    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  out = polymarket_derive_credentials(account_id)
+  return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/accounts/polymarket/status", methods=["GET"])
+def polymarket_accounts_status():
+  account_id = str(request.args.get("account_id") or "").strip()
+  if not account_id:
+    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  out = polymarket_get_account_status(account_id)
+  return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/accounts/polymarket/enable-auto-trading", methods=["POST"])
+def polymarket_enable_auto_trading():
+  payload = request.get_json(silent=True) or {}
+  account_id = str(payload.get("account_id") or "").strip()
+  if not account_id:
+    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  out = polymarket_set_auto_trading(account_id, enabled=True)
+  return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/accounts/polymarket/disable-auto-trading", methods=["POST"])
+def polymarket_disable_auto_trading():
+  payload = request.get_json(silent=True) or {}
+  account_id = str(payload.get("account_id") or "").strip()
+  if not account_id:
+    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  out = polymarket_set_auto_trading(account_id, enabled=False)
+  return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/accounts/polymarket/emergency-cancel-all", methods=["POST"])
+def polymarket_emergency_cancel():
+  payload = request.get_json(silent=True) or {}
+  account_id = str(payload.get("account_id") or "").strip()
+  if not account_id:
+    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  out = polymarket_emergency_cancel_all(account_id)
+  return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/opportunities/scan", methods=["POST", "GET"])
+def polymarket_opportunities_scan():
+  limit = int(request.args.get("limit") or 50)
+  try:
+    items = polymarket_scan_opportunities(limit=limit)
+    return jsonify({"ok": True, "items": items, "count": len(items)})
+  except Exception as e:
+    return jsonify({"ok": False, "error": "scan_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/v1/opportunities", methods=["GET"])
+def polymarket_opportunities():
+  limit = int(request.args.get("limit") or 50)
+  status = str(request.args.get("status") or "open").strip()
+  items = polymarket_get_opportunities(limit=limit, status=status)
+  return jsonify({"ok": True, "items": items, "pagination": {"limit": limit, "count": len(items)}})
+
+
+@app.route("/api/v1/opportunities/<opportunity_id>", methods=["GET"])
+def polymarket_opportunity_detail(opportunity_id):
+  out = polymarket_get_opportunity_detail(opportunity_id)
+  if not out:
+    return jsonify({"ok": False, "error": "not_found"}), 404
+  return jsonify({"ok": True, **out})
+
+
+@app.route("/api/v1/opportunities/<opportunity_id>/execute", methods=["POST"])
+def polymarket_opportunity_execute(opportunity_id):
+  payload = request.get_json(silent=True) or {}
+  account_id = str(payload.get("account_id") or "").strip()
+  actor = str(payload.get("actor") or "operator").strip()
+  if not account_id:
+    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  out = polymarket_evaluate_and_execute(account_id, opportunity_id, actor=actor)
+  return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/strategies/<strategy_id>/toggle", methods=["POST"])
+def polymarket_toggle_strategy_api(strategy_id):
+  payload = request.get_json(silent=True) or {}
+  enabled = bool(payload.get("enabled", True))
+  out = polymarket_toggle_strategy(strategy_id, enabled=enabled)
+  return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/risk/overview", methods=["GET"])
+def polymarket_risk_overview_api():
+  account_id = str(request.args.get("account_id") or "").strip()
+  out = polymarket_risk_overview(account_id=account_id or None)
+  return jsonify({"ok": True, **out})
+
+
+@app.route("/api/v1/executions", methods=["GET"])
+def polymarket_executions_api():
+  account_id = str(request.args.get("account_id") or "").strip()
+  limit = int(request.args.get("limit") or 80)
+  rows = polymarket_list_executions(account_id=account_id, limit=limit)
+  return jsonify({"ok": True, "items": rows, "count": len(rows)})
+
+
+@app.route("/api/v1/replay/summary", methods=["GET"])
+def polymarket_replay_summary_api():
+  days = int(request.args.get("days") or 7)
+  out = polymarket_replay_summary(days=days)
+  return jsonify({"ok": True, **out})
 
 
 @app.route("/api/migrate", methods=["POST", "OPTIONS"])

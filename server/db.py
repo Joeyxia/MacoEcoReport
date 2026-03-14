@@ -359,6 +359,213 @@ def init_db():
       run_id INTEGER,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS markets (
+      id TEXT PRIMARY KEY,
+      event_id TEXT,
+      title TEXT NOT NULL,
+      category TEXT,
+      resolution_source TEXT,
+      end_time TEXT,
+      enable_order_book INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_markets_status ON markets(status, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS outcomes (
+      id TEXT PRIMARY KEY,
+      market_id TEXT NOT NULL,
+      label TEXT NOT NULL,
+      token_id TEXT NOT NULL UNIQUE,
+      side TEXT,
+      settlement_rule TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(market_id) REFERENCES markets(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_outcomes_market ON outcomes(market_id);
+
+    CREATE TABLE IF NOT EXISTS orderbook_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts TEXT NOT NULL,
+      asset_id TEXT NOT NULL,
+      best_bid REAL,
+      best_ask REAL,
+      bid_levels_json TEXT,
+      ask_levels_json TEXT,
+      depth_1 REAL,
+      depth_5 REAL
+    );
+    CREATE INDEX IF NOT EXISTS idx_orderbook_asset_ts ON orderbook_snapshots(asset_id, ts DESC);
+
+    CREATE TABLE IF NOT EXISTS trade_ticks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts TEXT NOT NULL,
+      asset_id TEXT NOT NULL,
+      price REAL,
+      size REAL,
+      side TEXT,
+      aggressor TEXT,
+      tx_hash TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_trade_ticks_asset_ts ON trade_ticks(asset_id, ts DESC);
+
+    CREATE TABLE IF NOT EXISTS relation_graph (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      left_outcome_id TEXT NOT NULL,
+      right_outcome_id TEXT NOT NULL,
+      relation_type TEXT NOT NULL,
+      confidence REAL,
+      source_rule TEXT,
+      verified INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_relation_graph_outcomes ON relation_graph(left_outcome_id, right_outcome_id);
+
+    CREATE TABLE IF NOT EXISTS arbitrage_opportunities (
+      id TEXT PRIMARY KEY,
+      strategy_type TEXT NOT NULL,
+      discovered_at TEXT NOT NULL,
+      theory_profit REAL,
+      vwap_profit REAL,
+      confidence REAL,
+      legs_json TEXT NOT NULL,
+      status TEXT NOT NULL,
+      market_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_arb_opp_status_time ON arbitrage_opportunities(status, discovered_at DESC);
+
+    CREATE TABLE IF NOT EXISTS trading_accounts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      account_type TEXT,
+      signer_address TEXT,
+      funder_address TEXT,
+      signature_type TEXT,
+      status TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_trading_accounts_user ON trading_accounts(user_id, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS polymarket_api_credentials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL UNIQUE,
+      api_key_enc TEXT NOT NULL,
+      secret_enc TEXT NOT NULL,
+      passphrase_enc TEXT NOT NULL,
+      key_version TEXT,
+      status TEXT NOT NULL,
+      last_verified_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(account_id) REFERENCES trading_accounts(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS account_balances (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL,
+      asset_symbol TEXT NOT NULL,
+      available_balance REAL DEFAULT 0,
+      locked_balance REAL DEFAULT 0,
+      snapshot_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_account_balances_account_ts ON account_balances(account_id, snapshot_at DESC);
+
+    CREATE TABLE IF NOT EXISTS account_positions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL,
+      market_id TEXT,
+      token_id TEXT,
+      qty REAL DEFAULT 0,
+      avg_cost REAL,
+      mark_price REAL,
+      unrealized_pnl REAL,
+      updated_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_account_positions_account ON account_positions(account_id, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS risk_limits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL UNIQUE,
+      max_daily_notional REAL DEFAULT 0,
+      max_market_exposure REAL DEFAULT 0,
+      max_slippage_bps REAL DEFAULT 100,
+      max_open_orders INTEGER DEFAULT 10,
+      auto_trading INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS executions (
+      id TEXT PRIMARY KEY,
+      arb_id TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      expected_profit REAL,
+      realized_profit REAL,
+      latency_ms INTEGER,
+      abort_reason TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_executions_account_time ON executions(account_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS execution_legs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      execution_id TEXT NOT NULL,
+      leg_index INTEGER,
+      market_id TEXT,
+      token_id TEXT,
+      side TEXT,
+      qty REAL,
+      limit_price REAL,
+      fill_qty REAL,
+      avg_fill_price REAL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(execution_id) REFERENCES executions(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_execution_legs_execution ON execution_legs(execution_id, leg_index);
+
+    CREATE TABLE IF NOT EXISTS authorization_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      result TEXT NOT NULL,
+      metadata_json TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_authorization_logs_account ON authorization_logs(account_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      actor TEXT,
+      object_type TEXT NOT NULL,
+      object_id TEXT,
+      action TEXT NOT NULL,
+      result TEXT NOT NULL,
+      metadata_json TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_time ON audit_logs(created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS strategy_configs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      strategy_id TEXT NOT NULL UNIQUE,
+      enabled INTEGER DEFAULT 0,
+      params_json TEXT,
+      updated_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
     """
   )
   for ddl in [

@@ -108,6 +108,32 @@ python3 scripts/import_openai_usage.py --days 2
 python3 scripts/stock_seed_from_downloads.py --ticker PDD --dir /Users/joe.xia/Downloads --auto-refresh
 ```
 
+14. Polymarket quant trading MVP (new):
+- PRD-aligned backend modules added:
+  - Market feed storage (markets/outcomes/orderbook/trades)
+  - Arbitrage scanning + VWAP/slippage simulation
+  - Account connect + credential derive (non-custodial mock flow)
+  - Auto-trading gate + risk limits + emergency cancel
+  - Execution simulation + audit logs + replay summary
+- New demo UI page:
+  - `polymarket.html`
+- New APIs (`/api/v1/*`):
+  - `POST /api/v1/accounts/polymarket/connect`
+  - `POST /api/v1/accounts/polymarket/derive-credentials`
+  - `GET /api/v1/accounts/polymarket/status?account_id=...`
+  - `POST /api/v1/accounts/polymarket/enable-auto-trading`
+  - `POST /api/v1/accounts/polymarket/disable-auto-trading`
+  - `POST /api/v1/accounts/polymarket/emergency-cancel-all`
+  - `POST|GET /api/v1/opportunities/scan`
+  - `GET /api/v1/opportunities`
+  - `GET /api/v1/opportunities/{id}`
+  - `POST /api/v1/opportunities/{id}/execute`
+  - `POST /api/v1/strategies/{id}/toggle`
+  - `GET /api/v1/risk/overview`
+  - `GET /api/v1/executions`
+  - `GET /api/v1/replay/summary`
+  - `POST|GET /api/v1/system/seed-demo`
+
 ## Pages
 
 - `index.html`: dashboard

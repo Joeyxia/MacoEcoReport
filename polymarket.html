@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polymarket 量化交易系统 · MVP</title>
+  <link rel="stylesheet" href="/styles.css?v=poly1" />
+  <style>
+    .pm-wrap { max-width: 1080px; margin: 0 auto; padding: 18px 16px 80px; }
+    .pm-grid { display: grid; gap: 12px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .pm-card { grid-column: span 12; background: #fff; border: 1px solid rgba(10,40,40,.12); border-radius: 14px; padding: 14px; }
+    .pm-card.half { grid-column: span 6; }
+    .pm-title { font-size: 22px; font-weight: 700; margin: 0 0 8px; color:#102a33; }
+    .pm-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 8px 0; }
+    .pm-input { border:1px solid rgba(10,40,40,.25); border-radius: 10px; padding:10px 12px; min-width: 240px; font-size: 14px; }
+    .pm-btn { border:1px solid #0b8170; background:#0b8170; color:#fff; border-radius: 10px; padding:10px 14px; font-weight: 600; cursor:pointer; }
+    .pm-btn.ghost { background:#fff; color:#0b8170; }
+    .pm-table { width:100%; border-collapse: collapse; font-size: 13px; }
+    .pm-table th, .pm-table td { border-bottom:1px solid rgba(10,40,40,.12); padding:8px; text-align:left; vertical-align: top; }
+    .pm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; color:#425a62; }
+    .pm-pill { display:inline-block; border-radius:999px; padding:3px 10px; background:#e8f7f4; color:#0b8170; font-weight:700; font-size:12px; }
+    @media (max-width: 900px){ .pm-card.half { grid-column: span 12; } .pm-input { min-width: 100%; } }
+  </style>
+</head>
+<body>
+  <main class="pm-wrap">
+    <h1 class="pm-title">Polymarket 量化交易系统（MVP）</h1>
+    <p style="color:#4c636b;margin-top:0;">已实现：市场/盘口接入、套利扫描、VWAP仿真、账户接入、自动交易开关、风险总览、模拟执行与审计留痕。</p>
+
+    <section class="pm-grid">
+      <div class="pm-card half">
+        <h2 class="pm-title" style="font-size:18px;">账户接入</h2>
+        <div class="pm-row">
+          <input id="signer" class="pm-input" placeholder="signer address (0x...)" />
+          <input id="funder" class="pm-input" placeholder="funder address (可留空)" />
+        </div>
+        <div class="pm-row">
+          <button class="pm-btn" id="btnConnect">连接账户</button>
+          <button class="pm-btn ghost" id="btnDerive">派生凭证</button>
+          <button class="pm-btn ghost" id="btnEnable">开启自动交易</button>
+          <button class="pm-btn ghost" id="btnDisable">关闭自动交易</button>
+        </div>
+        <div id="accountStatus" class="pm-mono"></div>
+      </div>
+
+      <div class="pm-card half">
+        <h2 class="pm-title" style="font-size:18px;">风控与执行</h2>
+        <div class="pm-row">
+          <button class="pm-btn" id="btnRisk">查看风险总览</button>
+          <button class="pm-btn ghost" id="btnCancelAll">紧急撤单</button>
+          <button class="pm-btn ghost" id="btnReplay">执行复盘摘要</button>
+        </div>
+        <div id="riskOut" class="pm-mono"></div>
+      </div>
+
+      <div class="pm-card">
+        <h2 class="pm-title" style="font-size:18px;">套利机会扫描</h2>
+        <div class="pm-row">
+          <button class="pm-btn" id="btnSeed">初始化 Demo 市场</button>
+          <button class="pm-btn" id="btnScan">扫描机会</button>
+        </div>
+        <table class="pm-table" id="oppTable">
+          <thead>
+            <tr>
+              <th>ID</th><th>Market</th><th>Type</th><th>Theory</th><th>VWAP</th><th>Conf</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script>
+    let accountId = "";
+
+    async function jfetch(url, opt){
+      const r = await fetch(url, opt || {});
+      const d = await r.json().catch(()=>({ok:false,error:"bad_json"}));
+      if(!r.ok || d.ok===false){ throw new Error(d.detail || d.error || ("http_"+r.status)); }
+      return d;
+    }
+
+    function setText(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj, null, 2); }
+
+    async function refreshAccount(){
+      if(!accountId) return;
+      const d = await jfetch(`/api/v1/accounts/polymarket/status?account_id=${encodeURIComponent(accountId)}`);
+      setText("accountStatus", d);
+    }
+
+    async function scan(){
+      const d = await jfetch("/api/v1/opportunities/scan?limit=30");
+      const tb = document.querySelector("#oppTable tbody");
+      tb.innerHTML = "";
+      for(const x of (d.items||[])){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span class="pm-pill">${x.id}</span></td>
+          <td>${x.market_title || x.market_id}</td>
+          <td>${x.strategy_type}</td>
+          <td>${Number(x.theory_profit||0).toFixed(4)}</td>
+          <td>${Number(x.vwap_profit||0).toFixed(4)}</td>
+          <td>${Number(x.confidence||0).toFixed(2)}</td>
+          <td><button class="pm-btn ghost" data-id="${x.id}">模拟执行</button></td>
+        `;
+        tb.appendChild(tr);
+      }
+      tb.querySelectorAll("button[data-id]").forEach((b)=>{
+        b.onclick = async ()=>{
+          try{
+            if(!accountId){ alert("请先连接账户并开启自动交易"); return; }
+            const out = await jfetch(`/api/v1/opportunities/${encodeURIComponent(b.dataset.id)}/execute`, {
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body: JSON.stringify({account_id: accountId, actor: "web-demo"})
+            });
+            alert("执行成功: " + (out.execution_id || ""));
+            await document.getElementById("btnRisk").click();
+          }catch(e){ alert("执行失败: " + e.message); }
+        };
+      });
+    }
+
+    document.getElementById("btnSeed").onclick = async ()=>{ try{ alert(JSON.stringify(await jfetch("/api/v1/system/seed-demo"),null,2)); }catch(e){ alert(e.message);} };
+    document.getElementById("btnScan").onclick = async ()=>{ try{ await scan(); }catch(e){ alert(e.message);} };
+    document.getElementById("btnConnect").onclick = async ()=>{
+      try{
+        const signer = document.getElementById("signer").value.trim();
+        const funder = document.getElementById("funder").value.trim() || signer;
+        const out = await jfetch("/api/v1/accounts/polymarket/connect", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ user_id: "demo-user", account_type:"wallet", signer_address: signer, funder_address: funder, signature_type:"eoa" })
+        });
+        accountId = out.account_id || "";
+        await refreshAccount();
+      }catch(e){ alert("连接失败: " + e.message); }
+    };
+    document.getElementById("btnDerive").onclick = async ()=>{ try{ if(!accountId) throw new Error("请先连接账户"); await jfetch("/api/v1/accounts/polymarket/derive-credentials",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})}); await refreshAccount(); }catch(e){ alert(e.message);} };
+    document.getElementById("btnEnable").onclick = async ()=>{ try{ if(!accountId) throw new Error("请先连接账户"); await jfetch("/api/v1/accounts/polymarket/enable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})}); await refreshAccount(); }catch(e){ alert(e.message);} };
+    document.getElementById("btnDisable").onclick = async ()=>{ try{ if(!accountId) throw new Error("请先连接账户"); await jfetch("/api/v1/accounts/polymarket/disable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})}); await refreshAccount(); }catch(e){ alert(e.message);} };
+    document.getElementById("btnCancelAll").onclick = async ()=>{ try{ if(!accountId) throw new Error("请先连接账户"); const out=await jfetch("/api/v1/accounts/polymarket/emergency-cancel-all",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})}); setText("riskOut", out);}catch(e){ alert(e.message);} };
+    document.getElementById("btnRisk").onclick = async ()=>{ try{ const q=accountId?`?account_id=${encodeURIComponent(accountId)}`:""; setText("riskOut", await jfetch("/api/v1/risk/overview"+q)); }catch(e){ alert(e.message);} };
+    document.getElementById("btnReplay").onclick = async ()=>{ try{ setText("riskOut", await jfetch("/api/v1/replay/summary?days=7")); }catch(e){ alert(e.message);} };
+  </script>
+</body>
+</html>
