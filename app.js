@@ -663,11 +663,16 @@ function trackPublicPageView() {
 }
 
 async function apiFetch(path, options = {}) {
+  const rawPath = asText(path);
+  if (!rawPath) return null;
+  const isAbsolute = /^https?:\/\//i.test(rawPath);
+  const isApiPath = rawPath.startsWith("/api/");
   const base = getApiBase();
-  if (!base) return null;
+  if (!isAbsolute && !isApiPath && !base) return null;
+  const url = isAbsolute ? rawPath : (isApiPath ? rawPath : `${base}${rawPath}`);
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   try {
-    const res = await fetch(`${base}${path}`, { ...options, headers, credentials: "include" });
+    const res = await fetch(url, { ...options, headers, credentials: "include" });
     if (res.status === 204) return { ok: true };
     let body = null;
     try {
@@ -2313,6 +2318,15 @@ async function setupSubscriptionForm() {
         if (count) count.textContent = `${t("subscribe_count")}: ${list.length}`;
         if (status) status.textContent = getLang() === "zh" ? "订阅成功，已加入邮件列表。" : "Subscribed successfully.";
         emailInput.value = "";
+        return;
+      }
+      if (res?.error === "auth_required") {
+        if (status) {
+          status.textContent =
+            getLang() === "zh"
+              ? "请先登录后再订阅。"
+              : "Please sign in first, then subscribe.";
+        }
         return;
       }
     }
