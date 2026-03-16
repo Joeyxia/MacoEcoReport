@@ -321,6 +321,104 @@ function cwSentences(items) {
   return items.map((x) => `<p class="summary-line">${cwEsc(x)}</p>`).join("");
 }
 
+function cwFmtNum(v, digits = 1) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "--";
+  return n.toFixed(digits);
+}
+
+function cwFmtTop(items, zh) {
+  const rows = Array.isArray(items) ? items : [];
+  if (!rows.length) return "--";
+  return rows.slice(0, 3).map((x) => {
+    const ticker = String(x?.ticker || "--").toUpperCase();
+    const score = cwFmtNum(x?.macro_risk_score, 1);
+    const action = cwMapValue(x?.action_bias || "--");
+    return zh ? `${ticker}（分数 ${score}，建议 ${action}）` : `${ticker} (score ${score}, bias ${action})`;
+  }).join(zh ? "；" : "; ");
+}
+
+function cwMacroStatusText(rawStatus) {
+  const raw = String(rawStatus || "").trim();
+  if (!raw) return "--";
+  const zhMap = {
+    mild_expansion: "温和扩张",
+    expansion: "温和扩张",
+    neutral: "中性",
+    caution: "谨慎",
+    contraction_warning: "收缩预警",
+    contraction: "收缩",
+    crisis_watch: "危机观察",
+    crisis: "危机",
+  };
+  const enMap = {
+    温和扩张: "Mild Expansion",
+    中性: "Neutral",
+    谨慎: "Cautious",
+    收缩预警: "Contraction Warning",
+    收缩: "Contraction",
+    危机观察: "Crisis Watch",
+    危机: "Crisis",
+  };
+  const key = raw.toLowerCase().replace(/\s+/g, "_");
+  if (cwLang() === "zh") return zhMap[key] || raw;
+  return enMap[raw] || cwHumanize(raw);
+}
+
+function buildPortfolioDetailedSummary(summary, modelCtx) {
+  const s = summary || {};
+  const zh = cwLang() === "zh";
+  const macroScore = Number(modelCtx?.totalScore || 0);
+  const macroAsOf = String(modelCtx?.asOf || "--");
+  const macroStatus = cwMacroStatusText(modelCtx?.status || "--");
+  const avg = Number(s.average_macro_risk_score || 0);
+  const cnt = Number(s.count || 0);
+  const highRisk = Number(s.high_risk_count || 0);
+  const riskOff = Number(s.risk_off_count || 0);
+  const domBias = cwMapValue(s.dominant_action_bias || "--");
+  const topRiskText = cwFmtTop(s.top_risk_positions, zh);
+  const topBenefitText = cwFmtTop(s.top_benefit_positions, zh);
+
+  const recs = [];
+  if (macroScore >= 70 || avg >= 70) {
+    recs.push(zh
+      ? "总风险偏高：控制总仓位节奏，优先降低高波动与高估值敞口。"
+      : "Risk is elevated: control gross exposure pace and reduce high-volatility / high-valuation names first.");
+  } else if (macroScore <= 55 && avg <= 55) {
+    recs.push(zh
+      ? "风险处于可控区：可分批优化仓位，但仍需保留风控缓冲。"
+      : "Risk is relatively contained: rebalance in tranches while keeping risk buffers.");
+  } else {
+    recs.push(zh
+      ? "风险中性偏谨慎：以结构调整为主，避免一次性大幅加仓。"
+      : "Risk is neutral-cautious: prioritize rotation and avoid aggressive one-shot adds.");
+  }
+  if (highRisk > 0) {
+    recs.push(zh
+      ? `高风险持仓 ${highRisk} 个：对高风险个股设置更紧的止损/减仓阈值。`
+      : `${highRisk} high-risk holdings: set tighter stop-loss/de-risk thresholds for these names.`);
+  }
+  if (riskOff > 0) {
+    recs.push(zh
+      ? `存在 ${riskOff} 个“风险回避”信号：建议增加对冲或提升现金比例。`
+      : `${riskOff} holdings are in risk-off mode: add hedges or increase cash buffer.`);
+  }
+  recs.push(zh
+    ? `主导动作偏向为“${domBias}”，建议围绕该偏向做组合微调。`
+    : `Dominant action bias is "${domBias}", and portfolio tuning should follow this stance.`);
+
+  return `
+    <div class="summary-score">${cwEsc(cwFmtNum(avg, 1))}</div>
+    <div class="summary-line">${cwEsc(zh ? "持仓数量" : "Positions")}: ${cwEsc(cnt)}</div>
+    <div class="summary-line"><strong>${cwEsc(zh ? "宏观环境" : "Macro context")}:</strong> ${cwEsc(zh ? `模型分数 ${cwFmtNum(macroScore, 1)}/100，状态 ${macroStatus}（更新日 ${macroAsOf}）` : `Model score ${cwFmtNum(macroScore, 1)}/100, regime ${macroStatus} (as of ${macroAsOf})`)}</div>
+    <div class="summary-line"><strong>${cwEsc(zh ? "风险结构" : "Risk structure")}:</strong> ${cwEsc(zh ? `高风险持仓 ${highRisk} 个；风险回避信号 ${riskOff} 个；主导动作偏向 ${domBias}` : `High-risk holdings ${highRisk}; risk-off signals ${riskOff}; dominant bias ${domBias}`)}</div>
+    <div class="summary-line"><strong>${cwEsc(zh ? "主要风险持仓" : "Top risk holdings")}:</strong> ${cwEsc(topRiskText)}</div>
+    <div class="summary-line"><strong>${cwEsc(zh ? "相对受益持仓" : "Potential beneficiaries")}:</strong> ${cwEsc(topBenefitText)}</div>
+    <div class="summary-line"><strong>${cwEsc(zh ? "投资动作建议" : "Action plan")}:</strong></div>
+    <ul class="preview-list">${recs.map((x) => `<li>${cwEsc(x)}</li>`).join("")}</ul>
+  `;
+}
+
 function cwExplainBlock({ indicators = [], how = [], takeaway = [] }) {
   const i = (indicators || []).map((x) => cwMapValue(x)).join(" / ") || "--";
   const h = how?.length ? how : ["--"];
@@ -438,7 +536,7 @@ async function renderDashboardCapitalWarning() {
     cwGet("/api/transmission/latest"),
     cwGet("/api/action-bias/latest"),
     cwGet("/api/alerts/latest"),
-    cwGet("/api/portfolio/risk-summary?user_email=xiayiping@gmail.com"),
+    cwGet("/api/portfolio/risk-summary"),
   ]);
   const regime = regimeRes?.item;
   const overlay = overlayRes?.item;
@@ -503,11 +601,11 @@ async function renderDailyCapitalWarning() {
   const reportDate = params.get("date") || new Date().toISOString().slice(0, 10);
   const [regimeRes, impactRes, overlayRes, transRes, biasRes, watchRes] = await Promise.all([
     cwGet(`/api/reports/${reportDate}/regime`),
-    cwGet(`/api/reports/${reportDate}/portfolio-impact?user_email=xiayiping@gmail.com`),
+    cwGet(`/api/reports/${reportDate}/portfolio-impact`),
     cwGet("/api/geopolitical-overlay/latest"),
     cwGet("/api/transmission/latest"),
     cwGet("/api/action-bias/latest"),
-    cwGet("/api/portfolio/risk-summary?user_email=xiayiping@gmail.com"),
+    cwGet("/api/portfolio/risk-summary"),
   ]);
   const regime = regimeRes?.item;
   const impact = impactRes;
@@ -624,15 +722,12 @@ async function initPortfolioWatchlistPage() {
       return;
     }
     const q = currentWatchlistId ? `?watchlist_id=${encodeURIComponent(currentWatchlistId)}` : "";
-    const res = await cwGet(`/api/portfolio/risk-summary${q}`);
+    const [res, modelCtx] = await Promise.all([
+      cwGet(`/api/portfolio/risk-summary${q}`),
+      cwGet("/api/model/current?view=core"),
+    ]);
     const s = res?.summary;
-    cwText(riskRoot, s ? `
-      <div class="summary-score">${cwEsc(s.average_macro_risk_score || 0)}</div>
-      <div class="summary-line">${cwT("positions")}: ${cwEsc(s.count || 0)}</div>
-      <div class="summary-line">${cwT("top_risk")}: ${cwEsc((s.top_risk_positions || []).map((x) => x.ticker).join(", ") || "--")}</div>
-      <div class="summary-line">${cwT("top_benefit")}: ${cwEsc((s.top_benefit_positions || []).map((x) => x.ticker).join(", ") || "--")}</div>
-      <div class="summary-line">${cwEsc(s.advice || "--")}</div>
-    ` : `<p class='subtle'>${cwEsc(cwT("no_summary"))}</p>`);
+    cwText(riskRoot, s ? buildPortfolioDetailedSummary(s, modelCtx) : `<p class='subtle'>${cwEsc(cwT("no_summary"))}</p>`);
   }
 
   async function refreshPositions() {
@@ -647,7 +742,7 @@ async function initPortfolioWatchlistPage() {
       return;
     }
     cwText(posRoot, `<table class="data-table"><thead><tr><th>${cwT("ticker")}</th><th>${cwT("qty")}</th><th>${cwT("macro_risk_score")}</th><th>${cwT("action")}</th></tr></thead><tbody>${
-      rows.map((x) => `<tr><td>${cwEsc(x.ticker)}</td><td>${cwEsc(x.quantity)}</td><td>${cwEsc(x.macro_signal?.macro_risk_score ?? "--")}</td><td>${cwEsc(x.macro_signal?.action_bias ?? "--")}</td></tr>`).join("")
+      rows.map((x) => `<tr><td>${cwEsc(x.ticker)}</td><td>${cwEsc(x.quantity)}</td><td>${cwEsc(x.macro_signal?.macro_risk_score ?? "--")}</td><td>${cwEsc(cwMapValue(x.macro_signal?.action_bias ?? "--"))}</td></tr>`).join("")
     }</tbody></table>`);
   }
 
