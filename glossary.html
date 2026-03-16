@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="macro-api-base" content="https://api.nexo.hk" />
-    <title>Macro Risk Monitor | Glossary</title>
+    <title data-i18n="title_glossary">Macro Risk Monitor | Glossary</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,12 +12,13 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=20260309p" />
-    <script src="app.js?v=20260310a" defer></script>
+    <script src="auth-guard.js?v=20260316a1" defer></script>
+    <script src="app.js?v=20260316a1" defer></script>
   </head>
   <body data-page="glossary">
     <div class="bg-layer"></div>
     <header class="site-header">
-      <a class="brand" href="index.html">Macro Risk Monitor</a>
+      <a class="brand" href="index.html" data-i18n="brand_name">Macro Risk Monitor</a>
       <nav>
         <a class="nav-link" href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
         <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
@@ -27,7 +28,7 @@
         <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
         <a class="nav-link" href="portfolio-watchlist.html" data-i18n="nav_portfolio_watchlist">Portfolio Watchlist</a>
         <a class="nav-link" href="regime-transmission.html" data-i18n="nav_regime_transmission">Regime & Transmission</a>
-        <a class="nav-link" href="stock-prediction.html">Stock Prediction</a>
+        <a class="nav-link" href="stock-prediction.html" data-i18n="nav_stock_prediction">Stock Prediction</a>
         <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
       </nav>
       <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
@@ -44,14 +45,14 @@
 
       <section class="panel">
         <div class="glossary-controls">
-          <input id="glossary-search" class="search-input" type="text" placeholder="Search terms..." />
+          <input id="glossary-search" class="search-input" type="text" data-i18n-placeholder="glossary_search_placeholder" placeholder="Search terms..." />
           <select id="glossary-filter" class="filter-select">
-            <option value="all">All Categories</option>
-            <option value="core-macro">Core Macro</option>
-            <option value="policy-external">Policy & External</option>
-            <option value="market-mapping">Market Mapping</option>
-            <option value="theme-panel">Theme Panel</option>
-            <option value="data-source">Data Source</option>
+            <option value="all" data-i18n="glossary_filter_all">All Categories</option>
+            <option value="core-macro" data-i18n="glossary_filter_core_macro">Core Macro</option>
+            <option value="policy-external" data-i18n="glossary_filter_policy_external">Policy & External</option>
+            <option value="market-mapping" data-i18n="glossary_filter_market_mapping">Market Mapping</option>
+            <option value="theme-panel" data-i18n="glossary_filter_theme_panel">Theme Panel</option>
+            <option value="data-source" data-i18n="glossary_filter_data_source">Data Source</option>
           </select>
         </div>
         <div class="grid three-col glossary-grid" id="glossary-grid"></div>

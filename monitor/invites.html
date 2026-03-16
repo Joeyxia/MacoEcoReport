@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexo Monitor | 邀请码</title>
+    <link rel="stylesheet" href="./monitor.css?v=20260316a1" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="./dashboard.html" class="brand">Nexo Monitor</a>
+      <nav>
+        <a href="./dashboard.html" class="nav-link">运维看板</a>
+        <a href="./subscribers.html" class="nav-link">业务运营</a>
+        <a href="./invites.html" class="nav-link active">邀请码</a>
+        <a href="./stock-data-admin.html" class="nav-link">股票数据</a>
+        <a href="./data-tool.html" class="nav-link">数据生成工具</a>
+        <a href="./forms.html" class="nav-link">数据表单</a>
+      </nav>
+      <div class="userbox">
+        <span id="user-email"></span>
+        <button id="logout-btn" class="btn ghost">退出</button>
+      </div>
+    </header>
+    <main class="page">
+      <section class="panel">
+        <h2>生成邀请码</h2>
+        <div class="toolbar">
+          <input id="invite-code" class="search-input" placeholder="可选：手动输入邀请码（留空自动生成）" />
+          <input id="invite-max-uses" class="search-input" placeholder="最大使用次数，默认1" />
+          <input id="invite-note" class="search-input" placeholder="备注（可选）" />
+          <button id="invite-create" class="btn">生成</button>
+        </div>
+        <p id="invite-status" class="subtle"></p>
+      </section>
+      <section class="panel">
+        <h2>邀请码列表</h2>
+        <div id="invite-table" class="table-wrap"></div>
+      </section>
+    </main>
+    <script>
+      const api = {
+        async get(url) {
+          const r = await fetch(url, { credentials: "include" });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d.error || "request_failed");
+          return d;
+        },
+        async post(url, body) {
+          const r = await fetch(url, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d.error || "request_failed");
+          return d;
+        }
+      };
+
+      async function ensureAuth() {
+        try {
+          const me = await api.get("/monitor-api/auth/me");
+          document.getElementById("user-email").textContent = me?.user?.email || "";
+        } catch (_err) {
+          location.href = "/index.html";
+        }
+      }
+
+      function renderTable(rows) {
+        const root = document.getElementById("invite-table");
+        if (!rows.length) {
+          root.innerHTML = "<p class='subtle'>暂无邀请码</p>";
+          return;
+        }
+        root.innerHTML = `
+          <table class="table">
+            <thead><tr><th>邀请码</th><th>状态</th><th>已用/总次数</th><th>过期时间</th><th>备注</th><th>创建人</th><th>创建时间</th></tr></thead>
+            <tbody>
+              ${rows.map((x) => `<tr><td>${x.code}</td><td>${x.status}</td><td>${x.used_count}/${x.max_uses}</td><td>${x.expires_at || "--"}</td><td>${x.note || "--"}</td><td>${x.created_by || "--"}</td><td>${x.created_at || "--"}</td></tr>`).join("")}
+            </tbody>
+          </table>
+        `;
+      }
+
+      async function refreshInvites() {
+        const d = await api.get("/monitor-api/biz/invites?limit=200");
+        renderTable(d.items || []);
+      }
+
+      document.getElementById("invite-create").addEventListener("click", async () => {
+        const status = document.getElementById("invite-status");
+        status.textContent = "生成中...";
+        try {
+          const payload = {
+            code: document.getElementById("invite-code").value.trim(),
+            max_uses: Number(document.getElementById("invite-max-uses").value || 1),
+            note: document.getElementById("invite-note").value.trim()
+          };
+          const d = await api.post("/monitor-api/biz/invites", payload);
+          status.textContent = `生成成功：${d?.item?.code || "--"}`;
+          await refreshInvites();
+        } catch (e) {
+          status.textContent = `生成失败：${e.message || "unknown"}`;
+        }
+      });
+
+      document.getElementById("logout-btn").addEventListener("click", async () => {
+        try { await api.post("/monitor-api/auth/logout", {}); } catch (_err) {}
+        location.href = "/index.html";
+      });
+
+      (async function init() {
+        await ensureAuth();
+        await refreshInvites();
+      })();
+    </script>
+  </body>
+</html>
+

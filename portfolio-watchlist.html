@@ -4,53 +4,63 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="macro-api-base" content="https://api.nexo.hk" />
-    <title>Macro Risk Monitor | Portfolio Watchlist</title>
+    <title data-i18n="title_portfolio_watchlist">Macro Risk Monitor | Portfolio Watchlist</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css?v=20260309p" />
-    <script src="capital-warning.js?v=20260316a" defer></script>
+    <script src="auth-guard.js?v=20260316a1" defer></script>
+    <script src="app.js?v=20260316a1" defer></script>
+    <script src="capital-warning.js?v=20260316a1" defer></script>
   </head>
   <body data-page="portfolio-watchlist">
     <div class="bg-layer"></div>
     <header class="site-header">
-      <a class="brand" href="index.html">Macro Risk Monitor</a>
+      <a class="brand" href="index.html" data-i18n="brand_name">Macro Risk Monitor</a>
       <nav>
-        <a class="nav-link" href="dashboard.html">Dashboard</a>
-        <a class="nav-link" href="daily-report.html">Daily Report</a>
-        <a class="nav-link active" href="portfolio-watchlist.html">Portfolio Watchlist</a>
-        <a class="nav-link" href="regime-transmission.html">Regime & Transmission</a>
-        <a class="nav-link" href="stock-prediction.html">Stock Prediction</a>
+        <a class="nav-link" href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
+        <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
+        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
+        <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
+        <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
+        <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
+        <a class="nav-link active" href="portfolio-watchlist.html" data-i18n="nav_portfolio_watchlist">Portfolio Watchlist</a>
+        <a class="nav-link" href="regime-transmission.html" data-i18n="nav_regime_transmission">Regime & Transmission</a>
+        <a class="nav-link" href="stock-prediction.html" data-i18n="nav_stock_prediction">Stock Prediction</a>
+        <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
       </nav>
+      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
     </header>
     <main class="page">
       <section class="panel hero compact">
         <div>
-          <p class="eyebrow">Portfolio Watchlist</p>
-          <h1>Watchlist / Position Risk Mapping</h1>
-          <p class="subtle">Create watchlists, add stocks, and read macro exposure, action bias, and vulnerable positions.</p>
+          <p class="eyebrow" data-i18n="pw_eyebrow">Portfolio Watchlist</p>
+          <h1 data-i18n="pw_page_title">Watchlist / Position Risk Mapping</h1>
+          <p class="subtle" data-i18n="pw_page_desc">Create watchlists, add stocks, and read macro exposure, action bias, and vulnerable positions.</p>
         </div>
       </section>
       <section class="panel">
         <div class="report-actions">
-          <input id="watchlist-email" class="report-link" style="min-width:260px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" placeholder="email" />
-          <input id="watchlist-name" class="report-link" style="min-width:220px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" placeholder="watchlist name" />
-          <button id="watchlist-create" class="btn">Create Watchlist</button>
+          <input id="watchlist-email" class="report-link" style="min-width:260px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;display:none;" data-i18n-placeholder="pw_email_placeholder" placeholder="email" />
+          <div id="watchlist-user-email" class="subtle"></div>
+          <input id="watchlist-name" class="report-link" style="min-width:220px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" data-i18n-placeholder="pw_name_placeholder" placeholder="watchlist name" />
+          <button id="watchlist-create" class="btn" data-i18n="pw_create">Create Watchlist</button>
         </div>
         <div id="watchlist-list" class="report-links"></div>
       </section>
       <section class="grid two-col">
         <article class="panel">
-          <h2>Positions</h2>
+          <h2 data-i18n="pw_positions">Positions</h2>
           <div class="report-actions">
-            <input id="position-ticker" class="report-link" style="min-width:180px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" placeholder="ticker" />
-            <input id="position-qty" class="report-link" style="min-width:120px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" placeholder="quantity" />
-            <button id="position-add" class="btn">Add Position</button>
+            <input id="position-ticker" list="ticker-suggestions" class="report-link" style="min-width:180px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" data-i18n-placeholder="pw_ticker_placeholder" placeholder="ticker" />
+            <datalist id="ticker-suggestions"></datalist>
+            <input id="position-qty" class="report-link" style="min-width:120px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" data-i18n-placeholder="pw_qty_placeholder" placeholder="quantity" />
+            <button id="position-add" class="btn" data-i18n="pw_add_position">Add Position</button>
           </div>
           <div id="watchlist-positions" class="table-wrap"></div>
         </article>
         <article class="panel">
-          <h2>Portfolio Risk Summary</h2>
+          <h2 data-i18n="pw_risk_summary">Portfolio Risk Summary</h2>
           <div id="portfolio-risk-summary" class="summary-panel"></div>
         </article>
       </section>

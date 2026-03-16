@@ -667,7 +667,7 @@ async function apiFetch(path, options = {}) {
   if (!base) return null;
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   try {
-    const res = await fetch(`${base}${path}`, { ...options, headers });
+    const res = await fetch(`${base}${path}`, { ...options, headers, credentials: "include" });
     if (res.status === 204) return { ok: true };
     let body = null;
     try {

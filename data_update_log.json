@@ -1,141 +1,67 @@
 {
-  "updated_count": 25,
-  "failed_count": 20,
-  "updated": [
+  "updated_count": 0,
+  "failed_count": 45,
+  "updated": [],
+  "failed": [
     {
       "code": "YC_10Y3M",
-      "value": 43.0,
-      "date": "2026-03-05"
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
     },
     {
       "code": "SOFR",
-      "value": 3.66,
-      "date": "2026-03-05"
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
     },
     {
       "code": "FED_ASSETS",
-      "value": 6.628894,
-      "date": "2026-03-04"
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
     },
     {
       "code": "NET_LIQ_PROXY",
-      "value": -825.425618,
-      "date": "2026-03-06"
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
     },
     {
       "code": "GDP_QOQ_SAAR",
-      "value": 1.4,
-      "date": "2025-10-01"
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
     },
-    {
-      "code": "CLAIMS_4WMA",
-      "value": 215750.0,
-      "date": "2026-02-28"
-    },
-    {
-      "code": "CORE_CPI_YOY",
-      "value": 2.949338,
-      "date": "2026-01-01"
-    },
-    {
-      "code": "CORE_PCE_YOY",
-      "value": 2.996876,
-      "date": "2025-12-01"
-    },
-    {
-      "code": "BREAKEVEN_5Y5Y",
-      "value": 2.14,
-      "date": "2026-03-06"
-    },
-    {
-      "code": "UNRATE",
-      "value": 4.4,
-      "date": "2026-02-01"
-    },
-    {
-      "code": "WAGE_GROWTH",
-      "value": 3.839733,
-      "date": "2026-02-01"
-    },
-    {
-      "code": "CC_DELINQ",
-      "value": 2.94,
-      "date": "2025-10-01"
-    },
-    {
-      "code": "REAL_DISP_INC",
-      "value": 0.919526,
-      "date": "2025-12-01"
-    },
-    {
-      "code": "HY_OAS",
-      "value": 300.0,
-      "date": "2026-03-05"
-    },
-    {
-      "code": "MORTGAGE_30Y",
-      "value": 6.0,
-      "date": "2026-03-05"
-    },
-    {
-      "code": "HOUSING_STARTS",
-      "value": 1.404,
-      "date": "2025-12-01"
-    },
-    {
-      "code": "VIX",
-      "value": 23.75,
-      "date": "2026-03-05"
-    },
-    {
-      "code": "DXY",
-      "value": 117.8223,
-      "date": "2026-02-27"
-    },
-    {
-      "code": "US_JP_10Y_SPREAD",
-      "value": 189.0,
-      "date": "2026-03-05"
-    },
-    {
-      "code": "FCI",
-      "value": -0.52365,
-      "date": "2026-02-27"
-    },
-    {
-      "code": "BANK_LENDING",
-      "value": 1.946172,
-      "date": "2026-02-25"
-    },
-    {
-      "code": "TED_SPREAD",
-      "value": 0.09,
-      "date": "2022-01-21"
-    },
-    {
-      "code": "WTI",
-      "value": 71.13,
-      "date": "2026-03-02"
-    },
-    {
-      "code": "BTC",
-      "value": 66994.0,
-      "date": "2026-03-08"
-    },
-    {
-      "code": "USDC_MCAP",
-      "value": 77.246664,
-      "date": "2026-03-08"
-    }
-  ],
-  "failed": [
     {
       "code": "PMI_MAN",
       "error": "manual/proprietary source required"
     },
     {
+      "code": "CLAIMS_4WMA",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
       "code": "LEI",
       "error": "manual/proprietary source required"
+    },
+    {
+      "code": "CORE_CPI_YOY",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "CORE_PCE_YOY",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "BREAKEVEN_5Y5Y",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "UNRATE",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "WAGE_GROWTH",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "CC_DELINQ",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "REAL_DISP_INC",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
     },
     {
       "code": "SPX_FWD_PE",
@@ -146,8 +72,24 @@
       "error": "manual/proprietary source required"
     },
     {
+      "code": "HY_OAS",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "MORTGAGE_30Y",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
       "code": "EXIST_HOME_SALES",
       "error": "manual/proprietary source required"
+    },
+    {
+      "code": "HOUSING_STARTS",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "VIX",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
     },
     {
       "code": "MOVE",
@@ -156,6 +98,14 @@
     {
       "code": "SPX_DD_3M",
       "error": "manual/proprietary source required"
+    },
+    {
+      "code": "DXY",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "US_JP_10Y_SPREAD",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
     },
     {
       "code": "CAPITAL_FLOWS",
@@ -172,6 +122,22 @@
     {
       "code": "INT_REV",
       "error": "manual/proprietary source required"
+    },
+    {
+      "code": "FCI",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "BANK_LENDING",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "TED_SPREAD",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "WTI",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
     },
     {
       "code": "CRB",
@@ -204,6 +170,14 @@
     {
       "code": "SEMI_BOOK_BILL",
       "error": "manual/proprietary source required"
+    },
+    {
+      "code": "BTC",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+    },
+    {
+      "code": "USDC_MCAP",
+      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
     },
     {
       "code": "STABLECOIN_DOM",

@@ -7,10 +7,18 @@ let knownTickers = [];
 
 const stockI18n = {
   en: {
+    titleMeta: "Macro Risk Monitor | Stock Prediction",
+    brand: "Macro Risk Monitor",
+    navDashboard: "Dashboard",
+    navDaily: "Daily Report",
+    navIndicators: "Indicators",
+    navGlossary: "Glossary",
+    navSubscribe: "Subscribe",
     eyebrow: "Quant Signal Engine",
     title: "Stock Prediction Dashboard",
     desc: "Database-driven prediction, backtest, and feature interpretation.",
     ticker: "Ticker",
+    tickerPlaceholder: "e.g. PDD",
     refresh: "Refresh",
     updated: "Updated",
     latestSignal: "Latest Signal",
@@ -25,6 +33,7 @@ const stockI18n = {
     cumChart: "Strategy vs Buy & Hold",
     cumChartDesc: "Investor Guide: this chart shows cumulative performance paths. If Strategy stays above Buy & Hold over time, active signal trading is creating excess return; if it stays below, passive holding may be the better baseline.",
     featChart: "Top Features",
+    importance: "Importance",
     history: "Latest 12 Predictions",
     noData: "No data available",
     month: "Month",
@@ -40,10 +49,18 @@ const stockI18n = {
     signalNeutral: "Investor Takeaway: no clear directional edge. Keep positions light and focus on risk management.",
   },
   zh: {
+    titleMeta: "宏观风险监测 | 股票预测",
+    brand: "宏观风险监测",
+    navDashboard: "仪表盘",
+    navDaily: "每日报告",
+    navIndicators: "指标库",
+    navGlossary: "术语表",
+    navSubscribe: "订阅",
     eyebrow: "量化信号引擎",
     title: "股票预测仪表盘",
     desc: "基于数据库的预测、回测与特征解释。",
     ticker: "股票代码",
+    tickerPlaceholder: "例如：PDD",
     refresh: "刷新",
     updated: "更新时间",
     latestSignal: "最新信号",
@@ -58,6 +75,7 @@ const stockI18n = {
     cumChart: "策略累计收益 vs 买入持有",
     cumChartDesc: "投资者解读：这张图对比两种路径的累计收益。若策略线长期高于买入持有，说明主动信号在创造超额收益；若长期低于，则被动持有可能更优。",
     featChart: "关键驱动因子",
+    importance: "重要度",
     history: "最近 12 期预测",
     noData: "暂无可用数据",
     month: "月份",
@@ -128,10 +146,19 @@ function ensureFooter(){
 
 function applyStockI18n(){
   document.documentElement.lang = sLang() === "zh" ? "zh-CN" : "en";
+  document.title = st("titleMeta");
+  setText("stock-brand", st("brand"));
+  setText("stock-nav-dashboard", st("navDashboard"));
+  setText("stock-nav-daily", st("navDaily"));
+  setText("stock-nav-indicators", st("navIndicators"));
+  setText("stock-nav-glossary", st("navGlossary"));
+  setText("stock-nav-subscribe", st("navSubscribe"));
   setText("stock-eyebrow", st("eyebrow"));
   setText("stock-page-title", st("title"));
   setText("stock-page-desc", st("desc"));
   setText("stock-ticker-label", st("ticker"));
+  const input = document.getElementById("stock-ticker-input");
+  if (input) input.setAttribute("placeholder", st("tickerPlaceholder"));
   setText("stock-refresh", st("refresh"));
   setText("stock-latest-signal-label", st("latestSignal"));
   setText("kpi_pred_label", st("predReturn"));
@@ -256,7 +283,7 @@ function drawCharts(historyRows, featureRows){
   });
   chartCum = new Chart(document.getElementById("stock-chart-cum"), {
     type: "line",
-    data: { labels, datasets: [{ label: "Strategy", data: cumS, borderColor: "#0b8d73" }, { label: "Buy&Hold", data: cumB, borderColor: "#425a67" }] },
+    data: { labels, datasets: [{ label: st("strat"), data: cumS, borderColor: "#0b8d73" }, { label: st("bcagr"), data: cumB, borderColor: "#425a67" }] },
     options: { responsive: true, maintainAspectRatio: false },
   });
 
@@ -265,7 +292,7 @@ function drawCharts(historyRows, featureRows){
     type: "bar",
     data: {
       labels: fs.map((x) => x.feature_name),
-      datasets: [{ label: "Importance", data: fs.map((x) => Number(x.importance || 0)), backgroundColor: "#0b8d73" }],
+      datasets: [{ label: st("importance"), data: fs.map((x) => Number(x.importance || 0)), backgroundColor: "#0b8d73" }],
     },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false },
   });

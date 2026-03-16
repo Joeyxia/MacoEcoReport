@@ -7,6 +7,7 @@ import html
 import hashlib
 import base64
 import secrets
+import hmac
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -47,6 +48,13 @@ try:
     upsert_daily_report,
     upsert_openrouter_rankings_snapshot,
     now_iso,
+    create_invite_code,
+    list_invite_codes,
+    get_invite_code,
+    redeem_invite_code,
+    create_user_account,
+    get_user_account,
+    touch_user_login,
   )
   from .mailer import send_email
   from .stock_service import (
@@ -144,6 +152,13 @@ except ImportError:
     upsert_daily_report,
     upsert_openrouter_rankings_snapshot,
     now_iso,
+    create_invite_code,
+    list_invite_codes,
+    get_invite_code,
+    redeem_invite_code,
+    create_user_account,
+    get_user_account,
+    touch_user_login,
   )
   from mailer import send_email
   from stock_service import (
@@ -243,6 +258,7 @@ app.config.update(
   SESSION_COOKIE_HTTPONLY=True,
   SESSION_COOKIE_SAMESITE="Lax",
   SESSION_COOKIE_SECURE=True,
+  SESSION_COOKIE_DOMAIN=os.environ.get("SESSION_COOKIE_DOMAIN") or None,
   MAX_CONTENT_LENGTH=max(1, int(os.environ.get("MAX_UPLOAD_MB", "100"))) * 1024 * 1024,
 )
 init_db()
@@ -251,6 +267,39 @@ _cache_lock = Lock()
 _openai_queue_lock = Lock()
 _openai_next_allowed_at = 0.0
 _stock_train_lock = Lock()
+PUBLIC_AUTH_EXEMPT_PATHS = {
+  "/api/health",
+  "/api/auth/register",
+  "/api/auth/login",
+  "/api/auth/logout",
+  "/api/auth/me",
+  "/api/auth/invite/validate",
+}
+
+
+def _hash_password(password: str, salt: str):
+  raw = hashlib.pbkdf2_hmac(
+    "sha256",
+    str(password or "").encode("utf-8"),
+    str(salt or "").encode("utf-8"),
+    120000,
+  )
+  return base64.b64encode(raw).decode("ascii")
+
+
+def _public_user():
+  user = session.get("public_user") or {}
+  email = str(user.get("email") or "").strip().lower()
+  if not email:
+    return None
+  return {"email": email}
+
+
+def _require_public_user():
+  user = _public_user()
+  if not user:
+    return None, (jsonify({"ok": False, "error": "auth_required"}), 401)
+  return user, None
 
 
 def _start_stock_train_async(ticker: str):
@@ -737,6 +786,22 @@ def _should_autotrack_token() -> bool:
   return path.startswith("/api/") or path.startswith("/monitor-api/")
 
 
+@app.before_request
+def enforce_public_auth_for_api():
+  path = request.path or ""
+  if not path.startswith("/api/"):
+    return None
+  if path in PUBLIC_AUTH_EXEMPT_PATHS:
+    return None
+  monitor_user = session.get("monitor_user") or {}
+  if monitor_user.get("email") and _is_monitor_authorized(monitor_user.get("email")):
+    return None
+  user = _public_user()
+  if not user:
+    return jsonify({"ok": False, "error": "auth_required"}), 401
+  return None
+
+
 @app.after_request
 def auto_track_request_token_usage(response):
   try:
@@ -982,9 +1047,25 @@ def _build_local_ai_answer(question: str, lang: str, context_payload: dict):
 
 @app.after_request
 def set_cors(resp):
-  resp.headers["Access-Control-Allow-Origin"] = "*"
+  origin = str(request.headers.get("Origin") or "").strip()
+  allowed = {
+    "https://nexo.hk",
+    "https://www.nexo.hk",
+    "https://api.nexo.hk",
+    "https://monitor.nexo.hk",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+  }
+  if origin in allowed:
+    resp.headers["Access-Control-Allow-Origin"] = origin
+    resp.headers["Vary"] = "Origin"
+  else:
+    resp.headers["Access-Control-Allow-Origin"] = "https://nexo.hk"
   resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
   resp.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
+  resp.headers["Access-Control-Allow-Credentials"] = "true"
   return resp
 
 
@@ -1001,6 +1082,95 @@ def monitor_health():
       "oauthConfigured": bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI),
     }
   )
+
+
+@app.route("/api/auth/invite/validate", methods=["POST", "OPTIONS"])
+def public_validate_invite():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  payload = request.get_json(silent=True) or {}
+  code = str(payload.get("invite_code") or payload.get("code") or "").strip().upper()
+  if not code:
+    return jsonify({"ok": False, "error": "missing_invite_code"}), 400
+  row = get_invite_code(code)
+  if not row:
+    return jsonify({"ok": False, "error": "invite_not_found"}), 404
+  if str(row.get("status") or "").lower() != "active":
+    return jsonify({"ok": False, "error": "invite_inactive"}), 400
+  if str(row.get("expires_at") or "").strip() and str(row.get("expires_at")) < now_iso():
+    return jsonify({"ok": False, "error": "invite_expired"}), 400
+  if int(row.get("used_count") or 0) >= int(row.get("max_uses") or 1):
+    return jsonify({"ok": False, "error": "invite_exhausted"}), 400
+  return jsonify({"ok": True, "item": row})
+
+
+@app.route("/api/auth/register", methods=["POST", "OPTIONS"])
+def public_register():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  payload = request.get_json(silent=True) or {}
+  email = str(payload.get("email") or "").strip().lower()
+  invite_code = str(payload.get("invite_code") or "").strip().upper()
+  password = str(payload.get("password") or "")
+  confirm = str(payload.get("confirm_password") or payload.get("password_confirm") or "")
+  if not EMAIL_RE.match(email):
+    return jsonify({"ok": False, "error": "invalid_email"}), 400
+  if not invite_code:
+    return jsonify({"ok": False, "error": "missing_invite_code"}), 400
+  if len(password) < 8:
+    return jsonify({"ok": False, "error": "weak_password"}), 400
+  if password != confirm:
+    return jsonify({"ok": False, "error": "password_mismatch"}), 400
+  existing = get_user_account(email)
+  if existing and str(existing.get("status") or "").lower() == "active":
+    return jsonify({"ok": False, "error": "account_exists"}), 409
+  redeem = redeem_invite_code(invite_code, email)
+  if not redeem.get("ok"):
+    return jsonify(redeem), 400
+  salt = secrets.token_hex(16)
+  hashed = _hash_password(password, salt)
+  row = create_user_account(email, hashed, salt, invite_code=invite_code)
+  session["public_user"] = {"email": email, "loginAt": now_iso()}
+  touch_user_login(email)
+  return jsonify({"ok": True, "user": {"email": row.get("email"), "created_at": row.get("created_at")}})
+
+
+@app.route("/api/auth/login", methods=["POST", "OPTIONS"])
+def public_login():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  payload = request.get_json(silent=True) or {}
+  email = str(payload.get("email") or "").strip().lower()
+  password = str(payload.get("password") or "")
+  if not EMAIL_RE.match(email) or not password:
+    return jsonify({"ok": False, "error": "invalid_credentials"}), 400
+  row = get_user_account(email)
+  if not row or str(row.get("status") or "").lower() != "active":
+    return jsonify({"ok": False, "error": "invalid_credentials"}), 401
+  expected = str(row.get("password_hash") or "")
+  salt = str(row.get("password_salt") or "")
+  actual = _hash_password(password, salt)
+  if not hmac.compare_digest(expected, actual):
+    return jsonify({"ok": False, "error": "invalid_credentials"}), 401
+  session["public_user"] = {"email": email, "loginAt": now_iso()}
+  touch_user_login(email)
+  return jsonify({"ok": True, "user": {"email": email}})
+
+
+@app.route("/api/auth/logout", methods=["POST", "OPTIONS"])
+def public_logout():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  session.pop("public_user", None)
+  return jsonify({"ok": True})
+
+
+@app.route("/api/auth/me", methods=["GET"])
+def public_me():
+  user = _public_user()
+  if not user:
+    return jsonify({"ok": False, "authenticated": False}), 401
+  return jsonify({"ok": True, "authenticated": True, "user": user})
 
 
 @app.route("/monitor-api/auth/google/start", methods=["GET"])
@@ -1158,6 +1328,28 @@ def monitor_biz_subscriber_delete(email):
     return jsonify({"error": "invalid_email"}), 400
   deactivate_subscriber(target)
   return jsonify({"ok": True, "email": target})
+
+
+@app.route("/monitor-api/biz/invites", methods=["GET", "POST", "OPTIONS"])
+def monitor_biz_invites():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  user, err = _require_monitor_auth()
+  if err:
+    return err
+  if request.method == "GET":
+    limit = int(request.args.get("limit") or 100)
+    rows = list_invite_codes(limit=limit)
+    return _etag_response({"ok": True, "count": len(rows), "items": rows})
+  payload = request.get_json(silent=True) or {}
+  max_uses = int(payload.get("max_uses") or 1)
+  note = str(payload.get("note") or "").strip()
+  expires_at = str(payload.get("expires_at") or "").strip()
+  code = str(payload.get("code") or "").strip().upper()
+  if not code:
+    code = f"NEXO-{secrets.token_hex(3).upper()}"
+  row = create_invite_code(code=code, max_uses=max_uses, expires_at=expires_at, note=note, created_by=str(user.get("email") or "").lower())
+  return jsonify({"ok": True, "item": row}), 201
 
 
 @app.route("/monitor-api/data/forms", methods=["GET"])
@@ -1762,15 +1954,17 @@ def api_action_bias_latest():
 def api_portfolio_watchlists():
   if request.method == "OPTIONS":
     return ("", 204)
+  user, err = _require_public_user()
+  if err:
+    return err
+  user_email = str(user.get("email") or "").strip().lower()
   if request.method == "GET":
-    user_email = str(request.args.get("user_email") or "").strip().lower()
     rows = list_portfolio_watchlists(user_email=user_email)
     return jsonify({"ok": True, "items": rows, "count": len(rows)})
   payload = request.get_json(silent=True) or {}
-  user_email = str(payload.get("user_email") or "").strip().lower()
   list_name = str(payload.get("list_name") or "").strip()
-  if not user_email or not list_name:
-    return jsonify({"ok": False, "error": "missing_user_email_or_list_name"}), 400
+  if not list_name:
+    return jsonify({"ok": False, "error": "missing_list_name"}), 400
   row = create_portfolio_watchlist(user_email, list_name)
   return jsonify({"ok": True, "item": row}), 201
 
@@ -1779,6 +1973,13 @@ def api_portfolio_watchlists():
 def api_portfolio_positions(watchlist_id):
   if request.method == "OPTIONS":
     return ("", 204)
+  user, err = _require_public_user()
+  if err:
+    return err
+  my_email = str(user.get("email") or "").strip().lower()
+  mine = {int(x.get("id")) for x in list_portfolio_watchlists(user_email=my_email)}
+  if int(watchlist_id) not in mine:
+    return jsonify({"ok": False, "error": "forbidden_watchlist"}), 403
   if request.method == "GET":
     rows = list_portfolio_positions(watchlist_id)
     return jsonify({"ok": True, "items": rows, "count": len(rows)})
@@ -1798,10 +1999,13 @@ def api_portfolio_positions(watchlist_id):
 
 @app.route("/api/portfolio/risk-summary", methods=["GET"])
 def api_portfolio_risk_summary():
-  user_email = str(request.args.get("user_email") or "").strip().lower()
-  if not user_email:
-    return jsonify({"ok": False, "error": "missing_user_email"}), 400
-  out = build_portfolio_risk_summary(user_email)
+  user, err = _require_public_user()
+  if err:
+    return err
+  user_email = str(user.get("email") or "").strip().lower()
+  watchlist_id = request.args.get("watchlist_id")
+  wid = int(watchlist_id) if str(watchlist_id or "").strip().isdigit() else None
+  out = build_portfolio_risk_summary(user_email, watchlist_id=wid)
   return jsonify({"ok": True, **out})
 
 
@@ -1842,7 +2046,10 @@ def api_report_regime(report_date):
 
 @app.route("/api/reports/<report_date>/portfolio-impact", methods=["GET"])
 def api_report_portfolio_impact(report_date):
-  user_email = str(request.args.get("user_email") or "").strip().lower()
+  user, err = _require_public_user()
+  if err:
+    return err
+  user_email = str(user.get("email") or "").strip().lower()
   out = report_portfolio_impact(report_date, user_email=user_email)
   return jsonify({"ok": True, **out})
 
@@ -2189,6 +2396,20 @@ def migrate():
 @app.route("/", defaults={"path": "index.html"})
 @app.route("/<path:path>")
 def static_files(path):
+  safe_path = str(path or "").strip()
+  lower = safe_path.lower()
+  if lower.startswith("monitor/"):
+    target = ROOT / safe_path
+    if target.is_file():
+      return send_from_directory(str(ROOT), safe_path)
+    return send_from_directory(str(ROOT), "monitor/index.html")
+  if lower.endswith(".html"):
+    public_pages = {"index.html", "register.html"}
+    if lower not in public_pages:
+      user = _public_user()
+      if not user:
+        next_q = urllib.parse.quote("/" + safe_path, safe="/?&=%")
+        return redirect(f"/register.html?next={next_q}", code=302)
   target = ROOT / path
   if target.is_file():
     return send_from_directory(str(ROOT), path)

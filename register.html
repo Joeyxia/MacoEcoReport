@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="macro-api-base" content="https://api.nexo.hk" />
+    <title>Nexo Macro Intelligence | Register</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=20260309p" />
+    <style>
+      .auth-wrap { max-width: 820px; margin: 0 auto; }
+      .auth-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      .auth-card { padding: 18px; border: 1px solid rgba(16,36,43,.14); border-radius: 14px; background: rgba(255,255,255,.95); }
+      .auth-card h2 { margin: 0 0 12px; }
+      .auth-input { width: 100%; margin: 8px 0; padding: 12px; border: 1px solid rgba(16,36,43,.2); border-radius: 10px; font-size: 16px; }
+      .auth-status { min-height: 24px; color: #3f5f66; margin-top: 8px; }
+      @media (max-width: 820px) { .auth-grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body data-page="register">
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="index.html">Nexo Macro Intelligence</a>
+      <nav>
+        <a class="nav-link" href="index.html">Home</a>
+      </nav>
+    </header>
+    <main class="page auth-wrap">
+      <section class="panel hero compact">
+        <div>
+          <p class="eyebrow">Access Control</p>
+          <h1 id="auth-title">Register with Invite Code</h1>
+          <p class="subtle" id="auth-sub">Complete human verification on homepage first, then register with email + invite code.</p>
+        </div>
+      </section>
+      <section class="panel">
+        <div id="verify-hint" class="subtle"></div>
+        <div class="auth-grid">
+          <article class="auth-card">
+            <h2 id="reg-h2">Create Account</h2>
+            <input id="reg-email" class="auth-input" type="email" placeholder="Email" autocomplete="email" />
+            <input id="reg-invite" class="auth-input" type="text" placeholder="Invite code" />
+            <input id="reg-pass" class="auth-input" type="password" placeholder="Password (min 8 chars)" autocomplete="new-password" />
+            <input id="reg-pass2" class="auth-input" type="password" placeholder="Repeat password" autocomplete="new-password" />
+            <button id="reg-btn" class="btn">Register</button>
+            <p id="reg-status" class="auth-status"></p>
+          </article>
+          <article class="auth-card">
+            <h2 id="login-h2">Sign In</h2>
+            <input id="login-email" class="auth-input" type="email" placeholder="Email" autocomplete="email" />
+            <input id="login-pass" class="auth-input" type="password" placeholder="Password" autocomplete="current-password" />
+            <button id="login-btn" class="btn">Sign In</button>
+            <p id="login-status" class="auth-status"></p>
+          </article>
+        </div>
+      </section>
+    </main>
+    <script>
+      (function() {
+        const q = new URLSearchParams(location.search);
+        const next = q.get("next") || "/dashboard.html";
+        const hv = localStorage.getItem("nexo_human_verified");
+        const hint = document.getElementById("verify-hint");
+        if (!hv && hint) {
+          hint.textContent = "Please complete human verification on homepage first. 未检测到人工验证，请先回首页完成验证。";
+        } else if (hint) {
+          hint.textContent = "Human verification passed. You can register now. 已完成人工验证，可以注册。";
+        }
+        async function post(url, payload) {
+          const r = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload || {})
+          });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d.error || "request_failed");
+          return d;
+        }
+        function goNext() {
+          location.href = next.startsWith("/") ? next : ("/" + next);
+        }
+        document.getElementById("reg-btn").addEventListener("click", async () => {
+          const st = document.getElementById("reg-status");
+          st.textContent = "Registering...";
+          try {
+            await post("/api/auth/register", {
+              email: document.getElementById("reg-email").value.trim(),
+              invite_code: document.getElementById("reg-invite").value.trim(),
+              password: document.getElementById("reg-pass").value,
+              confirm_password: document.getElementById("reg-pass2").value
+            });
+            st.textContent = "Registered. Redirecting...";
+            goNext();
+          } catch (e) {
+            st.textContent = "Register failed: " + (e.message || "unknown");
+          }
+        });
+        document.getElementById("login-btn").addEventListener("click", async () => {
+          const st = document.getElementById("login-status");
+          st.textContent = "Signing in...";
+          try {
+            await post("/api/auth/login", {
+              email: document.getElementById("login-email").value.trim(),
+              password: document.getElementById("login-pass").value
+            });
+            st.textContent = "Signed in. Redirecting...";
+            goNext();
+          } catch (e) {
+            st.textContent = "Sign-in failed: " + (e.message || "unknown");
+          }
+        });
+        fetch("/api/auth/me", { credentials: "include" }).then(async (r) => {
+          const d = await r.json().catch(() => ({}));
+          if (r.ok && d?.authenticated) goNext();
+        }).catch(() => {});
+      })();
+    </script>
+  </body>
+</html>
+

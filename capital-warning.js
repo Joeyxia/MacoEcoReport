@@ -253,7 +253,7 @@ function cwApi(path) {
 
 async function cwGet(path) {
   try {
-    const res = await fetch(cwApi(path), { credentials: "omit" });
+    const res = await fetch(cwApi(path), { credentials: "include" });
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -581,24 +581,54 @@ async function initPortfolioWatchlistPage() {
   const posRoot = document.getElementById("watchlist-positions");
   const riskRoot = document.getElementById("portfolio-risk-summary");
   const emailInput = document.getElementById("watchlist-email");
+  const emailLabel = document.getElementById("watchlist-user-email");
   const nameInput = document.getElementById("watchlist-name");
   const tickerInput = document.getElementById("position-ticker");
   const qtyInput = document.getElementById("position-qty");
+  const tickerDatalist = document.getElementById("ticker-suggestions");
   let currentWatchlistId = null;
+  let currentUserEmail = "";
+
+  async function loadCurrentUser() {
+    const me = await cwGet("/api/auth/me");
+    currentUserEmail = String(me?.user?.email || "").trim().toLowerCase();
+    if (emailInput) emailInput.value = currentUserEmail;
+    if (emailLabel) {
+      emailLabel.textContent = currentUserEmail
+        ? (cwLang() === "zh" ? `当前用户：${currentUserEmail}` : `Current user: ${currentUserEmail}`)
+        : (cwLang() === "zh" ? "当前用户未登录" : "No signed-in user");
+    }
+  }
+
+  async function loadTickerSuggestions() {
+    const data = await cwGet("/api/stocks/tickers");
+    const rows = data?.items || [];
+    if (!tickerDatalist) return;
+    tickerDatalist.innerHTML = "";
+    rows.forEach((x) => {
+      const t = String(x || "").trim().toUpperCase();
+      if (!t) return;
+      const op = document.createElement("option");
+      op.value = t;
+      tickerDatalist.appendChild(op);
+    });
+  }
 
   async function refreshSummary() {
-    const email = String(emailInput?.value || "").trim().toLowerCase();
+    const email = currentUserEmail;
     if (!email) {
       cwText(riskRoot, `<p class='subtle'>${cwEsc(cwT("enter_email"))}</p>`);
       return;
     }
-    const res = await cwGet(`/api/portfolio/risk-summary?user_email=${encodeURIComponent(email)}`);
+    const q = currentWatchlistId ? `?watchlist_id=${encodeURIComponent(currentWatchlistId)}` : "";
+    const res = await cwGet(`/api/portfolio/risk-summary${q}`);
     const s = res?.summary;
     cwText(riskRoot, s ? `
       <div class="summary-score">${cwEsc(s.average_macro_risk_score || 0)}</div>
       <div class="summary-line">${cwT("positions")}: ${cwEsc(s.count || 0)}</div>
       <div class="summary-line">${cwT("top_risk")}: ${cwEsc((s.top_risk_positions || []).map((x) => x.ticker).join(", ") || "--")}</div>
       <div class="summary-line">${cwT("top_benefit")}: ${cwEsc((s.top_benefit_positions || []).map((x) => x.ticker).join(", ") || "--")}</div>
+      <div class="summary-line">${cwEsc(s.advice || "--")}</div>
     ` : `<p class='subtle'>${cwEsc(cwT("no_summary"))}</p>`);
   }
 
@@ -619,8 +649,7 @@ async function initPortfolioWatchlistPage() {
   }
 
   async function refreshLists() {
-    const email = String(emailInput?.value || "").trim().toLowerCase();
-    const res = await cwGet(`/api/portfolio/watchlists${email ? `?user_email=${encodeURIComponent(email)}` : ""}`);
+    const res = await cwGet("/api/portfolio/watchlists");
     const rows = res?.items || [];
     if (!rows.length) {
       cwText(listRoot, `<p class='subtle'>${cwEsc(cwT("no_watchlists"))}</p>`);
@@ -631,6 +660,7 @@ async function initPortfolioWatchlistPage() {
       btn.addEventListener("click", async () => {
         currentWatchlistId = btn.getAttribute("data-watchlist");
         await refreshPositions();
+        await refreshSummary();
       });
     });
     if (!currentWatchlistId && rows[0]) currentWatchlistId = rows[0].id;
@@ -639,13 +669,13 @@ async function initPortfolioWatchlistPage() {
   }
 
   document.getElementById("watchlist-create")?.addEventListener("click", async () => {
-    const email = String(emailInput?.value || "").trim().toLowerCase();
     const name = String(nameInput?.value || "").trim();
-    if (!email || !name) return;
+    if (!name) return;
     await fetch(cwApi("/api/portfolio/watchlists"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_email: email, list_name: name }),
+      credentials: "include",
+      body: JSON.stringify({ list_name: name }),
     });
     await refreshLists();
   });
@@ -657,12 +687,15 @@ async function initPortfolioWatchlistPage() {
     await fetch(cwApi(`/api/portfolio/watchlists/${currentWatchlistId}/positions`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ ticker, quantity: Number(qtyInput?.value || 0) || 0 }),
     });
     await refreshPositions();
     await refreshSummary();
   });
 
+  await loadCurrentUser();
+  await loadTickerSuggestions();
   await refreshLists();
 }
 

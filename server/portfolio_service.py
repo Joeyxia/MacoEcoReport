@@ -112,8 +112,11 @@ def add_position(watchlist_id, ticker, quantity=0, cost_basis=None, note=""):
     conn.close()
 
 
-def build_portfolio_risk_summary(user_email):
+def build_portfolio_risk_summary(user_email, watchlist_id=None):
   watchlists = list_watchlists(user_email)
+  if watchlist_id is not None:
+    wid = int(watchlist_id)
+    watchlists = [x for x in watchlists if int(x.get("id") or 0) == wid]
   all_positions = []
   for wl in watchlists:
     all_positions.extend(list_positions(wl["id"]))
@@ -127,6 +130,7 @@ def build_portfolio_risk_summary(user_email):
         "average_macro_risk_score": 0,
         "top_risk_positions": [],
         "top_benefit_positions": [],
+        "advice": "No positions yet. Add holdings to generate macro + stock combined risk advice.",
       },
     }
   scored = []
@@ -143,6 +147,23 @@ def build_portfolio_risk_summary(user_email):
     })
   scored_sorted = sorted(scored, key=lambda x: x["macro_risk_score"], reverse=True)
   avg = round(sum(x["macro_risk_score"] for x in scored) / len(scored), 2)
+  high_risk = [x for x in scored if float(x.get("macro_risk_score") or 0) >= 70]
+  risk_off = [x for x in scored if str(x.get("signal") or "").lower() == "risk_off"]
+  action_count = {}
+  for x in scored:
+    action = str(x.get("action_bias") or "").strip().lower() or "unknown"
+    action_count[action] = action_count.get(action, 0) + 1
+  dominant_action = sorted(action_count.items(), key=lambda kv: kv[1], reverse=True)[0][0] if action_count else "neutral"
+  top_risk = scored_sorted[:5]
+  top_benefit = list(reversed(scored_sorted[-5:]))
+  advice = (
+    f"Composite macro-stock risk score is {avg}. "
+    f"High-risk names (>=70): {len(high_risk)}. "
+    f"Risk-off signals: {len(risk_off)}. "
+    f"Dominant action bias: {dominant_action}. "
+    f"Trim concentration in {', '.join(x['ticker'] for x in top_risk[:3]) or '--'}, "
+    f"and stagger adds toward {', '.join(x['ticker'] for x in top_benefit[:3]) or '--'} only after risk signal stabilizes."
+  )
   return {
     "user_email": str(user_email or "").strip().lower(),
     "watchlists": watchlists,
@@ -150,8 +171,12 @@ def build_portfolio_risk_summary(user_email):
     "summary": {
       "count": len(scored),
       "average_macro_risk_score": avg,
-      "top_risk_positions": scored_sorted[:5],
-      "top_benefit_positions": list(reversed(scored_sorted[-5:])),
+      "top_risk_positions": top_risk,
+      "top_benefit_positions": top_benefit,
+      "high_risk_count": len(high_risk),
+      "risk_off_count": len(risk_off),
+      "dominant_action_bias": dominant_action,
+      "advice": advice,
     },
   }
 

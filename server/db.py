@@ -83,6 +83,42 @@ def init_db():
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS user_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      password_salt TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      invited_by TEXT,
+      invite_code TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      last_login_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_accounts_email ON user_accounts(email);
+
+    CREATE TABLE IF NOT EXISTS invite_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT UNIQUE NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      max_uses INTEGER NOT NULL DEFAULT 1,
+      used_count INTEGER NOT NULL DEFAULT 0,
+      expires_at TEXT,
+      note TEXT,
+      created_by TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_invite_codes_status ON invite_codes(status, expires_at);
+
+    CREATE TABLE IF NOT EXISTS invite_redemptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL,
+      email TEXT NOT NULL,
+      redeemed_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_invite_redemptions_code ON invite_redemptions(code, redeemed_at DESC);
+
     CREATE TABLE IF NOT EXISTS email_dispatch_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       report_date TEXT,
@@ -1274,6 +1310,188 @@ def list_active_subscribers_with_status(report_date: str = ""):
     )
   conn.close()
   return out
+
+
+def create_invite_code(code: str, max_uses: int = 1, expires_at: str = "", note: str = "", created_by: str = ""):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    conn.execute(
+      """
+      INSERT INTO invite_codes (code, status, max_uses, used_count, expires_at, note, created_by, created_at, updated_at)
+      VALUES (?, 'active', ?, 0, ?, ?, ?, ?, ?)
+      ON CONFLICT(code) DO UPDATE SET
+        status='active',
+        max_uses=excluded.max_uses,
+        expires_at=excluded.expires_at,
+        note=excluded.note,
+        created_by=excluded.created_by,
+        updated_at=excluded.updated_at
+      """,
+      (
+        str(code or "").strip().upper(),
+        max(1, int(max_uses or 1)),
+        str(expires_at or "").strip(),
+        str(note or "").strip(),
+        str(created_by or "").strip().lower(),
+        ts,
+        ts,
+      ),
+    )
+    conn.commit()
+    row = conn.execute(
+      """
+      SELECT code, status, max_uses, used_count, expires_at, note, created_by, created_at, updated_at
+      FROM invite_codes
+      WHERE code = ?
+      """,
+      (str(code or "").strip().upper(),),
+    ).fetchone()
+    return dict(row) if row else None
+  finally:
+    conn.close()
+
+
+def list_invite_codes(limit: int = 100):
+  conn = get_conn()
+  try:
+    rows = conn.execute(
+      """
+      SELECT code, status, max_uses, used_count, expires_at, note, created_by, created_at, updated_at
+      FROM invite_codes
+      ORDER BY created_at DESC
+      LIMIT ?
+      """,
+      (max(1, int(limit or 100)),),
+    ).fetchall()
+    return [dict(r) for r in rows]
+  finally:
+    conn.close()
+
+
+def get_invite_code(code: str):
+  conn = get_conn()
+  try:
+    row = conn.execute(
+      """
+      SELECT code, status, max_uses, used_count, expires_at, note, created_by, created_at, updated_at
+      FROM invite_codes
+      WHERE code = ?
+      """,
+      (str(code or "").strip().upper(),),
+    ).fetchone()
+    return dict(row) if row else None
+  finally:
+    conn.close()
+
+
+def redeem_invite_code(code: str, email: str):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    c = str(code or "").strip().upper()
+    e = str(email or "").strip().lower()
+    row = conn.execute(
+      """
+      SELECT code, status, max_uses, used_count, expires_at
+      FROM invite_codes
+      WHERE code = ?
+      """,
+      (c,),
+    ).fetchone()
+    if not row:
+      return {"ok": False, "error": "invite_not_found"}
+    d = dict(row)
+    if str(d.get("status") or "").lower() != "active":
+      return {"ok": False, "error": "invite_inactive"}
+    expires_at = str(d.get("expires_at") or "").strip()
+    if expires_at and expires_at < ts:
+      return {"ok": False, "error": "invite_expired"}
+    if int(d.get("used_count") or 0) >= int(d.get("max_uses") or 1):
+      return {"ok": False, "error": "invite_exhausted"}
+
+    conn.execute(
+      "UPDATE invite_codes SET used_count = used_count + 1, updated_at=? WHERE code=?",
+      (ts, c),
+    )
+    conn.execute(
+      "INSERT INTO invite_redemptions (code, email, redeemed_at) VALUES (?, ?, ?)",
+      (c, e, ts),
+    )
+    conn.commit()
+    return {"ok": True}
+  finally:
+    conn.close()
+
+
+def create_user_account(email: str, password_hash: str, password_salt: str, invite_code: str = "", invited_by: str = ""):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    e = str(email or "").strip().lower()
+    conn.execute(
+      """
+      INSERT INTO user_accounts (email, password_hash, password_salt, status, invited_by, invite_code, created_at, updated_at)
+      VALUES (?, ?, ?, 'active', ?, ?, ?, ?)
+      ON CONFLICT(email) DO UPDATE SET
+        password_hash=excluded.password_hash,
+        password_salt=excluded.password_salt,
+        status='active',
+        invited_by=excluded.invited_by,
+        invite_code=excluded.invite_code,
+        updated_at=excluded.updated_at
+      """,
+      (
+        e,
+        str(password_hash or "").strip(),
+        str(password_salt or "").strip(),
+        str(invited_by or "").strip().lower(),
+        str(invite_code or "").strip().upper(),
+        ts,
+        ts,
+      ),
+    )
+    conn.commit()
+    row = conn.execute(
+      """
+      SELECT id, email, status, invited_by, invite_code, created_at, updated_at, last_login_at
+      FROM user_accounts
+      WHERE email = ?
+      """,
+      (e,),
+    ).fetchone()
+    return dict(row) if row else None
+  finally:
+    conn.close()
+
+
+def get_user_account(email: str):
+  conn = get_conn()
+  try:
+    row = conn.execute(
+      """
+      SELECT id, email, password_hash, password_salt, status, invited_by, invite_code, created_at, updated_at, last_login_at
+      FROM user_accounts
+      WHERE email = ?
+      """,
+      (str(email or "").strip().lower(),),
+    ).fetchone()
+    return dict(row) if row else None
+  finally:
+    conn.close()
+
+
+def touch_user_login(email: str):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    conn.execute(
+      "UPDATE user_accounts SET last_login_at=?, updated_at=? WHERE email=?",
+      (ts, ts, str(email or "").strip().lower()),
+    )
+    conn.commit()
+  finally:
+    conn.close()
 
 
 def save_email_dispatch_log(payload: dict):

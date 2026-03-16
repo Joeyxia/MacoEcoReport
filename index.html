@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nexo Marco Intelligence</title>
+    <title>Nexo Macro Intelligence</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -88,6 +88,15 @@
         max-width: 980px;
         text-align: center;
         animation: rise 0.7s ease-out both;
+      }
+
+      .lang-toggle {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        min-width: 88px;
+        height: 42px;
+        z-index: 3;
       }
 
       .brand {
@@ -198,11 +207,12 @@
     </style>
   </head>
   <body>
+    <button id="lang-toggle" class="btn lang-toggle" type="button">中文</button>
     <main class="hero">
       <section class="content">
-        <span class="brand">Nexo Macro Intelligence</span>
-        <h1 class="slogan">Signal Before the Storm</h1>
-        <p class="sub">Track global macro risk with a 14-dimension monitoring model.</p>
+        <span class="brand" id="landing-brand">Nexo Macro Intelligence</span>
+        <h1 class="slogan" id="landing-slogan">Signal Before the Storm</h1>
+        <p class="sub" id="landing-sub">Track global macro risk with a 14-dimension monitoring model.</p>
         <div class="human-check">
           <label id="human-question">Human Verification</label>
           <div class="human-row">
@@ -210,16 +220,71 @@
             <button id="human-verify" class="btn" type="button" style="min-width: 120px; height: 44px">Verify</button>
           </div>
         </div>
-        <a id="enter-dashboard" class="btn" href="dashboard.html" aria-disabled="true" style="pointer-events:none;opacity:0.55">Enter Dashboard</a>
+        <a id="enter-dashboard" class="btn" href="register.html" aria-disabled="true" style="pointer-events:none;opacity:0.55">Register / Sign In</a>
       </section>
     </main>
-    <footer class="footer-note">由 Nexo Marco Intelligence 提供支持</footer>
+    <footer class="footer-note" id="landing-footer">Powered by Nexo Macro Intelligence</footer>
     <script>
       (function () {
+        var LANDING_LANG_KEY = "macro-monitor-lang";
+        var I18N = {
+          en: {
+            title: "Nexo Macro Intelligence",
+            brand: "Nexo Macro Intelligence",
+            slogan: "Signal Before the Storm",
+            sub: "Track global macro risk with a 14-dimension monitoring model.",
+            humanLabel: "Human Verification",
+            answerPlaceholder: "Enter answer",
+            verify: "Verify",
+            verifyPassed: "Verification passed",
+            wrongAnswer: "Wrong answer, try again",
+            questionPrefix: "Human Verification",
+            enterDashboard: "Register / Sign In",
+            footer: "Powered by Nexo Macro Intelligence"
+          },
+          zh: {
+            title: "Nexo 宏观智能",
+            brand: "Nexo 宏观智能",
+            slogan: "风暴前的信号",
+            sub: "用 14 维监测模型跟踪全球宏观风险。",
+            humanLabel: "人工验证",
+            answerPlaceholder: "输入答案",
+            verify: "验证",
+            verifyPassed: "验证通过",
+            wrongAnswer: "答案错误，请重试",
+            questionPrefix: "人工验证",
+            enterDashboard: "注册 / 登录",
+            footer: "由 Nexo Macro Intelligence 提供支持"
+          }
+        };
+        function lang() {
+          try {
+            return localStorage.getItem(LANDING_LANG_KEY) === "zh" ? "zh" : "en";
+          } catch (e) {
+            return "en";
+          }
+        }
+        function t(key) {
+          var current = lang();
+          return (I18N[current] && I18N[current][key]) || I18N.en[key] || key;
+        }
+        function applyLang() {
+          document.documentElement.lang = lang() === "zh" ? "zh-CN" : "en";
+          document.title = t("title");
+          document.getElementById("landing-brand").textContent = t("brand");
+          document.getElementById("landing-slogan").textContent = t("slogan");
+          document.getElementById("landing-sub").textContent = t("sub");
+          document.getElementById("human-answer").setAttribute("placeholder", t("answerPlaceholder"));
+          document.getElementById("human-verify").textContent = t("verify");
+          document.getElementById("enter-dashboard").textContent = t("enterDashboard");
+          document.getElementById("landing-footer").textContent = t("footer");
+          document.getElementById("lang-toggle").textContent = lang() === "zh" ? "EN" : "中文";
+        }
         var q = document.getElementById("human-question");
         var a = document.getElementById("human-answer");
         var v = document.getElementById("human-verify");
         var enter = document.getElementById("enter-dashboard");
+        var langToggle = document.getElementById("lang-toggle");
         if (!q || !a || !v || !enter) return;
         var answer = 0;
         var verified = false;
@@ -236,7 +301,7 @@
         }
         function setVerified(verified) {
           if (verified) {
-            q.textContent = "Verification passed";
+            q.textContent = t("verifyPassed");
             enter.style.pointerEvents = "auto";
             enter.style.opacity = "1";
             enter.setAttribute("aria-disabled", "false");
@@ -250,12 +315,16 @@
           var x = Math.floor(Math.random() * 8) + 1;
           var y = Math.floor(Math.random() * 8) + 1;
           answer = x + y;
-          q.textContent = "Human Verification: " + x + " + " + y + " = ?";
+          q.textContent = t("questionPrefix") + ": " + x + " + " + y + " = ?";
           a.value = "";
         }
         function pass() {
           verified = true;
+          try { localStorage.setItem("nexo_human_verified", nowIso()); } catch (_err) {}
           setVerified(true);
+        }
+        function nowIso() {
+          return new Date().toISOString();
         }
         setVerified(false);
         reset();
@@ -265,10 +334,20 @@
             pass();
             return;
           }
-          q.textContent = "Wrong answer, try again";
+          q.textContent = t("wrongAnswer");
           reset();
         }
+        applyLang();
         v.addEventListener("click", runVerify);
+        if (langToggle) {
+          langToggle.addEventListener("click", function () {
+            var next = lang() === "zh" ? "en" : "zh";
+            try { localStorage.setItem(LANDING_LANG_KEY, next); } catch (e) {}
+            applyLang();
+            if (!verified) reset();
+            else q.textContent = t("verifyPassed");
+          });
+        }
         a.addEventListener("keydown", function (e) {
           if (e.key === "Enter") {
             e.preventDefault();
@@ -285,6 +364,7 @@
           verified = false;
           setVerified(false);
           reset();
+          try { localStorage.removeItem("nexo_human_verified"); } catch (_err) {}
         });
       })();
     </script>

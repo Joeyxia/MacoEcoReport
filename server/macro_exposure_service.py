@@ -184,54 +184,82 @@ def generate_stock_macro_signals(as_of_date, regime, overlay, action_bias):
   bias = str((action_bias or {}).get("overall_bias") or "hold")
   tickers = [str(x.get("ticker") or "").strip().upper() for x in (list_tickers() or []) if str(x.get("ticker") or "").strip()]
   out = []
+  rows_to_write = []
+  ts = now_iso()
+  for ticker in tickers:
+    exposure = ensure_macro_exposure(ticker)
+    latest = get_latest_prediction_payload(ticker) or {}
+    risk_score = 45.0
+    for key in EXPOSURE_KEYS:
+      val = str(exposure.get(key) or "").lower()
+      risk_score += 6 if val == "high" else (3 if val == "medium" else 0)
+    if reg == "credit_stress_risk_off":
+      risk_score += 15
+    elif reg == "recession_policy_easing":
+      risk_score += 8
+    elif reg == "liquidity_repair_growth_stable":
+      risk_score -= 8
+    if oil in {"S2", "S3"} and str(exposure.get("oil_sensitivity") or "").lower() in {"high", "medium"}:
+      risk_score += 8
+    if str(exposure.get("volatility_sensitivity") or "").lower() == "high":
+      risk_score += 5
+    if str(latest.get("signal") or "").upper() == "BULLISH":
+      risk_score -= 6
+    elif str(latest.get("signal") or "").upper() == "BEARISH":
+      risk_score += 6
+    risk_score = max(0, min(100, round(risk_score, 2)))
+
+    signal = "defensive"
+    if bias == "increase" and risk_score <= 45:
+      signal = "favorable"
+    elif bias in {"hold", "watch_to_add"} and risk_score <= 58:
+      signal = "neutral"
+    elif bias in {"reduce", "avoid_new_adds"} or risk_score >= 68:
+      signal = "risk_off"
+    action = bias
+    short = f"{ticker} macro risk score {risk_score}, regime {reg}, action {action}."
+    long = (
+      f"Ticker {ticker} is evaluated against the latest regime ({reg}), geopolitical overlay ({oil}) "
+      f"and stock macro exposure map. Combined with latest equity signal {latest.get('signal') or 'Neutral'}, "
+      f"the system sets macro risk score to {risk_score} and recommends action bias '{action}'."
+    )
+    payload = {
+      "latest_signal": latest.get("signal") or "",
+      "predicted_return": latest.get("predicted_return"),
+      "up_probability": latest.get("up_probability"),
+      "overlay": oil,
+      "bias": bias,
+      "exposure": {k: exposure.get(k) for k in EXPOSURE_KEYS},
+    }
+    rows_to_write.append(
+      (
+        str(as_of_date or "").strip(),
+        ticker,
+        reg,
+        risk_score,
+        signal,
+        action,
+        short,
+        long,
+        json.dumps(payload, ensure_ascii=False),
+        ts,
+      )
+    )
+    out.append({
+      "as_of_date": str(as_of_date or "").strip(),
+      "ticker": ticker,
+      "regime_code": reg,
+      "macro_risk_score": risk_score,
+      "signal": signal,
+      "action_bias": action,
+      "explanation_short": short,
+      "explanation_long": long,
+      "payload_json": payload,
+    })
+
   conn = get_conn()
   try:
-    ts = now_iso()
-    for ticker in tickers:
-      exposure = ensure_macro_exposure(ticker)
-      latest = get_latest_prediction_payload(ticker) or {}
-      risk_score = 45.0
-      for key in EXPOSURE_KEYS:
-        val = str(exposure.get(key) or "").lower()
-        risk_score += 6 if val == "high" else (3 if val == "medium" else 0)
-      if reg == "credit_stress_risk_off":
-        risk_score += 15
-      elif reg == "recession_policy_easing":
-        risk_score += 8
-      elif reg == "liquidity_repair_growth_stable":
-        risk_score -= 8
-      if oil in {"S2", "S3"} and str(exposure.get("oil_sensitivity") or "").lower() in {"high", "medium"}:
-        risk_score += 8
-      if str(exposure.get("volatility_sensitivity") or "").lower() == "high":
-        risk_score += 5
-      if str(latest.get("signal") or "").upper() == "BULLISH":
-        risk_score -= 6
-      elif str(latest.get("signal") or "").upper() == "BEARISH":
-        risk_score += 6
-      risk_score = max(0, min(100, round(risk_score, 2)))
-
-      signal = "defensive"
-      if bias == "increase" and risk_score <= 45:
-        signal = "favorable"
-      elif bias in {"hold", "watch_to_add"} and risk_score <= 58:
-        signal = "neutral"
-      elif bias in {"reduce", "avoid_new_adds"} or risk_score >= 68:
-        signal = "risk_off"
-      action = bias
-      short = f"{ticker} macro risk score {risk_score}, regime {reg}, action {action}."
-      long = (
-        f"Ticker {ticker} is evaluated against the latest regime ({reg}), geopolitical overlay ({oil}) "
-        f"and stock macro exposure map. Combined with latest equity signal {latest.get('signal') or 'Neutral'}, "
-        f"the system sets macro risk score to {risk_score} and recommends action bias '{action}'."
-      )
-      payload = {
-        "latest_signal": latest.get("signal") or "",
-        "predicted_return": latest.get("predicted_return"),
-        "up_probability": latest.get("up_probability"),
-        "overlay": oil,
-        "bias": bias,
-        "exposure": {k: exposure.get(k) for k in EXPOSURE_KEYS},
-      }
+    for row in rows_to_write:
       conn.execute(
         """
         INSERT INTO stock_macro_signals(as_of_date, ticker, regime_code, macro_risk_score, signal, action_bias, explanation_short, explanation_long, payload_json, created_at)
@@ -245,30 +273,8 @@ def generate_stock_macro_signals(as_of_date, regime, overlay, action_bias):
           explanation_long=excluded.explanation_long,
           payload_json=excluded.payload_json
         """,
-        (
-          str(as_of_date or "").strip(),
-          ticker,
-          reg,
-          risk_score,
-          signal,
-          action,
-          short,
-          long,
-          json.dumps(payload, ensure_ascii=False),
-          ts,
-        ),
+        row,
       )
-      out.append({
-        "as_of_date": str(as_of_date or "").strip(),
-        "ticker": ticker,
-        "regime_code": reg,
-        "macro_risk_score": risk_score,
-        "signal": signal,
-        "action_bias": action,
-        "explanation_short": short,
-        "explanation_long": long,
-        "payload_json": payload,
-      })
     conn.commit()
     return out
   finally:
