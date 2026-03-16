@@ -127,11 +127,13 @@ function signalClass(signal){
 
 function api(path){
   const p = String(path || "").startsWith("/") ? path : `/${path}`;
+  // Auth-required APIs must stay same-origin to keep public session cookies.
+  if (p.startsWith("/api/")) return p;
   return `${STOCK_API_BASE}${p}`;
 }
 
 async function apiGet(path){
-  const r = await fetch(api(path), { credentials: "omit" });
+  const r = await fetch(api(path), { credentials: "include", cache: "no-store" });
   if (!r.ok) return null;
   return r.json();
 }
@@ -300,7 +302,11 @@ function drawCharts(historyRows, featureRows){
 
 async function loadTickers(){
   const res = await apiGet("/api/stocks/tickers");
-  const list = (res?.tickers || []).map((x) => x.ticker).filter(Boolean);
+  const rows = Array.isArray(res?.tickers) ? res.tickers : [];
+  const list = rows
+    .map((x) => (typeof x === "string" ? x : (x?.ticker || x?.symbol || "")))
+    .map((x) => normalizeTicker(x))
+    .filter(Boolean);
   knownTickers = list.length ? list : ["PDD"];
   const dl = document.getElementById("stock-ticker-list");
   if (dl) dl.innerHTML = knownTickers.map((t) => `<option value="${t}"></option>`).join("");
