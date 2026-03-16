@@ -248,7 +248,10 @@ function cwMapValue(value) {
 }
 
 function cwApi(path) {
-  return `${CW_API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  // Keep auth-bound APIs on same origin so session cookies always apply.
+  if (normalized.startsWith("/api/")) return normalized;
+  return `${CW_API_BASE}${normalized}`;
 }
 
 async function cwGet(path) {
