@@ -703,11 +703,13 @@ async function initPortfolioWatchlistPage() {
 
   async function loadTickerSuggestions() {
     const data = await cwGet("/api/stocks/tickers");
-    const rows = data?.items || [];
+    const rows = Array.isArray(data?.tickers) ? data.tickers : (Array.isArray(data?.items) ? data.items : []);
     if (!tickerDatalist) return;
     tickerDatalist.innerHTML = "";
     rows.forEach((x) => {
-      const t = String(x || "").trim().toUpperCase();
+      const t = String(typeof x === "string" ? x : (x?.ticker || x?.symbol || ""))
+        .trim()
+        .toUpperCase();
       if (!t) return;
       const op = document.createElement("option");
       op.value = t;
@@ -790,6 +792,11 @@ async function initPortfolioWatchlistPage() {
     });
     await refreshPositions();
     await refreshSummary();
+  });
+
+  tickerInput?.addEventListener("input", () => {
+    const cur = String(tickerInput.value || "");
+    tickerInput.value = cur.toUpperCase();
   });
 
   await loadCurrentUser();
