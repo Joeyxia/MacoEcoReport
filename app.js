@@ -27,6 +27,16 @@ let dashboardPrefetchStarted = false;
 
 const i18n = {
   en: {
+    brand_name: "Macro Risk Monitor",
+    title_dashboard: "Macro Risk Monitor | Dashboard",
+    title_daily_report: "Macro Risk Monitor | Daily Report",
+    title_indicators: "Macro Risk Monitor | Indicators",
+    title_glossary: "Macro Risk Monitor | Glossary",
+    title_subscribe: "Macro Risk Monitor | Subscribe",
+    title_ai_assistant: "Macro Risk Monitor | AI Assistant",
+    title_openrouter: "Macro Risk Monitor | OpenRouter Rankings",
+    title_portfolio_watchlist: "Macro Risk Monitor | Portfolio Watchlist",
+    title_regime_transmission: "Macro Risk Monitor | Regime & Transmission",
     nav_dashboard: "Dashboard",
     nav_daily_report: "Daily Report",
     nav_indicators: "Indicators",
@@ -34,8 +44,47 @@ const i18n = {
     nav_subscribe: "Subscribe",
     nav_ai_assistant: "AI Assistant",
     nav_openrouter: "OpenRouter",
+    nav_stock_prediction: "Stock Prediction",
     nav_portfolio_watchlist: "Portfolio Watchlist",
     nav_regime_transmission: "Regime & Transmission",
+    section_regime_engine: "Regime Engine",
+    section_geopolitical_overlay: "Geopolitical Overlay",
+    section_action_bias: "Action Bias",
+    section_portfolio_macro_risk: "Portfolio Macro Risk",
+    section_sector_asset_transmission: "Sector / Asset Transmission",
+    section_capital_warning_blocks: "Capital Market Warning Blocks",
+    report_regime_block_title: "Macro Regime",
+    report_transmission_block_title: "Market Transmission",
+    report_portfolio_impact_block_title: "Portfolio Impact",
+    report_action_bias_block_title: "Action Bias",
+    report_overlay_block_title: "Geopolitical / Energy Shock",
+    report_watchlist_block_title: "Watchlist Summary",
+    stock_macro_exposure: "Macro Exposure",
+    stock_macro_signal: "Macro Signal",
+    pw_title: "Portfolio Watchlist",
+    pw_eyebrow: "Portfolio Watchlist",
+    pw_page_title: "Watchlist / Position Risk Mapping",
+    pw_page_desc: "Create watchlists, add stocks, and read macro exposure, action bias, and vulnerable positions.",
+    pw_email_placeholder: "email",
+    pw_name_placeholder: "watchlist name",
+    pw_create: "Create Watchlist",
+    pw_positions: "Positions",
+    pw_ticker_placeholder: "ticker",
+    pw_qty_placeholder: "quantity",
+    pw_add_position: "Add Position",
+    pw_risk_summary: "Portfolio Risk Summary",
+    rt_title: "Regime & Transmission",
+    rt_eyebrow: "Regime & Transmission",
+    rt_page_title: "Market Regime / Transmission Console",
+    rt_page_desc: "View the latest regime, recent regime history, geopolitical overlay, transmission map, and action bias.",
+    rt_current_regime: "Current Regime",
+    rt_regime_history: "30 / 90 Day Regime History",
+    rt_transmission_heatmap: "Transmission Heatmap",
+    rt_regime_explain_title: "Regime Indicator Explanation",
+    rt_overlay_explain_title: "Geopolitical Overlay Explanation",
+    rt_action_explain_title: "Action Bias Explanation",
+    rt_transmission_explain_title: "Transmission Heatmap Explanation",
+    rt_investor_brief_title: "Daily Investor Brief",
     dashboard_eyebrow: "Global Macro Crisis Radar",
     dashboard_title: "Institutional 14-Dimension Monitoring Dashboard",
     dashboard_subtitle: "Upload your model workbook to refresh total score, dimension contribution, and warning signals.",
@@ -80,6 +129,13 @@ const i18n = {
     reference: "Reference",
     glossary_title: "Macro Terms Used in This System",
     glossary_desc: "Aligned to your 14-dimension monitoring framework and alert thresholds.",
+    glossary_search_placeholder: "Search terms...",
+    glossary_filter_all: "All Categories",
+    glossary_filter_core_macro: "Core Macro",
+    glossary_filter_policy_external: "Policy & External",
+    glossary_filter_market_mapping: "Market Mapping",
+    glossary_filter_theme_panel: "Theme Panel",
+    glossary_filter_data_source: "Data Source",
     indicators_eyebrow: "Indicator Library",
     indicators_page_title: "All Indicators Information (from Indicators Sheet)",
     indicators_page_desc: "Full indicator definitions, scoring settings, data source links, and update frequencies.",
@@ -110,6 +166,10 @@ const i18n = {
     openrouter_view_month: "Month",
     openrouter_view_all: "All",
     openrouter_category_all: "All Categories",
+    openrouter_category_roleplay: "Roleplay",
+    openrouter_category_coding: "Coding",
+    openrouter_category_reasoning: "Reasoning",
+    openrouter_category_translation: "Translation",
     openrouter_refresh: "Refresh",
     indicator_verification_status: "Indicator Verification Status",
     data_generated_at: "Data Generated At",
@@ -117,6 +177,16 @@ const i18n = {
     powered_by: "Powered by Nexo Marco Intelligence"
   },
   zh: {
+    brand_name: "宏观风险监测",
+    title_dashboard: "宏观风险监测 | 仪表盘",
+    title_daily_report: "宏观风险监测 | 每日报告",
+    title_indicators: "宏观风险监测 | 指标库",
+    title_glossary: "宏观风险监测 | 术语表",
+    title_subscribe: "宏观风险监测 | 订阅",
+    title_ai_assistant: "宏观风险监测 | AI 助手",
+    title_openrouter: "宏观风险监测 | OpenRouter 排行",
+    title_portfolio_watchlist: "宏观风险监测 | 组合观察池",
+    title_regime_transmission: "宏观风险监测 | 状态与传导",
     nav_dashboard: "仪表盘",
     nav_daily_report: "每日报告",
     nav_indicators: "指标库",
@@ -124,8 +194,47 @@ const i18n = {
     nav_subscribe: "订阅",
     nav_ai_assistant: "AI 助手",
     nav_openrouter: "OpenRouter",
+    nav_stock_prediction: "股票预测",
     nav_portfolio_watchlist: "组合观察池",
     nav_regime_transmission: "状态与传导",
+    section_regime_engine: "状态引擎",
+    section_geopolitical_overlay: "地缘政治叠加层",
+    section_action_bias: "动作偏向",
+    section_portfolio_macro_risk: "组合宏观风险",
+    section_sector_asset_transmission: "板块 / 资产传导",
+    section_capital_warning_blocks: "资本市场预警模块",
+    report_regime_block_title: "宏观状态",
+    report_transmission_block_title: "市场传导",
+    report_portfolio_impact_block_title: "持仓影响",
+    report_action_bias_block_title: "动作建议",
+    report_overlay_block_title: "地缘政治与能源冲击专项",
+    report_watchlist_block_title: "观察池影响摘要",
+    stock_macro_exposure: "宏观暴露",
+    stock_macro_signal: "宏观信号",
+    pw_title: "组合观察池",
+    pw_eyebrow: "组合观察池",
+    pw_page_title: "观察池 / 持仓风险映射",
+    pw_page_desc: "创建观察池、加入股票，并查看宏观暴露、动作偏向和脆弱持仓。",
+    pw_email_placeholder: "邮箱",
+    pw_name_placeholder: "观察池名称",
+    pw_create: "创建观察池",
+    pw_positions: "持仓",
+    pw_ticker_placeholder: "股票代码",
+    pw_qty_placeholder: "数量",
+    pw_add_position: "添加持仓",
+    pw_risk_summary: "组合风险摘要",
+    rt_title: "状态与传导",
+    rt_eyebrow: "状态与传导",
+    rt_page_title: "市场状态 / 传导控制台",
+    rt_page_desc: "查看最新宏观状态、近阶段历史、地缘政治叠加、传导图谱和动作偏向。",
+    rt_current_regime: "当前状态",
+    rt_regime_history: "30 / 90 天状态历史",
+    rt_transmission_heatmap: "传导热力表",
+    rt_regime_explain_title: "状态指标解读",
+    rt_overlay_explain_title: "地缘政治叠加层解读",
+    rt_action_explain_title: "动作偏向解读",
+    rt_transmission_explain_title: "传导热力表解读",
+    rt_investor_brief_title: "当日投资人说明",
     dashboard_eyebrow: "全球宏观危机雷达",
     dashboard_title: "14维机构级宏观监控仪表盘",
     dashboard_subtitle: "上传模型工作簿后，可刷新总分、维度贡献和预警信号。",
@@ -170,6 +279,13 @@ const i18n = {
     reference: "参考",
     glossary_title: "系统术语说明",
     glossary_desc: "与14维监控框架和预警阈值保持一致。",
+    glossary_search_placeholder: "搜索术语...",
+    glossary_filter_all: "全部分类",
+    glossary_filter_core_macro: "核心宏观",
+    glossary_filter_policy_external: "政策与外部",
+    glossary_filter_market_mapping: "市场映射",
+    glossary_filter_theme_panel: "主题面板",
+    glossary_filter_data_source: "数据来源",
     indicators_eyebrow: "指标信息库",
     indicators_page_title: "全部指标信息（来自 Indicators 表）",
     indicators_page_desc: "完整展示指标定义、评分参数、数据源和更新频率。",
@@ -199,6 +315,10 @@ const i18n = {
     openrouter_view_month: "月",
     openrouter_view_all: "全部",
     openrouter_category_all: "全部分类",
+    openrouter_category_roleplay: "角色扮演",
+    openrouter_category_coding: "编程",
+    openrouter_category_reasoning: "推理",
+    openrouter_category_translation: "翻译",
     openrouter_refresh: "刷新",
     indicator_verification_status: "指标在线校验状态",
     data_generated_at: "数据生成时间",
@@ -418,7 +538,7 @@ function setLang(lang) {
 
 function t(key) {
   const lang = getLang();
-  return i18n[lang]?.[key] || i18n.en[key] || key;
+  return i18n[lang]?.[key] || i18n.en[key] || "";
 }
 
 function localizeStatus(text) {
@@ -497,13 +617,19 @@ function localizeDimensionDefinition(id, raw) {
 function applyI18n() {
   document.querySelectorAll("[data-i18n]").forEach((node) => {
     const key = node.getAttribute("data-i18n");
+    if (!node.dataset.i18nDefault) {
+      node.dataset.i18nDefault = node.textContent || "";
+    }
     const value = t(key);
-    if (value) node.textContent = value;
+    node.textContent = value || node.dataset.i18nDefault || "";
   });
   document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
     const key = node.getAttribute("data-i18n-placeholder");
+    if (!node.dataset.i18nPlaceholderDefault) {
+      node.dataset.i18nPlaceholderDefault = node.getAttribute("placeholder") || "";
+    }
     const value = t(key);
-    if (value) node.setAttribute("placeholder", value);
+    node.setAttribute("placeholder", value || node.dataset.i18nPlaceholderDefault || "");
   });
 
   const toggle = document.getElementById("lang-toggle");
