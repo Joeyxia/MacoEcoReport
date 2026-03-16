@@ -42,6 +42,14 @@ from db import (
     upsert_daily_report,
     upsert_daily_report_ai_insight,
 )
+from regime_service import (
+    upsert_regime_snapshot,
+    upsert_transmission_snapshot,
+    upsert_action_bias,
+)
+from alert_service import save_alert_snapshots
+from geopolitical_service import upsert_overlay
+from macro_exposure_service import generate_stock_macro_signals
 
 MODEL_PATH = ROOT / "model.xlsx"
 REPORTS_DIR = ROOT / "reports"
@@ -930,37 +938,6 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
         except Exception:
             reports = []
 
-    today_entry = {
-        "date": today,
-        "meta": {"score": str(total_score), "status": model_status},
-        "text": report_text,
-        "path": f"reports/{today}.html",
-        "reportPayload": {
-            "topDimensionContributors": top_dimension_contributors,
-            "triggerAlerts": alerts,
-            "dailyWatchedItems": daily_watched_items,
-            "primaryDrivers": drivers,
-            "keyIndicatorsSnapshot": key_indicators_snapshot,
-            "all14DimensionsDetailed": all14_dimensions_detailed,
-            "latestReportSummary": ai_short_zh or short_summary,
-            "indicatorDetails": indicator_details,
-            "aiInsight": {
-                "short_summary_zh": ai_short_zh,
-                "short_summary_en": ai_short_en,
-                "detailed_markdown_zh": ai_detailed_zh,
-                "detailed_markdown_en": ai_detailed_en,
-                "model": ai_model,
-                "prompt_version": AI_PROMPT_VERSION,
-                "generated_at": generated_at,
-                "error": ai_error,
-            },
-            "generatedAt": generated_at,
-        },
-    }
-    if report_enabled:
-        merged = [today_entry] + [r for r in reports if r.get("date") != today]
-        index_path.write_text(json.dumps({"reports": merged}, ensure_ascii=False, indent=2), encoding="utf-8")
-
     snapshot = {
         "asOf": today,
         "reportDate": today if report_enabled else "",
@@ -995,16 +972,74 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
             "checks": freshness_checks,
         },
     }
+
+    init_db()
+    regime_snapshot = upsert_regime_snapshot(today, snapshot)
+    alert_snapshots = save_alert_snapshots(today, snapshot)
+    geopolitical_overlay = upsert_overlay(today, snapshot)
+    transmission_snapshot = upsert_transmission_snapshot(today, snapshot, regime=regime_snapshot)
+    action_bias = upsert_action_bias(today, snapshot, regime=regime_snapshot, overlay=geopolitical_overlay)
+    stock_macro_signals = generate_stock_macro_signals(today, regime_snapshot, geopolitical_overlay, action_bias)
+
+    snapshot["regime"] = regime_snapshot
+    snapshot["alertSnapshots"] = alert_snapshots
+    snapshot["geopoliticalOverlay"] = geopolitical_overlay
+    snapshot["marketTransmission"] = transmission_snapshot
+    snapshot["actionBias"] = action_bias
+    snapshot["stockMacroSignals"] = stock_macro_signals[:20]
+
+    today_entry = {
+        "date": today,
+        "meta": {"score": str(total_score), "status": model_status},
+        "text": report_text,
+        "path": f"reports/{today}.html",
+        "reportPayload": {
+            "topDimensionContributors": top_dimension_contributors,
+            "triggerAlerts": alerts,
+            "dailyWatchedItems": daily_watched_items,
+            "primaryDrivers": drivers,
+            "keyIndicatorsSnapshot": key_indicators_snapshot,
+            "all14DimensionsDetailed": all14_dimensions_detailed,
+            "latestReportSummary": ai_short_zh or short_summary,
+            "indicatorDetails": indicator_details,
+            "regime": regime_snapshot,
+            "alertSnapshots": alert_snapshots,
+            "geopoliticalOverlay": geopolitical_overlay,
+            "marketTransmission": transmission_snapshot,
+            "actionBias": action_bias,
+            "stockMacroSignals": stock_macro_signals[:20],
+            "aiInsight": {
+                "short_summary_zh": ai_short_zh,
+                "short_summary_en": ai_short_en,
+                "detailed_markdown_zh": ai_detailed_zh,
+                "detailed_markdown_en": ai_detailed_en,
+                "model": ai_model,
+                "prompt_version": AI_PROMPT_VERSION,
+                "generated_at": generated_at,
+                "error": ai_error,
+            },
+            "generatedAt": generated_at,
+        },
+    }
+    if report_enabled:
+        merged = [today_entry] + [r for r in reports if r.get("date") != today]
+        index_path.write_text(json.dumps({"reports": merged}, ensure_ascii=False, indent=2), encoding="utf-8")
+
     (DATA_DIR / "latest_snapshot.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
     (ROOT / "data_update_log.json").write_text(json.dumps(snapshot["onlineUpdate"], ensure_ascii=False, indent=2), encoding="utf-8")
 
-    init_db()
     save_model_snapshot(snapshot)
     replace_sheet_rows("Dimensions", snapshot["tables"]["dimensions"], today)
     replace_sheet_rows("Indicators", snapshot["tables"]["indicators"], today)
     replace_sheet_rows("Inputs", snapshot["tables"]["inputs"], today)
     replace_sheet_rows("Scores", snapshot["tables"]["scores"], today)
     replace_sheet_rows("Alerts", snapshot["tables"]["alerts"], today)
+    replace_sheet_rows("RegimeSnapshots", [regime_snapshot], today)
+    replace_sheet_rows("AlertSnapshots", alert_snapshots, today)
+    replace_sheet_rows("GeopoliticalOverlays", [geopolitical_overlay], today)
+    replace_sheet_rows("MarketTransmissionSnapshots", [transmission_snapshot], today)
+    replace_sheet_rows("DailyActionBiases", [action_bias], today)
+    replace_sheet_rows("StockMacroSignals", stock_macro_signals, today)
     replace_sheet_rows(
         "DailyReports",
         [

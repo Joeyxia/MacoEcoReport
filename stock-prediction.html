@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="styles.css?v=20260312s3" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="stock.js?v=20260312s4" defer></script>
+    <script src="capital-warning.js?v=20260316a" defer></script>
   </head>
   <body data-page="stock-prediction">
     <div class="bg-layer"></div>
@@ -25,6 +26,8 @@
         <a class="nav-link" href="indicators.html">Indicators</a>
         <a class="nav-link" href="glossary.html">Glossary</a>
         <a class="nav-link" href="subscribe.html">Subscribe</a>
+        <a class="nav-link" href="portfolio-watchlist.html">Portfolio Watchlist</a>
+        <a class="nav-link" href="regime-transmission.html">Regime & Transmission</a>
         <a class="nav-link active" href="stock-prediction.html">Stock Prediction</a>
       </nav>
       <button id="stock-lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
@@ -63,6 +66,17 @@
         <article class="panel"><p class="score-label" id="kpi_scagr_label">Strategy CAGR</p><div class="score-value score-value-sm" id="kpi-scagr">--</div><p class="score-desc" id="kpi-scagr-desc">--</p></article>
         <article class="panel"><p class="score-label" id="kpi_bcagr_label">Buy & Hold CAGR</p><div class="score-value score-value-sm" id="kpi-bcagr">--</div><p class="score-desc" id="kpi-bcagr-desc">--</p></article>
         <article class="panel"><p class="score-label" id="kpi_sharpe_label">Sharpe Ratio</p><div class="score-value score-value-sm" id="kpi-sharpe">--</div><p class="score-desc" id="kpi-sharpe-desc">--</p></article>
+      </section>
+
+      <section class="grid two-col">
+        <article class="panel">
+          <h2>Macro Exposure</h2>
+          <div id="stock-macro-exposure" class="table-wrap"></div>
+        </article>
+        <article class="panel">
+          <h2>Macro Signal</h2>
+          <div id="stock-macro-signal" class="summary-panel"></div>
+        </article>
       </section>
 
       <section class="grid two-col">

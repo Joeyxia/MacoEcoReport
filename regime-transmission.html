@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="macro-api-base" content="https://api.nexo.hk" />
+    <title>Macro Risk Monitor | Regime & Transmission</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=20260309p" />
+    <script src="capital-warning.js?v=20260316a" defer></script>
+  </head>
+  <body data-page="regime-transmission">
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="index.html">Macro Risk Monitor</a>
+      <nav>
+        <a class="nav-link" href="dashboard.html">Dashboard</a>
+        <a class="nav-link" href="daily-report.html">Daily Report</a>
+        <a class="nav-link" href="portfolio-watchlist.html">Portfolio Watchlist</a>
+        <a class="nav-link active" href="regime-transmission.html">Regime & Transmission</a>
+        <a class="nav-link" href="stock-prediction.html">Stock Prediction</a>
+      </nav>
+    </header>
+    <main class="page">
+      <section class="panel hero compact">
+        <div>
+          <p class="eyebrow">Regime & Transmission</p>
+          <h1>Market Regime / Transmission Console</h1>
+          <p class="subtle">View the latest regime, recent regime history, geopolitical overlay, transmission map, and action bias.</p>
+        </div>
+      </section>
+      <section class="grid two-col">
+        <article class="panel">
+          <h2>Current Regime</h2>
+          <div id="rt-regime-card" class="summary-panel"></div>
+        </article>
+        <article class="panel">
+          <h2>Geopolitical Overlay</h2>
+          <div id="rt-overlay-card" class="summary-panel"></div>
+        </article>
+      </section>
+      <section class="grid two-col">
+        <article class="panel">
+          <h2>30 / 90 Day Regime History</h2>
+          <div id="rt-regime-history" class="table-wrap"></div>
+        </article>
+        <article class="panel">
+          <h2>Action Bias</h2>
+          <div id="rt-action-bias" class="summary-panel"></div>
+        </article>
+      </section>
+      <section class="panel">
+        <h2>Transmission Heatmap</h2>
+        <div id="rt-transmission" class="table-wrap"></div>
+      </section>
+    </main>
+  </body>
+</html>

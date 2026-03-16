@@ -566,6 +566,139 @@ def init_db():
       updated_at TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS regime_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      as_of_date TEXT NOT NULL,
+      regime_code TEXT NOT NULL,
+      regime_label TEXT NOT NULL,
+      confidence REAL DEFAULT 0,
+      score REAL,
+      score_delta REAL,
+      drivers_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(as_of_date, regime_code)
+    );
+    CREATE INDEX IF NOT EXISTS idx_regime_snapshots_asof ON regime_snapshots(as_of_date DESC);
+
+    CREATE TABLE IF NOT EXISTS alert_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      as_of_date TEXT NOT NULL,
+      dimension_code TEXT,
+      alert_code TEXT NOT NULL,
+      alert_level TEXT NOT NULL,
+      alert_title TEXT NOT NULL,
+      trigger_value TEXT,
+      threshold_rule TEXT,
+      commentary TEXT,
+      payload_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_alert_snapshots_asof ON alert_snapshots(as_of_date DESC);
+    CREATE INDEX IF NOT EXISTS idx_alert_snapshots_level ON alert_snapshots(alert_level);
+
+    CREATE TABLE IF NOT EXISTS geopolitical_overlays (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      as_of_date TEXT NOT NULL UNIQUE,
+      conflict_level TEXT,
+      supply_disruption_level TEXT,
+      shipping_risk_level TEXT,
+      oil_shock_scenario TEXT,
+      inflation_impact TEXT,
+      risk_asset_impact TEXT,
+      credit_impact TEXT,
+      summary TEXT,
+      payload_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS portfolio_watchlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_email TEXT NOT NULL,
+      list_name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_email, list_name)
+    );
+
+    CREATE TABLE IF NOT EXISTS portfolio_positions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      watchlist_id INTEGER NOT NULL,
+      ticker TEXT NOT NULL,
+      quantity REAL DEFAULT 0,
+      cost_basis REAL,
+      market_value REAL,
+      note TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(watchlist_id, ticker),
+      FOREIGN KEY(watchlist_id) REFERENCES portfolio_watchlists(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_portfolio_positions_watchlist ON portfolio_positions(watchlist_id);
+
+    CREATE TABLE IF NOT EXISTS stock_macro_exposures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticker TEXT NOT NULL UNIQUE,
+      interest_rate_sensitivity TEXT,
+      growth_sensitivity TEXT,
+      inflation_sensitivity TEXT,
+      oil_sensitivity TEXT,
+      credit_sensitivity TEXT,
+      usd_sensitivity TEXT,
+      geopolitics_sensitivity TEXT,
+      volatility_sensitivity TEXT,
+      payload_json TEXT,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS stock_macro_signals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      as_of_date TEXT NOT NULL,
+      ticker TEXT NOT NULL,
+      regime_code TEXT,
+      macro_risk_score REAL,
+      signal TEXT,
+      action_bias TEXT,
+      explanation_short TEXT,
+      explanation_long TEXT,
+      payload_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(as_of_date, ticker)
+    );
+    CREATE INDEX IF NOT EXISTS idx_stock_macro_signals_asof ON stock_macro_signals(as_of_date DESC);
+    CREATE INDEX IF NOT EXISTS idx_stock_macro_signals_ticker ON stock_macro_signals(ticker);
+
+    CREATE TABLE IF NOT EXISTS market_transmission_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      as_of_date TEXT NOT NULL UNIQUE,
+      rates_bias TEXT,
+      equities_bias TEXT,
+      credit_bias TEXT,
+      usd_bias TEXT,
+      commodities_bias TEXT,
+      crypto_bias TEXT,
+      sectors_json TEXT,
+      asset_classes_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS daily_action_biases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      as_of_date TEXT NOT NULL UNIQUE,
+      overall_bias TEXT NOT NULL,
+      favored_styles_json TEXT,
+      avoided_styles_json TEXT,
+      favored_sectors_json TEXT,
+      avoided_sectors_json TEXT,
+      summary TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
     """
   )
   for ddl in [

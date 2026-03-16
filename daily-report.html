@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="styles.css?v=20260309p" />
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js" defer></script>
     <script src="app.js?v=20260310a" defer></script>
+    <script src="capital-warning.js?v=20260316a" defer></script>
   </head>
   <body data-page="daily-report">
     <div class="bg-layer"></div>
@@ -26,6 +27,8 @@
         <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
         <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
         <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
+        <a class="nav-link" href="portfolio-watchlist.html">Portfolio Watchlist</a>
+        <a class="nav-link" href="regime-transmission.html">Regime & Transmission</a>
         <a class="nav-link" href="stock-prediction.html">Stock Prediction</a>
         <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
       </nav>
@@ -50,6 +53,40 @@
       <section class="panel">
         <h2 data-i18n="report_preview">Report Preview (Reference Format)</h2>
         <div id="report-preview" class="report-preview"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Capital Market Warning Blocks</h2>
+        <div class="grid two-col">
+          <article class="panel nested-panel">
+            <h3>宏观状态</h3>
+            <div id="report-regime-block" class="summary-panel"></div>
+          </article>
+          <article class="panel nested-panel">
+            <h3>市场传导</h3>
+            <div id="report-transmission-block" class="summary-panel"></div>
+          </article>
+        </div>
+        <div class="grid two-col">
+          <article class="panel nested-panel">
+            <h3>持仓影响</h3>
+            <div id="report-portfolio-impact-block" class="summary-panel"></div>
+          </article>
+          <article class="panel nested-panel">
+            <h3>动作建议</h3>
+            <div id="report-action-bias-block" class="summary-panel"></div>
+          </article>
+        </div>
+        <div class="grid two-col">
+          <article class="panel nested-panel">
+            <h3>地缘政治与能源冲击专项</h3>
+            <div id="report-overlay-block" class="summary-panel"></div>
+          </article>
+          <article class="panel nested-panel">
+            <h3>观察池影响摘要</h3>
+            <div id="report-watchlist-block" class="summary-panel"></div>
+          </article>
+        </div>
       </section>
 
       <section class="panel" style="display:none">

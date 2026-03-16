@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="macro-api-base" content="https://api.nexo.hk" />
+    <title>Macro Risk Monitor | Portfolio Watchlist</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=20260309p" />
+    <script src="capital-warning.js?v=20260316a" defer></script>
+  </head>
+  <body data-page="portfolio-watchlist">
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="index.html">Macro Risk Monitor</a>
+      <nav>
+        <a class="nav-link" href="dashboard.html">Dashboard</a>
+        <a class="nav-link" href="daily-report.html">Daily Report</a>
+        <a class="nav-link active" href="portfolio-watchlist.html">Portfolio Watchlist</a>
+        <a class="nav-link" href="regime-transmission.html">Regime & Transmission</a>
+        <a class="nav-link" href="stock-prediction.html">Stock Prediction</a>
+      </nav>
+    </header>
+    <main class="page">
+      <section class="panel hero compact">
+        <div>
+          <p class="eyebrow">Portfolio Watchlist</p>
+          <h1>Watchlist / Position Risk Mapping</h1>
+          <p class="subtle">Create watchlists, add stocks, and read macro exposure, action bias, and vulnerable positions.</p>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="report-actions">
+          <input id="watchlist-email" class="report-link" style="min-width:260px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" placeholder="email" />
+          <input id="watchlist-name" class="report-link" style="min-width:220px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" placeholder="watchlist name" />
+          <button id="watchlist-create" class="btn">Create Watchlist</button>
+        </div>
+        <div id="watchlist-list" class="report-links"></div>
+      </section>
+      <section class="grid two-col">
+        <article class="panel">
+          <h2>Positions</h2>
+          <div class="report-actions">
+            <input id="position-ticker" class="report-link" style="min-width:180px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" placeholder="ticker" />
+            <input id="position-qty" class="report-link" style="min-width:120px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" placeholder="quantity" />
+            <button id="position-add" class="btn">Add Position</button>
+          </div>
+          <div id="watchlist-positions" class="table-wrap"></div>
+        </article>
+        <article class="panel">
+          <h2>Portfolio Risk Summary</h2>
+          <div id="portfolio-risk-summary" class="summary-panel"></div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

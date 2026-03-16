@@ -82,6 +82,37 @@ try:
     list_executions as polymarket_list_executions,
     replay_summary as polymarket_replay_summary,
   )
+  from .regime_service import (
+    upsert_regime_snapshot,
+    get_latest_regime,
+    get_regime_history,
+    upsert_transmission_snapshot,
+    get_latest_transmission,
+    upsert_action_bias,
+    get_latest_action_bias,
+  )
+  from .alert_service import (
+    save_alert_snapshots as save_capital_alert_snapshots,
+    get_latest_alerts as get_capital_alerts_latest,
+  )
+  from .geopolitical_service import (
+    upsert_overlay,
+    get_latest_overlay,
+  )
+  from .portfolio_service import (
+    list_watchlists as list_portfolio_watchlists,
+    create_watchlist as create_portfolio_watchlist,
+    list_positions as list_portfolio_positions,
+    add_position as add_portfolio_position,
+    build_portfolio_risk_summary,
+    report_portfolio_impact,
+  )
+  from .macro_exposure_service import (
+    get_macro_exposure,
+    get_macro_signal_latest,
+    get_macro_signal_history,
+    generate_stock_macro_signals,
+  )
 except ImportError:
   from db import (
     add_subscriber,
@@ -147,6 +178,37 @@ except ImportError:
     evaluate_and_execute as polymarket_evaluate_and_execute,
     list_executions as polymarket_list_executions,
     replay_summary as polymarket_replay_summary,
+  )
+  from regime_service import (
+    upsert_regime_snapshot,
+    get_latest_regime,
+    get_regime_history,
+    upsert_transmission_snapshot,
+    get_latest_transmission,
+    upsert_action_bias,
+    get_latest_action_bias,
+  )
+  from alert_service import (
+    save_alert_snapshots as save_capital_alert_snapshots,
+    get_latest_alerts as get_capital_alerts_latest,
+  )
+  from geopolitical_service import (
+    upsert_overlay,
+    get_latest_overlay,
+  )
+  from portfolio_service import (
+    list_watchlists as list_portfolio_watchlists,
+    create_watchlist as create_portfolio_watchlist,
+    list_positions as list_portfolio_positions,
+    add_position as add_portfolio_position,
+    build_portfolio_risk_summary,
+    report_portfolio_impact,
+  )
+  from macro_exposure_service import (
+    get_macro_exposure,
+    get_macro_signal_latest,
+    get_macro_signal_history,
+    generate_stock_macro_signals,
   )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1656,6 +1718,133 @@ def stocks_features_latest(ticker):
   limit = int(request.args.get("limit") or 10)
   rows = get_stock_latest_features(ticker, limit=limit)
   return _etag_response({"ok": True, "ticker": str(ticker or "").upper(), "rows": rows, "count": len(rows)})
+
+
+@app.route("/api/regime/latest", methods=["GET"])
+def api_regime_latest():
+  row = get_latest_regime()
+  return jsonify({"ok": True, "item": row})
+
+
+@app.route("/api/regime/history", methods=["GET"])
+def api_regime_history():
+  days = int(request.args.get("days") or 90)
+  rows = get_regime_history(days=days)
+  return jsonify({"ok": True, "items": rows, "count": len(rows)})
+
+
+@app.route("/api/alerts/latest", methods=["GET"])
+def api_alerts_latest():
+  level = str(request.args.get("level") or "").strip().lower()
+  rows = get_capital_alerts_latest(level=level)
+  return jsonify({"ok": True, "items": rows, "count": len(rows)})
+
+
+@app.route("/api/geopolitical-overlay/latest", methods=["GET"])
+def api_overlay_latest():
+  row = get_latest_overlay()
+  return jsonify({"ok": True, "item": row})
+
+
+@app.route("/api/transmission/latest", methods=["GET"])
+def api_transmission_latest():
+  row = get_latest_transmission()
+  return jsonify({"ok": True, "item": row})
+
+
+@app.route("/api/action-bias/latest", methods=["GET"])
+def api_action_bias_latest():
+  row = get_latest_action_bias()
+  return jsonify({"ok": True, "item": row})
+
+
+@app.route("/api/portfolio/watchlists", methods=["GET", "POST", "OPTIONS"])
+def api_portfolio_watchlists():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  if request.method == "GET":
+    user_email = str(request.args.get("user_email") or "").strip().lower()
+    rows = list_portfolio_watchlists(user_email=user_email)
+    return jsonify({"ok": True, "items": rows, "count": len(rows)})
+  payload = request.get_json(silent=True) or {}
+  user_email = str(payload.get("user_email") or "").strip().lower()
+  list_name = str(payload.get("list_name") or "").strip()
+  if not user_email or not list_name:
+    return jsonify({"ok": False, "error": "missing_user_email_or_list_name"}), 400
+  row = create_portfolio_watchlist(user_email, list_name)
+  return jsonify({"ok": True, "item": row}), 201
+
+
+@app.route("/api/portfolio/watchlists/<int:watchlist_id>/positions", methods=["GET", "POST", "OPTIONS"])
+def api_portfolio_positions(watchlist_id):
+  if request.method == "OPTIONS":
+    return ("", 204)
+  if request.method == "GET":
+    rows = list_portfolio_positions(watchlist_id)
+    return jsonify({"ok": True, "items": rows, "count": len(rows)})
+  payload = request.get_json(silent=True) or {}
+  ticker = str(payload.get("ticker") or "").strip().upper()
+  if not ticker:
+    return jsonify({"ok": False, "error": "missing_ticker"}), 400
+  row = add_portfolio_position(
+    watchlist_id=watchlist_id,
+    ticker=ticker,
+    quantity=payload.get("quantity") or 0,
+    cost_basis=payload.get("cost_basis"),
+    note=payload.get("note") or "",
+  )
+  return jsonify({"ok": True, "item": row}), 201
+
+
+@app.route("/api/portfolio/risk-summary", methods=["GET"])
+def api_portfolio_risk_summary():
+  user_email = str(request.args.get("user_email") or "").strip().lower()
+  if not user_email:
+    return jsonify({"ok": False, "error": "missing_user_email"}), 400
+  out = build_portfolio_risk_summary(user_email)
+  return jsonify({"ok": True, **out})
+
+
+@app.route("/api/stocks/<ticker>/macro-exposure", methods=["GET"])
+def api_stock_macro_exposure(ticker):
+  row = get_macro_exposure(ticker)
+  return jsonify({"ok": True, "ticker": str(ticker or "").upper(), "item": row})
+
+
+@app.route("/api/stocks/<ticker>/macro-signal/latest", methods=["GET"])
+def api_stock_macro_signal_latest(ticker):
+  row = get_macro_signal_latest(ticker)
+  if not row:
+    current = get_latest_model_snapshot() or {}
+    if current:
+      regime = get_latest_regime() or upsert_regime_snapshot(str(current.get("asOf") or ""), current)
+      overlay = get_latest_overlay() or upsert_overlay(str(current.get("asOf") or ""), current)
+      bias = get_latest_action_bias() or upsert_action_bias(str(current.get("asOf") or ""), current, regime=regime, overlay=overlay)
+      generate_stock_macro_signals(str(current.get("asOf") or ""), regime, overlay, bias)
+      row = get_macro_signal_latest(ticker)
+  if not row:
+    return jsonify({"ok": False, "error": "not_found"}), 404
+  return jsonify({"ok": True, "ticker": str(ticker or "").upper(), "item": row})
+
+
+@app.route("/api/stocks/<ticker>/macro-signal/history", methods=["GET"])
+def api_stock_macro_signal_history(ticker):
+  limit = int(request.args.get("limit") or 60)
+  rows = get_macro_signal_history(ticker, limit=limit)
+  return jsonify({"ok": True, "ticker": str(ticker or "").upper(), "items": rows, "count": len(rows)})
+
+
+@app.route("/api/reports/<report_date>/regime", methods=["GET"])
+def api_report_regime(report_date):
+  row = get_latest_regime()
+  return jsonify({"ok": True, "report_date": report_date, "item": row})
+
+
+@app.route("/api/reports/<report_date>/portfolio-impact", methods=["GET"])
+def api_report_portfolio_impact(report_date):
+  user_email = str(request.args.get("user_email") or "").strip().lower()
+  out = report_portfolio_impact(report_date, user_email=user_email)
+  return jsonify({"ok": True, **out})
 
 
 def _stocks_admin_guard():
