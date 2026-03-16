@@ -112,6 +112,7 @@ try:
     create_watchlist as create_portfolio_watchlist,
     list_positions as list_portfolio_positions,
     add_position as add_portfolio_position,
+    delete_position as delete_portfolio_position,
     build_portfolio_risk_summary,
     report_portfolio_impact,
   )
@@ -216,6 +217,7 @@ except ImportError:
     create_watchlist as create_portfolio_watchlist,
     list_positions as list_portfolio_positions,
     add_position as add_portfolio_position,
+    delete_position as delete_portfolio_position,
     build_portfolio_risk_summary,
     report_portfolio_impact,
   )
@@ -1995,6 +1997,23 @@ def api_portfolio_positions(watchlist_id):
     note=payload.get("note") or "",
   )
   return jsonify({"ok": True, "item": row}), 201
+
+
+@app.route("/api/portfolio/watchlists/<int:watchlist_id>/positions/<ticker>", methods=["DELETE", "OPTIONS"])
+def api_portfolio_position_delete(watchlist_id, ticker):
+  if request.method == "OPTIONS":
+    return ("", 204)
+  user, err = _require_public_user()
+  if err:
+    return err
+  my_email = str(user.get("email") or "").strip().lower()
+  mine = {int(x.get("id")) for x in list_portfolio_watchlists(user_email=my_email)}
+  if int(watchlist_id) not in mine:
+    return jsonify({"ok": False, "error": "forbidden_watchlist"}), 403
+  out = delete_portfolio_position(watchlist_id, ticker)
+  if not out.get("deleted"):
+    return jsonify({"ok": False, "error": "position_not_found"}), 404
+  return jsonify({"ok": True, **out})
 
 
 @app.route("/api/portfolio/risk-summary", methods=["GET"])

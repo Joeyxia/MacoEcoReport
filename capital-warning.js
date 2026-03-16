@@ -47,6 +47,11 @@ const CW_I18N = {
     ticker: "Ticker",
     qty: "Qty",
     action: "Action",
+    operation: "Operation",
+    edit_qty: "Modify",
+    delete_position: "Delete",
+    invalid_qty: "Invalid quantity",
+    delete_confirm: "Delete this holding?",
     date: "Date",
     regime: "Regime",
     no_history: "No history.",
@@ -131,6 +136,11 @@ const CW_I18N = {
     ticker: "代码",
     qty: "数量",
     action: "动作",
+    operation: "操作",
+    edit_qty: "修改",
+    delete_position: "删除",
+    invalid_qty: "数量格式不正确",
+    delete_confirm: "确认删除这只持仓吗？",
     date: "日期",
     regime: "状态",
     no_history: "暂无历史。",
@@ -743,9 +753,56 @@ async function initPortfolioWatchlistPage() {
       cwText(posRoot, `<p class='subtle'>${cwEsc(cwT("no_positions_yet"))}</p>`);
       return;
     }
-    cwText(posRoot, `<table class="data-table"><thead><tr><th>${cwT("ticker")}</th><th>${cwT("qty")}</th><th>${cwT("macro_risk_score")}</th><th>${cwT("action")}</th></tr></thead><tbody>${
-      rows.map((x) => `<tr><td>${cwEsc(x.ticker)}</td><td>${cwEsc(x.quantity)}</td><td>${cwEsc(x.macro_signal?.macro_risk_score ?? "--")}</td><td>${cwEsc(cwMapValue(x.macro_signal?.action_bias ?? "--"))}</td></tr>`).join("")
+    cwText(posRoot, `<table class="data-table"><thead><tr><th>${cwT("ticker")}</th><th>${cwT("qty")}</th><th>${cwT("macro_risk_score")}</th><th>${cwT("action")}</th><th>${cwT("operation")}</th></tr></thead><tbody>${
+      rows.map((x) => `
+        <tr>
+          <td>${cwEsc(x.ticker)}</td>
+          <td>${cwEsc(x.quantity)}</td>
+          <td>${cwEsc(x.macro_signal?.macro_risk_score ?? "--")}</td>
+          <td>${cwEsc(cwMapValue(x.macro_signal?.action_bias ?? "--"))}</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" class="btn ghost" data-pos-edit="${cwEsc(x.ticker)}" data-pos-qty="${cwEsc(x.quantity)}" style="padding:4px 8px;font-size:.78rem;">${cwEsc(cwT("edit_qty"))}</button>
+              <button type="button" class="btn ghost" data-pos-del="${cwEsc(x.ticker)}" style="padding:4px 8px;font-size:.78rem;">${cwEsc(cwT("delete_position"))}</button>
+            </div>
+          </td>
+        </tr>`).join("")
     }</tbody></table>`);
+
+    posRoot.querySelectorAll("[data-pos-edit]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const t = String(btn.getAttribute("data-pos-edit") || "").toUpperCase();
+        const currentQty = String(btn.getAttribute("data-pos-qty") || "0");
+        const nextRaw = window.prompt(cwLang() === "zh" ? `请输入 ${t} 的新数量` : `Enter new quantity for ${t}`, currentQty);
+        if (nextRaw === null) return;
+        const nextQty = Number(String(nextRaw).trim());
+        if (!Number.isFinite(nextQty) || nextQty < 0) {
+          window.alert(cwT("invalid_qty"));
+          return;
+        }
+        await fetch(cwApi(`/api/portfolio/watchlists/${currentWatchlistId}/positions`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ ticker: t, quantity: nextQty }),
+        });
+        await refreshPositions();
+        await refreshSummary();
+      });
+    });
+
+    posRoot.querySelectorAll("[data-pos-del]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const t = String(btn.getAttribute("data-pos-del") || "").toUpperCase();
+        if (!window.confirm(`${cwT("delete_confirm")} ${t}`)) return;
+        await fetch(cwApi(`/api/portfolio/watchlists/${currentWatchlistId}/positions/${encodeURIComponent(t)}`), {
+          method: "DELETE",
+          credentials: "include",
+        });
+        await refreshPositions();
+        await refreshSummary();
+      });
+    });
   }
 
   async function refreshLists() {

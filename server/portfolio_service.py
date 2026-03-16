@@ -112,6 +112,24 @@ def add_position(watchlist_id, ticker, quantity=0, cost_basis=None, note=""):
     conn.close()
 
 
+def delete_position(watchlist_id, ticker):
+  conn = get_conn()
+  try:
+    t = str(ticker or "").strip().upper()
+    cur = conn.execute(
+      "DELETE FROM portfolio_positions WHERE watchlist_id=? AND ticker=?",
+      (int(watchlist_id), t),
+    )
+    conn.commit()
+    return {
+      "deleted": int(cur.rowcount or 0) > 0,
+      "watchlist_id": int(watchlist_id),
+      "ticker": t,
+    }
+  finally:
+    conn.close()
+
+
 def build_portfolio_risk_summary(user_email, watchlist_id=None):
   watchlists = list_watchlists(user_email)
   if watchlist_id is not None:
