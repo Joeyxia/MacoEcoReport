@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import concurrent.futures
 import os
 import time
 from typing import Any, Dict, List
@@ -21,6 +22,10 @@ class PolymarketLiveClient:
     self.allow_live_orders = str(os.environ.get("POLYMARKET_ALLOW_LIVE_ORDERS", "0")).strip().lower() in {"1", "true", "yes", "on"}
     self.host = str(os.environ.get("POLYMARKET_CLOB_HOST", "https://clob.polymarket.com")).strip()
     self.chain_id = int(os.environ.get("POLYMARKET_CHAIN_ID", "137"))
+    try:
+      self.book_timeout_sec = float(os.environ.get("POLYMARKET_BOOK_TIMEOUT_SEC", "1.2"))
+    except Exception:
+      self.book_timeout_sec = 1.2
 
   def _new_client(self, signer_private_key: str, funder_address: str, signature_type):
     from py_clob_client.client import ClobClient
@@ -222,7 +227,9 @@ class PolymarketLiveClient:
       funder_address = str(os.environ.get("POLYMARKET_FUNDER_ADDRESS", "")).strip()
       signature_type = str(os.environ.get("POLYMARKET_SIGNATURE_TYPE", "eoa")).strip()
       client = self._new_client(signer_private_key, funder_address, signature_type)
-      ob = client.get_order_book(token_id)
+      with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        fut = ex.submit(client.get_order_book, token_id)
+        ob = fut.result(timeout=max(0.2, float(self.book_timeout_sec)))
       bids = [{"price": float(x.price), "size": float(x.size)} for x in (getattr(ob, "bids", []) or [])]
       asks = [{"price": float(x.price), "size": float(x.size)} for x in (getattr(ob, "asks", []) or [])]
       return {
@@ -234,6 +241,8 @@ class PolymarketLiveClient:
         "asks": asks[:20],
         "ts": str(getattr(ob, "timestamp", "") or int(time.time())),
       }
+    except concurrent.futures.TimeoutError:
+      return {"ok": False, "error": "fetch_book_timeout"}
     except Exception as e:
       return {"ok": False, "error": "fetch_book_failed", "detail": str(e)[:320]}
 
