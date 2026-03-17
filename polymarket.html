@@ -43,6 +43,7 @@
     <section class="pm-grid">
       <div class="pm-card half">
         <h2 class="pm-title" style="font-size:18px;">账户接入</h2>
+        <div id="currentUser" class="pm-mono" style="margin-bottom:8px;"></div>
         <div class="pm-row">
           <input id="signer" class="pm-input" placeholder="signer address (0x...)" />
           <input id="funder" class="pm-input" placeholder="funder address (可留空)" />
@@ -89,6 +90,7 @@
   </main>
   <script>
     let accountId = "";
+    let currentUserEmail = "";
 
     async function jfetch(url, opt){
       const r = await fetch(url, opt || {});
@@ -150,6 +152,32 @@
       renderAccountSummary(d);
       setText("accountStatus", d);
       return d;
+    }
+
+    async function bootstrapUserAndAccount(){
+      try{
+        const me = await jfetch("/api/auth/me");
+        currentUserEmail = String(me?.user?.email || "").trim().toLowerCase();
+        document.getElementById("currentUser").textContent = currentUserEmail ? `当前登录邮箱：${currentUserEmail}` : "";
+      }catch(_e){
+        currentUserEmail = "";
+      }
+      try{
+        const out = await jfetch("/api/v1/accounts/polymarket/list");
+        if(Array.isArray(out.items) && out.items.length){
+          accountId = String(out.items[0].id || "");
+          await refreshAccount();
+          toast(`已加载当前用户账户：${accountId}`, "ok");
+        } else {
+          toast("当前登录邮箱尚未绑定 Polymarket 账户，请先连接账户。", "info");
+        }
+      }catch(e){
+        if(String(e.message || "") === "account_not_found"){
+          toast("当前登录邮箱尚未绑定 Polymarket 账户，请先连接账户。", "info");
+        } else {
+          toast(`读取账户列表失败：${e.message}`, "err");
+        }
+      }
     }
 
     async function scan(){
@@ -215,7 +243,7 @@
         const funder = document.getElementById("funder").value.trim() || signer;
         const out = await jfetch("/api/v1/accounts/polymarket/connect", {
           method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ user_id: "demo-user", account_type:"wallet", signer_address: signer, funder_address: funder, signature_type:"eoa" })
+          body: JSON.stringify({ account_type:"wallet", signer_address: signer, funder_address: funder, signature_type:"eoa" })
         });
         accountId = out.account_id || "";
         const status = await refreshAccount();
@@ -292,6 +320,8 @@
       }catch(e){ toast(`读取执行复盘失败：${e.message}`, "err"); }
       finally{ setBusy(btn, false); }
     };
+    bootstrapUserAndAccount();
   </script>
+  <script src="/auth-guard.js?v=20260318pm1"></script>
 </body>
 </html>

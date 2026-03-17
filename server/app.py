@@ -2293,10 +2293,40 @@ def polymarket_seed_demo():
     return jsonify({"ok": False, "error": "seed_failed", "detail": str(e)[:240]}), 500
 
 
+def _polymarket_resolve_account_for_user(user_email: str, requested_account_id: str = ""):
+  owner = str(user_email or "").strip().lower()
+  items = polymarket_list_trading_accounts(user_id=owner) or []
+  if requested_account_id:
+    aid = str(requested_account_id).strip()
+    matched = next((x for x in items if str(x.get("id") or "") == aid), None)
+    if not matched:
+      return None, (jsonify({"ok": False, "error": "account_forbidden"}), 403)
+    return aid, None
+  if not items:
+    return None, (jsonify({"ok": False, "error": "account_not_found"}), 404)
+  return str(items[0].get("id") or "").strip(), None
+
+
+@app.route("/api/v1/accounts/polymarket/list", methods=["GET"])
+def polymarket_accounts_list():
+  user, err = _require_public_user()
+  if err:
+    return err
+  user_email = str(user.get("email") or "").strip().lower()
+  items = polymarket_list_trading_accounts(user_id=user_email) or []
+  return jsonify({"ok": True, "user_email": user_email, "items": items, "count": len(items)})
+
+
 @app.route("/api/v1/accounts/polymarket/connect", methods=["POST"])
 def polymarket_accounts_connect():
+  user, err = _require_public_user()
+  if err:
+    return err
   payload = request.get_json(silent=True) or {}
-  user_id = str(payload.get("user_id") or "default-user").strip()
+  # Security: always bind account ownership to current authenticated email.
+  user_id = str(user.get("email") or "").strip().lower()
+  if not user_id:
+    return jsonify({"ok": False, "error": "auth_required"}), 401
   account_type = str(payload.get("account_type") or "wallet").strip()
   signer_address = str(payload.get("signer_address") or "").strip()
   funder_address = str(payload.get("funder_address") or "").strip()
@@ -2314,49 +2344,79 @@ def polymarket_accounts_connect():
 
 @app.route("/api/v1/accounts/polymarket/derive-credentials", methods=["POST"])
 def polymarket_accounts_derive_credentials():
+  user, err = _require_public_user()
+  if err:
+    return err
   payload = request.get_json(silent=True) or {}
-  account_id = str(payload.get("account_id") or "").strip()
-  if not account_id:
-    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(payload.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
   out = polymarket_derive_credentials(account_id)
   return jsonify(out), (200 if out.get("ok") else 400)
 
 
 @app.route("/api/v1/accounts/polymarket/status", methods=["GET"])
 def polymarket_accounts_status():
-  account_id = str(request.args.get("account_id") or "").strip()
-  if not account_id:
-    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  user, err = _require_public_user()
+  if err:
+    return err
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(request.args.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
   out = polymarket_get_account_status(account_id)
   return jsonify(out), (200 if out.get("ok") else 400)
 
 
 @app.route("/api/v1/accounts/polymarket/enable-auto-trading", methods=["POST"])
 def polymarket_enable_auto_trading():
+  user, err = _require_public_user()
+  if err:
+    return err
   payload = request.get_json(silent=True) or {}
-  account_id = str(payload.get("account_id") or "").strip()
-  if not account_id:
-    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(payload.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
   out = polymarket_set_auto_trading(account_id, enabled=True)
   return jsonify(out), (200 if out.get("ok") else 400)
 
 
 @app.route("/api/v1/accounts/polymarket/disable-auto-trading", methods=["POST"])
 def polymarket_disable_auto_trading():
+  user, err = _require_public_user()
+  if err:
+    return err
   payload = request.get_json(silent=True) or {}
-  account_id = str(payload.get("account_id") or "").strip()
-  if not account_id:
-    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(payload.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
   out = polymarket_set_auto_trading(account_id, enabled=False)
   return jsonify(out), (200 if out.get("ok") else 400)
 
 
 @app.route("/api/v1/accounts/polymarket/emergency-cancel-all", methods=["POST"])
 def polymarket_emergency_cancel():
+  user, err = _require_public_user()
+  if err:
+    return err
   payload = request.get_json(silent=True) or {}
-  account_id = str(payload.get("account_id") or "").strip()
-  if not account_id:
-    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(payload.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
   out = polymarket_emergency_cancel_all(account_id)
   return jsonify(out), (200 if out.get("ok") else 400)
 
@@ -2389,11 +2449,17 @@ def polymarket_opportunity_detail(opportunity_id):
 
 @app.route("/api/v1/opportunities/<opportunity_id>/execute", methods=["POST"])
 def polymarket_opportunity_execute(opportunity_id):
+  user, err = _require_public_user()
+  if err:
+    return err
   payload = request.get_json(silent=True) or {}
-  account_id = str(payload.get("account_id") or "").strip()
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(payload.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
   actor = str(payload.get("actor") or "operator").strip()
-  if not account_id:
-    return jsonify({"ok": False, "error": "missing_account_id"}), 400
   out = polymarket_evaluate_and_execute(account_id, opportunity_id, actor=actor)
   return jsonify(out), (200 if out.get("ok") else 400)
 
@@ -2408,14 +2474,30 @@ def polymarket_toggle_strategy_api(strategy_id):
 
 @app.route("/api/v1/risk/overview", methods=["GET"])
 def polymarket_risk_overview_api():
-  account_id = str(request.args.get("account_id") or "").strip()
+  user, err = _require_public_user()
+  if err:
+    return err
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(request.args.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
   out = polymarket_risk_overview(account_id=account_id or None)
   return jsonify({"ok": True, **out})
 
 
 @app.route("/api/v1/executions", methods=["GET"])
 def polymarket_executions_api():
-  account_id = str(request.args.get("account_id") or "").strip()
+  user, err = _require_public_user()
+  if err:
+    return err
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(request.args.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
   limit = int(request.args.get("limit") or 80)
   rows = polymarket_list_executions(account_id=account_id, limit=limit)
   return jsonify({"ok": True, "items": rows, "count": len(rows)})
