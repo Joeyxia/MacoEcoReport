@@ -46,7 +46,11 @@
         <div id="currentUser" class="pm-mono" style="margin-bottom:8px;"></div>
         <div class="pm-row">
           <input id="signer" class="pm-input" placeholder="signer address (0x...)" />
-          <input id="funder" class="pm-input" placeholder="funder address (可留空)" />
+          <input id="funder" class="pm-input" placeholder="funder / API wallet address (proxy模式必填)" />
+          <select id="sigType" class="pm-input" style="min-width:170px;max-width:220px;">
+            <option value="proxy" selected>proxy (推荐)</option>
+            <option value="eoa">eoa</option>
+          </select>
         </div>
         <div class="pm-row">
           <button class="pm-btn" id="btnConnect">连接账户</button>
@@ -190,7 +194,14 @@
       const d = await jfetch("/api/v1/opportunities/scan?limit=30");
       const tb = document.querySelector("#oppTable tbody");
       tb.innerHTML = "";
-      for(const x of (d.items||[])){
+      const items = d.items || [];
+      if(!items.length){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="8" style="color:#6b7f86;">当前未发现可执行套利机会（实时市场）。可稍后重试，或放宽风控阈值。</td>`;
+        tb.appendChild(tr);
+        return;
+      }
+      for(const x of items){
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td><span class="pm-pill">${x.id}</span></td>
@@ -247,10 +258,15 @@
         toast("正在连接账户...", "info");
         const signer = document.getElementById("signer").value.trim();
         if(!signer) throw new Error("请先输入 signer address");
-        const funder = document.getElementById("funder").value.trim() || signer;
+        const sigType = (document.getElementById("sigType").value || "eoa").trim();
+        const funderRaw = document.getElementById("funder").value.trim();
+        if(sigType === "proxy" && !funderRaw){
+          throw new Error("proxy 模式需要填写 funder/API wallet 地址");
+        }
+        const funder = funderRaw || signer;
         const out = await jfetch("/api/v1/accounts/polymarket/connect", {
           method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ account_type:"wallet", signer_address: signer, funder_address: funder, signature_type:"eoa" })
+          body: JSON.stringify({ account_type:"wallet", signer_address: signer, funder_address: funder, signature_type: sigType })
         });
         accountId = out.account_id || "";
         const status = await refreshAccount();

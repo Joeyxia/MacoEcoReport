@@ -2330,9 +2330,12 @@ def polymarket_accounts_connect():
   account_type = str(payload.get("account_type") or "wallet").strip()
   signer_address = str(payload.get("signer_address") or "").strip()
   funder_address = str(payload.get("funder_address") or "").strip()
-  signature_type = str(payload.get("signature_type") or "eoa").strip()
+  signature_type = str(payload.get("signature_type") or "eoa").strip().lower()
   if not signer_address:
     return jsonify({"ok": False, "error": "missing_signer_address"}), 400
+  # Proxy mode requires explicit API wallet/funder address.
+  if signature_type in {"proxy", "poly_proxy", "1"} and not funder_address:
+    return jsonify({"ok": False, "error": "missing_funder_address_for_proxy"}), 400
   if not funder_address:
     funder_address = signer_address
   try:
