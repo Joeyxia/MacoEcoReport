@@ -397,12 +397,64 @@
 
       async function jfetch(url, opt){
         const r = await fetch(url, opt || {});
-        const d = await r.json().catch(()=>({ok:false,error:"bad_json"}));
+        const raw = await r.text();
+        let d = null;
+        try {
+          d = raw ? JSON.parse(raw) : {};
+        } catch {
+          const hint = raw ? raw.slice(0, 120).replace(/\s+/g, " ") : "";
+          throw new Error(`http_${r.status}_non_json${hint ? `: ${hint}` : ""}`);
+        }
         if(!r.ok || d.ok===false){ throw new Error(d.detail || d.error || ("http_"+r.status)); }
         return d;
       }
 
       function setText(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj, null, 2); }
+      function renderRiskText(out, mode) {
+        const el = document.getElementById("riskOut");
+        if (!el) return;
+        const lines = [];
+        if (mode === "risk") {
+          const alerts = Array.isArray(out?.alerts) ? out.alerts : [];
+          const limits = Array.isArray(out?.limits) ? out.limits : [];
+          lines.push(pmT("risk") + ":");
+          lines.push(`${pmT("accountId")}: ${accountId || "--"}`);
+          lines.push(`${pmT("diagMarket")}: ${document.getElementById("diagMarketCount")?.textContent || "--"}`);
+          lines.push(``);
+          lines.push(pmT("riskBtn") + " - " + (alerts.length ? `alerts=${alerts.length}` : "alerts=0"));
+          if (alerts.length) {
+            alerts.slice(0, 5).forEach((a, i) => {
+              lines.push(`${i + 1}. [${a.severity || "info"}] ${a.message || a.type || "--"}`);
+            });
+          } else {
+            lines.push(pmGetLang() === "zh" ? "暂无触发风控告警。" : "No risk alerts triggered.");
+          }
+          if (limits.length) {
+            const l = limits[0] || {};
+            lines.push("");
+            lines.push(pmGetLang() === "zh" ? "当前风控参数：" : "Current risk limits:");
+            lines.push(`auto_trading=${l.auto_trading} | max_order_notional=${l.max_order_notional || "--"} | max_daily_notional=${l.max_daily_notional || "--"}`);
+            lines.push(`max_open_orders=${l.max_open_orders || "--"} | max_slippage_bps=${l.max_slippage_bps || "--"}`);
+          }
+        } else if (mode === "replay") {
+          const total = out?.total || {};
+          const by = Array.isArray(out?.by_status) ? out.by_status : [];
+          lines.push(pmGetLang() === "zh" ? "执行复盘摘要：" : "Execution replay summary:");
+          lines.push(`executions=${total.executions ?? "--"} | pnl=${total.pnl ?? "--"} | win_rate=${total.win_rate ?? "--"}`);
+          if (by.length) {
+            lines.push("");
+            by.forEach((r) => lines.push(`${r.status || "--"}: n=${r.n ?? 0}, pnl=${r.pnl ?? 0}`));
+          }
+        } else {
+          lines.push(pmGetLang() === "zh" ? "操作结果：" : "Operation result:");
+          if (out?.message) lines.push(out.message);
+          if (typeof out?.cancelled === "number" || typeof out?.cancelled_count === "number") {
+            lines.push((pmGetLang() === "zh" ? "已撤单：" : "Cancelled: ") + `${out.cancelled ?? out.cancelled_count}`);
+          }
+          if (out?.ok !== undefined) lines.push(`ok=${out.ok}`);
+        }
+        el.textContent = lines.join("\n");
+      }
       function setDiag(id, value){ const el = document.getElementById(id); if(el){ el.textContent = value; } }
       function nowStr(){ return new Date().toLocaleString(); }
       function toast(msg, type){
@@ -659,7 +711,7 @@
           if(!accountId) throw new Error(pmT("needAccount"));
           toast(pmT("loadingCancel"), "info");
           const out=await jfetch("/api/v1/accounts/polymarket/emergency-cancel-all",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
-          setText("riskOut", out);
+          renderRiskText(out, "op");
           toast(`${pmT("cancelOk")} (${Number(out.cancelled || 0)})`, "ok");
         }catch(e){ toast(`${pmT("cancelFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
@@ -671,7 +723,7 @@
           setBusy(btn, true);
           toast(pmT("loadingRisk"), "info");
           const q=accountId?`?account_id=${encodeURIComponent(accountId)}`:"";
-          setText("riskOut", await jfetch("/api/v1/risk/overview"+q));
+          renderRiskText(await jfetch("/api/v1/risk/overview"+q), "risk");
           toast(pmT("riskOk"), "ok");
         }catch(e){ toast(`${pmT("riskFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
@@ -682,7 +734,7 @@
         try{
           setBusy(btn, true);
           toast(pmT("loadingReplay"), "info");
-          setText("riskOut", await jfetch("/api/v1/replay/summary?days=7"));
+          renderRiskText(await jfetch("/api/v1/replay/summary?days=7"), "replay");
           toast(pmT("replayOk"), "ok");
         }catch(e){ toast(`${pmT("replayFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }

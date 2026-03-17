@@ -534,7 +534,12 @@ def get_account_status(account_id):
         )
         if bal.get("ok"):
           bd = bal.get("balance") or {}
-          avail = float(str((bd.get("balance") or "0")).strip() or 0)
+          avail = float(bal.get("balance_num") or 0)
+          if avail <= 0:
+            try:
+              avail = float(str((bd.get("balance") or "0")).strip() or 0)
+            except Exception:
+              avail = 0.0
           out["balances"] = [{
             "asset_symbol": "USDC",
             "available_balance": round(avail, 6),
@@ -758,7 +763,8 @@ def scan_opportunities(limit=50):
     if live_client.enabled:
       lm = live_client.fetch_markets(max_markets=400, max_pages=5)
       if lm.get("ok"):
-        markets = _filter_live_markets(lm.get("items") or [])[:250]
+        # Avoid request timeout: scanning every live market can trigger >1000 book calls.
+        markets = _filter_live_markets(lm.get("items") or [])[:60]
         live_mode = bool(markets)
     if not markets and not live_client.enabled:
       # fallback for development/demo only when live mode is disabled
@@ -766,6 +772,7 @@ def scan_opportunities(limit=50):
       markets = _fetchall(conn, "SELECT * FROM markets WHERE status='active' ORDER BY updated_at DESC LIMIT 200")
     results = []
     ts = now_iso()
+    max_results = max(1, min(int(limit or 50), 300))
     for m in markets:
       if live_mode:
         toks = m.get("tokens") or []
@@ -853,9 +860,11 @@ def scan_opportunities(limit=50):
         "legs": legs,
         "source": "polymarket_live" if live_mode else "demo_seed",
       })
+      if len(results) >= max_results:
+        break
     conn.commit()
     results.sort(key=lambda x: x.get("vwap_profit", 0), reverse=True)
-    return results[: max(1, min(int(limit or 50), 300))]
+    return results[: max_results]
   finally:
     conn.close()
 

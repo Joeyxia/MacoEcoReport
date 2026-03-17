@@ -80,9 +80,32 @@ class PolymarketLiveClient:
       client = self._authed_client(signer_private_key, funder_address, signature_type, api_key, api_secret, api_passphrase)
       p = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL, token_id="", signature_type=_signature_type_to_int(signature_type))
       out = client.get_balance_allowance(p)
-      return {"ok": True, "balance": out}
+      return {"ok": True, "balance": out, "balance_num": self._extract_balance_num(out)}
     except Exception as e:
       return {"ok": False, "error": "balance_failed", "detail": str(e)[:320]}
+
+  def _extract_balance_num(self, payload):
+    candidates = []
+    if isinstance(payload, dict):
+      for k in ("balance", "available", "available_balance", "amount", "free"):
+        v = payload.get(k)
+        if v is not None:
+          candidates.append(v)
+      nested = payload.get("balance") if isinstance(payload.get("balance"), dict) else None
+      if nested:
+        for k in ("amount", "available", "available_balance", "balance"):
+          v = nested.get(k)
+          if v is not None:
+            candidates.append(v)
+    for v in candidates:
+      try:
+        n = float(str(v).strip())
+        if n > 1_000_000:
+          n = n / 1_000_000.0
+        return round(n, 6)
+      except Exception:
+        continue
+    return 0.0
 
   def list_open_orders(self, signer_private_key: str, funder_address: str, signature_type, api_key: str, api_secret: str, api_passphrase: str):
     if not self.enabled:
