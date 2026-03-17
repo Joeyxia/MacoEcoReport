@@ -8,7 +8,10 @@ from server.app import app
 
 class CapitalWarningApiTest(unittest.TestCase):
   def setUp(self):
+    app.config.update(TESTING=True)
     self.client = app.test_client()
+    with self.client.session_transaction() as sess:
+      sess["public_user"] = {"email": "xiayiping@gmail.com", "loginAt": "2026-03-17T00:00:00Z"}
 
   def test_capital_warning_endpoints(self):
     self.assertEqual(self.client.get("/api/regime/latest").status_code, 200)

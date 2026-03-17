@@ -829,6 +829,64 @@ body[data-page="ai-assistant"] .ai-answer {
   color: var(--ink-soft);
 }
 
+.about-page .hero {
+  align-items: center;
+}
+
+.about-badge-card {
+  min-width: 220px;
+}
+
+.about-feature-list,
+.about-value-list {
+  margin: 0.7rem 0 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.46rem;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.about-feature-list li::marker,
+.about-value-list li::marker {
+  color: var(--brand-deep);
+}
+
+.about-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.about-flow-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0.82rem;
+}
+
+.about-flow-index {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(5, 89, 75, 0.35);
+  color: var(--brand-deep);
+  font: 700 0.82rem "Space Grotesk", sans-serif;
+}
+
+.about-flow-card h3 {
+  margin: 0.55rem 0 0;
+  font-size: 0.98rem;
+}
+
+.about-flow-card .subtle {
+  margin-top: 0.4rem;
+}
+
 .site-footnote {
   margin: 0.35rem 0 0.9rem;
   text-align: center;
@@ -852,7 +910,8 @@ body[data-page="ai-assistant"] .ai-answer {
   .hero.compact,
   .two-col,
   .three-col,
-  .layer-dimensions {
+  .layer-dimensions,
+  .about-flow-grid {
     grid-template-columns: 1fr;
   }
 

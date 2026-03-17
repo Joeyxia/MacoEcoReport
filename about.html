@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="macro-api-base" content="https://api.nexo.hk" />
+    <title data-i18n="title_about">Macro Risk Monitor | About Nexo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=20260317u1" />
+    <script src="auth-guard.js?v=20260317a1" defer></script>
+    <script src="app.js?v=20260317b1" defer></script>
+  </head>
+  <body data-page="about">
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="index.html" data-i18n="brand_name">Macro Risk Monitor</a>
+      <nav>
+        <a class="nav-link" href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
+        <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
+        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
+        <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
+        <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
+        <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
+        <a class="nav-link" href="portfolio-watchlist.html" data-i18n="nav_portfolio_watchlist">Portfolio Watchlist</a>
+        <a class="nav-link" href="regime-transmission.html" data-i18n="nav_regime_transmission">Regime & Transmission</a>
+        <a class="nav-link" href="stock-prediction.html" data-i18n="nav_stock_prediction">Stock Prediction</a>
+        <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
+        <a class="nav-link active" href="about.html" data-i18n="nav_intro">About Nexo</a>
+      </nav>
+      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
+    </header>
+
+    <main class="page about-page">
+      <section class="panel hero compact">
+        <div>
+          <p class="eyebrow" data-i18n="about_eyebrow">Platform Overview</p>
+          <h1 data-i18n="about_page_title">What Nexo Macro Intelligence Does</h1>
+          <p class="subtle" data-i18n="about_page_desc">
+            A 14-dimension macro warning system that turns daily data into regime diagnosis, transmission mapping,
+            and investable actions.
+          </p>
+        </div>
+        <div class="score-card small about-badge-card">
+          <p class="score-label" data-i18n="about_block_1_title">Core Functional Modules</p>
+          <div class="score-value">6+</div>
+          <p class="score-meta" data-i18n="about_block_2_title">Daily Operating Workflow</p>
+        </div>
+      </section>
+
+      <section class="grid two-col">
+        <article class="panel">
+          <h2 data-i18n="about_block_1_title">Core Functional Modules</h2>
+          <p class="subtle" data-i18n="about_block_1_desc">The website is built around decision speed and explainability.</p>
+          <ul class="about-feature-list">
+            <li data-i18n="about_mod_1">Dashboard: composite score, regime, alerts, top drivers, and key indicators.</li>
+            <li data-i18n="about_mod_2">Daily Report: structured narrative, AI interpretation, and archived daily links.</li>
+            <li data-i18n="about_mod_3">Indicators & Glossary: full indicator dictionary and model terminology.</li>
+            <li data-i18n="about_mod_4">Portfolio Watchlist: user watchlists, position mapping, and macro-linked risk output.</li>
+            <li data-i18n="about_mod_5">Regime & Transmission: regime engine, geopolitical overlay, action bias, and transmission heatmap.</li>
+            <li data-i18n="about_mod_6">Stock Prediction: ticker-level forecasts, backtest curves, and feature importance.</li>
+          </ul>
+        </article>
+
+        <article class="panel">
+          <h2 data-i18n="about_block_3_title">What You Get As A User</h2>
+          <ul class="about-value-list">
+            <li data-i18n="about_value_1">A single macro regime view that is updated every day.</li>
+            <li data-i18n="about_value_2">Transparent logic from data -&gt; signal -&gt; action.</li>
+            <li data-i18n="about_value_3">Portfolio-level risk guidance connected to your own holdings.</li>
+            <li data-i18n="about_value_4">Bilingual interface (Chinese/English) for teams and clients.</li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2 data-i18n="about_block_2_title">Daily Operating Workflow</h2>
+        </div>
+        <div class="about-flow-grid">
+          <article class="about-flow-card">
+            <p class="about-flow-index">01</p>
+            <h3 data-i18n="about_flow_1_title">08:00 (China Time): Data Refresh</h3>
+            <p class="subtle" data-i18n="about_flow_1_desc">Fetch latest indicator data from configured sources and validate freshness.</p>
+          </article>
+          <article class="about-flow-card">
+            <p class="about-flow-index">02</p>
+            <h3 data-i18n="about_flow_2_title">09:00 (China Time): Report Generation</h3>
+            <p class="subtle" data-i18n="about_flow_2_desc">Run model scoring, produce daily report, and write outputs to database.</p>
+          </article>
+          <article class="about-flow-card">
+            <p class="about-flow-index">03</p>
+            <h3 data-i18n="about_flow_3_title">Post Report: Distribution & AI</h3>
+            <p class="subtle" data-i18n="about_flow_3_desc">Send report emails, run AI interpretation, and sync summary back to dashboard.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 data-i18n="about_block_4_title">System Architecture (High Level)</h2>
+        <p class="subtle" data-i18n="about_arch">
+          Frontend pages on nexo.hk + Flask backend API + SQLite operational database + scheduled jobs + monitor
+          console on monitor.nexo.hk.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

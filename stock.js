@@ -14,6 +14,12 @@ const stockI18n = {
     navIndicators: "Indicators",
     navGlossary: "Glossary",
     navSubscribe: "Subscribe",
+    navAi: "AI Assistant",
+    navPortfolio: "Portfolio Watchlist",
+    navRegime: "Regime & Transmission",
+    navStock: "Stock Prediction",
+    navOpenrouter: "OpenRouter",
+    navAbout: "About Nexo",
     eyebrow: "Quant Signal Engine",
     title: "Stock Prediction Dashboard",
     desc: "Database-driven prediction, backtest, and feature interpretation.",
@@ -56,6 +62,12 @@ const stockI18n = {
     navIndicators: "指标库",
     navGlossary: "术语表",
     navSubscribe: "订阅",
+    navAi: "AI 助手",
+    navPortfolio: "组合观察池",
+    navRegime: "状态与传导",
+    navStock: "股票预测",
+    navOpenrouter: "OpenRouter",
+    navAbout: "功能介绍",
     eyebrow: "量化信号引擎",
     title: "股票预测仪表盘",
     desc: "基于数据库的预测、回测与特征解释。",
@@ -155,6 +167,12 @@ function applyStockI18n(){
   setText("stock-nav-indicators", st("navIndicators"));
   setText("stock-nav-glossary", st("navGlossary"));
   setText("stock-nav-subscribe", st("navSubscribe"));
+  setText("stock-nav-ai", st("navAi"));
+  setText("stock-nav-portfolio", st("navPortfolio"));
+  setText("stock-nav-regime", st("navRegime"));
+  setText("stock-nav-stock", st("navStock"));
+  setText("stock-nav-openrouter", st("navOpenrouter"));
+  setText("stock-nav-about", st("navAbout"));
   setText("stock-eyebrow", st("eyebrow"));
   setText("stock-page-title", st("title"));
   setText("stock-page-desc", st("desc"));
