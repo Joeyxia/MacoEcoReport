@@ -1,13 +1,38 @@
 #!/usr/bin/env python3
 import json
 import math
+import os
 import random
 from datetime import datetime, timedelta, timezone
 
 try:
   from .db import get_conn, now_iso
+  from .polymarket_client import PolymarketLiveClient
 except ImportError:
   from db import get_conn, now_iso
+  from polymarket_client import PolymarketLiveClient
+
+DEFAULT_RISK_TEMPLATE = {
+  "max_daily_notional": 500.0,
+  "max_order_notional": 50.0,
+  "max_market_exposure": 120.0,
+  "max_slippage_bps": 20.0,
+  "max_open_orders": 3,
+  "auto_trading": 0,
+  "min_expected_edge_bps": 40.0,
+  "min_model_confidence": 0.65,
+  "min_orderbook_depth": 300.0,
+  "order_cooldown_sec": 30,
+  "max_daily_realized_loss": 80.0,
+  "max_consecutive_failed_orders": 5,
+  "max_reject_ratio_pct_10m": 40.0,
+  "halt_on_api_degraded": 1,
+  "default_order_type": "GTC",
+  "post_only": 1,
+  "allow_taker": 0,
+  "cancel_stale_after_sec": 120,
+  "paper_mode": 1,
+}
 
 
 def _utc_now():
@@ -77,6 +102,57 @@ def _fetchone(conn, sql, params=()):
 def _fetchall(conn, sql, params=()):
   cur = conn.execute(sql, params)
   return [dict(r) for r in cur.fetchall()]
+
+
+def _num(v, default=0.0):
+  try:
+    return float(v)
+  except Exception:
+    return float(default)
+
+
+def _int(v, default=0):
+  try:
+    return int(float(v))
+  except Exception:
+    return int(default)
+
+
+def _bool_int(v, default=0):
+  if isinstance(v, bool):
+    return 1 if v else 0
+  s = str("" if v is None else v).strip().lower()
+  if s in {"1", "true", "yes", "y", "on"}:
+    return 1
+  if s in {"0", "false", "no", "n", "off"}:
+    return 0
+  return 1 if int(default or 0) else 0
+
+
+def _sanitize_risk_payload(payload):
+  src = payload or {}
+  out = dict(DEFAULT_RISK_TEMPLATE)
+  out["max_daily_notional"] = max(0.0, _num(src.get("max_daily_notional", out["max_daily_notional"])))
+  out["max_order_notional"] = max(0.0, _num(src.get("max_order_notional", out["max_order_notional"])))
+  out["max_market_exposure"] = max(0.0, _num(src.get("max_market_exposure", out["max_market_exposure"])))
+  out["max_slippage_bps"] = max(0.0, _num(src.get("max_slippage_bps", out["max_slippage_bps"])))
+  out["max_open_orders"] = max(0, _int(src.get("max_open_orders", out["max_open_orders"])))
+  out["auto_trading"] = _bool_int(src.get("auto_trading", out["auto_trading"]), out["auto_trading"])
+  out["min_expected_edge_bps"] = max(0.0, _num(src.get("min_expected_edge_bps", out["min_expected_edge_bps"])))
+  out["min_model_confidence"] = max(0.0, min(1.0, _num(src.get("min_model_confidence", out["min_model_confidence"]))))
+  out["min_orderbook_depth"] = max(0.0, _num(src.get("min_orderbook_depth", out["min_orderbook_depth"])))
+  out["order_cooldown_sec"] = max(0, _int(src.get("order_cooldown_sec", out["order_cooldown_sec"])))
+  out["max_daily_realized_loss"] = max(0.0, _num(src.get("max_daily_realized_loss", out["max_daily_realized_loss"])))
+  out["max_consecutive_failed_orders"] = max(0, _int(src.get("max_consecutive_failed_orders", out["max_consecutive_failed_orders"])))
+  out["max_reject_ratio_pct_10m"] = max(0.0, min(100.0, _num(src.get("max_reject_ratio_pct_10m", out["max_reject_ratio_pct_10m"]))))
+  out["halt_on_api_degraded"] = _bool_int(src.get("halt_on_api_degraded", out["halt_on_api_degraded"]), out["halt_on_api_degraded"])
+  order_type = str(src.get("default_order_type", out["default_order_type"]) or "GTC").strip().upper()
+  out["default_order_type"] = order_type if order_type in {"GTC", "IOC", "FOK"} else "GTC"
+  out["post_only"] = _bool_int(src.get("post_only", out["post_only"]), out["post_only"])
+  out["allow_taker"] = _bool_int(src.get("allow_taker", out["allow_taker"]), out["allow_taker"])
+  out["cancel_stale_after_sec"] = max(0, _int(src.get("cancel_stale_after_sec", out["cancel_stale_after_sec"])))
+  out["paper_mode"] = _bool_int(src.get("paper_mode", out["paper_mode"]), out["paper_mode"])
+  return out
 
 
 def _write_audit(conn, actor, object_type, object_id, action, result, metadata):
@@ -194,14 +270,42 @@ def account_connect(user_id, account_type, signer_address, funder_address, signa
       """,
       (account_id, str(user_id or "default"), account_type, signer_address, funder_address, signature_type, ts, ts),
     )
+    tpl = dict(DEFAULT_RISK_TEMPLATE)
     conn.execute(
       """
       INSERT INTO risk_limits(
-        account_id, max_daily_notional, max_market_exposure, max_slippage_bps, max_open_orders, auto_trading, created_at, updated_at
-      ) VALUES (?, 10000, 2000, 80, 20, 0, ?, ?)
+        account_id, max_daily_notional, max_order_notional, max_market_exposure, max_slippage_bps, max_open_orders, auto_trading,
+        min_expected_edge_bps, min_model_confidence, min_orderbook_depth, order_cooldown_sec,
+        max_daily_realized_loss, max_consecutive_failed_orders, max_reject_ratio_pct_10m, halt_on_api_degraded,
+        default_order_type, post_only, allow_taker, cancel_stale_after_sec, paper_mode,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(account_id) DO NOTHING
       """,
-      (account_id, ts, ts),
+      (
+        account_id,
+        tpl["max_daily_notional"],
+        tpl["max_order_notional"],
+        tpl["max_market_exposure"],
+        tpl["max_slippage_bps"],
+        tpl["max_open_orders"],
+        tpl["auto_trading"],
+        tpl["min_expected_edge_bps"],
+        tpl["min_model_confidence"],
+        tpl["min_orderbook_depth"],
+        tpl["order_cooldown_sec"],
+        tpl["max_daily_realized_loss"],
+        tpl["max_consecutive_failed_orders"],
+        tpl["max_reject_ratio_pct_10m"],
+        tpl["halt_on_api_degraded"],
+        tpl["default_order_type"],
+        tpl["post_only"],
+        tpl["allow_taker"],
+        tpl["cancel_stale_after_sec"],
+        tpl["paper_mode"],
+        ts,
+        ts,
+      ),
     )
     conn.execute(
       """
@@ -227,11 +331,23 @@ def account_connect(user_id, account_type, signer_address, funder_address, signa
 def derive_credentials(account_id):
   conn = get_conn()
   try:
-    exists = _fetchone(conn, "SELECT id FROM trading_accounts WHERE id=?", (account_id,))
-    if not exists:
+    acc = _fetchone(conn, "SELECT id, signer_address, funder_address, signature_type FROM trading_accounts WHERE id=?", (account_id,))
+    if not acc:
       return {"ok": False, "error": "account_not_found"}
     ts = now_iso()
     key_id = f"pmk-{abs(hash(account_id + ts)) % 100000000}"
+    live_client = PolymarketLiveClient()
+    private_key = str(os.environ.get("POLYMARKET_PRIVATE_KEY", "")).strip()
+    live = live_client.derive_api_credentials(
+      signer_private_key=private_key,
+      funder_address=str(acc.get("funder_address") or ""),
+      signature_type=str(acc.get("signature_type") or ""),
+    )
+    use_live = bool(live.get("ok"))
+    api_key_enc = f"enc:{live.get('api_key')}" if use_live else f"enc:{key_id}"
+    secret_enc = f"enc:{live.get('api_secret')}" if use_live else f"enc:s-{key_id}"
+    passphrase_enc = f"enc:{live.get('api_passphrase')}" if use_live else f"enc:p-{key_id}"
+    key_version = "live-v1" if use_live else "v1"
     conn.execute(
       """
       INSERT INTO polymarket_api_credentials(
@@ -246,18 +362,38 @@ def derive_credentials(account_id):
         updated_at=excluded.updated_at,
         last_verified_at=excluded.last_verified_at
       """,
-      (account_id, f"enc:{key_id}", f"enc:s-{key_id}", f"enc:p-{key_id}", ts, ts, ts),
+      (account_id, api_key_enc, secret_enc, passphrase_enc, ts, ts, ts),
     )
+    conn.execute("UPDATE polymarket_api_credentials SET key_version=? WHERE account_id=?", (key_version, account_id))
     conn.execute(
       """
       INSERT INTO authorization_logs(account_id, action_type, result, metadata_json, created_at)
       VALUES (?, 'derive_credentials', 'ok', ?, ?)
       """,
-      (account_id, json.dumps({"key_version": "v1"}, ensure_ascii=False), ts),
+      (
+        account_id,
+        json.dumps(
+          {
+            "key_version": key_version,
+            "live_enabled": bool(live_client.enabled),
+            "live_used": bool(use_live),
+            "live_error": str(live.get("error") or ""),
+          },
+          ensure_ascii=False,
+        ),
+        ts,
+      ),
     )
-    _write_audit(conn, "system", "credentials", account_id, "derive", "ok", {"key_version": "v1"})
+    _write_audit(conn, "system", "credentials", account_id, "derive", "ok", {"key_version": key_version, "live_used": bool(use_live)})
     conn.commit()
-    return {"ok": True, "credential_status": "active", "last_verified_at": ts}
+    return {
+      "ok": True,
+      "credential_status": "active",
+      "last_verified_at": ts,
+      "key_version": key_version,
+      "live_used": bool(use_live),
+      "live_error": str(live.get("error") or ""),
+    }
   finally:
     conn.close()
 
@@ -291,11 +427,7 @@ def get_account_status(account_id):
       "SELECT status, key_version, last_verified_at FROM polymarket_api_credentials WHERE account_id=?",
       (account_id,),
     ) or {}
-    risk = _fetchone(
-      conn,
-      "SELECT max_daily_notional, max_market_exposure, max_slippage_bps, max_open_orders, auto_trading FROM risk_limits WHERE account_id=?",
-      (account_id,),
-    ) or {}
+    risk = get_risk_limits(account_id)
     return {
       "ok": True,
       "account_id": account_id,
@@ -341,12 +473,122 @@ def set_auto_trading(account_id, enabled: bool):
     )
     _write_audit(conn, "operator", "account", account_id, "set_auto_trading", "ok", {"enabled": bool(enabled)})
     conn.commit()
-    limits = _fetchone(
-      conn,
-      "SELECT max_daily_notional, max_market_exposure, max_slippage_bps, max_open_orders, auto_trading FROM risk_limits WHERE account_id=?",
-      (account_id,),
-    ) or {}
+    limits = get_risk_limits(account_id)
     return {"ok": True, "current_limits": limits}
+  finally:
+    conn.close()
+
+
+def list_trading_accounts(user_id=""):
+  conn = get_conn()
+  try:
+    if user_id:
+      rows = _fetchall(
+        conn,
+        """
+        SELECT id, user_id, account_type, signer_address, funder_address, signature_type, status, created_at, updated_at
+        FROM trading_accounts
+        WHERE user_id=?
+        ORDER BY updated_at DESC
+        """,
+        (user_id,),
+      )
+    else:
+      rows = _fetchall(
+        conn,
+        """
+        SELECT id, user_id, account_type, signer_address, funder_address, signature_type, status, created_at, updated_at
+        FROM trading_accounts
+        ORDER BY updated_at DESC
+        """,
+      )
+    return rows
+  finally:
+    conn.close()
+
+
+def get_risk_limits(account_id):
+  conn = get_conn()
+  try:
+    row = _fetchone(conn, "SELECT * FROM risk_limits WHERE account_id=?", (account_id,))
+    if not row:
+      return dict(DEFAULT_RISK_TEMPLATE)
+    out = dict(DEFAULT_RISK_TEMPLATE)
+    out.update({k: row.get(k) for k in out.keys() if k in row})
+    out["auto_trading"] = _bool_int(out.get("auto_trading"), 0)
+    out["halt_on_api_degraded"] = _bool_int(out.get("halt_on_api_degraded"), 1)
+    out["post_only"] = _bool_int(out.get("post_only"), 1)
+    out["allow_taker"] = _bool_int(out.get("allow_taker"), 0)
+    out["paper_mode"] = _bool_int(out.get("paper_mode"), 1)
+    return out
+  finally:
+    conn.close()
+
+
+def upsert_risk_limits(account_id, payload, actor="operator"):
+  conn = get_conn()
+  try:
+    lim = _sanitize_risk_payload(payload or {})
+    ts = now_iso()
+    conn.execute(
+      """
+      INSERT INTO risk_limits(
+        account_id, max_daily_notional, max_order_notional, max_market_exposure, max_slippage_bps, max_open_orders, auto_trading,
+        min_expected_edge_bps, min_model_confidence, min_orderbook_depth, order_cooldown_sec,
+        max_daily_realized_loss, max_consecutive_failed_orders, max_reject_ratio_pct_10m, halt_on_api_degraded,
+        default_order_type, post_only, allow_taker, cancel_stale_after_sec, paper_mode,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(account_id) DO UPDATE SET
+        max_daily_notional=excluded.max_daily_notional,
+        max_order_notional=excluded.max_order_notional,
+        max_market_exposure=excluded.max_market_exposure,
+        max_slippage_bps=excluded.max_slippage_bps,
+        max_open_orders=excluded.max_open_orders,
+        auto_trading=excluded.auto_trading,
+        min_expected_edge_bps=excluded.min_expected_edge_bps,
+        min_model_confidence=excluded.min_model_confidence,
+        min_orderbook_depth=excluded.min_orderbook_depth,
+        order_cooldown_sec=excluded.order_cooldown_sec,
+        max_daily_realized_loss=excluded.max_daily_realized_loss,
+        max_consecutive_failed_orders=excluded.max_consecutive_failed_orders,
+        max_reject_ratio_pct_10m=excluded.max_reject_ratio_pct_10m,
+        halt_on_api_degraded=excluded.halt_on_api_degraded,
+        default_order_type=excluded.default_order_type,
+        post_only=excluded.post_only,
+        allow_taker=excluded.allow_taker,
+        cancel_stale_after_sec=excluded.cancel_stale_after_sec,
+        paper_mode=excluded.paper_mode,
+        updated_at=excluded.updated_at
+      """,
+      (
+        account_id,
+        lim["max_daily_notional"],
+        lim["max_order_notional"],
+        lim["max_market_exposure"],
+        lim["max_slippage_bps"],
+        lim["max_open_orders"],
+        lim["auto_trading"],
+        lim["min_expected_edge_bps"],
+        lim["min_model_confidence"],
+        lim["min_orderbook_depth"],
+        lim["order_cooldown_sec"],
+        lim["max_daily_realized_loss"],
+        lim["max_consecutive_failed_orders"],
+        lim["max_reject_ratio_pct_10m"],
+        lim["halt_on_api_degraded"],
+        lim["default_order_type"],
+        lim["post_only"],
+        lim["allow_taker"],
+        lim["cancel_stale_after_sec"],
+        lim["paper_mode"],
+        ts,
+        ts,
+      ),
+    )
+    _write_audit(conn, actor, "risk_limits", account_id, "upsert", "ok", lim)
+    conn.commit()
+    return {"ok": True, "account_id": account_id, "limits": lim}
   finally:
     conn.close()
 
@@ -639,6 +881,7 @@ def evaluate_and_execute(account_id, opportunity_id, actor="system"):
     lim = _fetchone(conn, "SELECT * FROM risk_limits WHERE account_id=?", (account_id,))
     if not lim:
       return {"ok": False, "error": "risk_limit_not_found"}
+    lim = {**dict(DEFAULT_RISK_TEMPLATE), **(lim or {})}
     if int(lim.get("auto_trading") or 0) != 1:
       return {"ok": False, "error": "auto_trading_disabled"}
     try:
@@ -648,10 +891,17 @@ def evaluate_and_execute(account_id, opportunity_id, actor="system"):
     sim = estimate_simulation(legs)
     if float(sim.get("slippage_bps") or 0) > float(lim.get("max_slippage_bps") or 0):
       return {"ok": False, "error": "slippage_limit_exceeded", "simulation": sim}
+    expected_profit = float(opp.get("vwap_profit") or 0)
+    edge_bps = expected_profit * 10000
+    if edge_bps < float(lim.get("min_expected_edge_bps") or 0):
+      return {"ok": False, "error": "edge_below_threshold", "edge_bps": round(edge_bps, 3)}
+    if float(opp.get("confidence") or 0) < float(lim.get("min_model_confidence") or 0):
+      return {"ok": False, "error": "confidence_below_threshold", "confidence": float(opp.get("confidence") or 0)}
+    if float(sim.get("fill_risk") or 0) > 0.95 and int(lim.get("halt_on_api_degraded") or 0) == 1:
+      return {"ok": False, "error": "api_or_liquidity_degraded", "simulation": sim}
 
     ts = now_iso()
     exe_id = f"exe-{abs(hash(opportunity_id + account_id + ts)) % 1000000000}"
-    expected_profit = float(opp.get("vwap_profit") or 0)
     realized_profit = round(expected_profit * random.uniform(0.85, 1.05), 6)
     latency = random.randint(120, 960)
     conn.execute(

@@ -13,6 +13,11 @@ const api = {
     const r = await fetch(p, { method: 'DELETE', credentials: 'include' });
     if (!r.ok) return null;
     return r.json();
+  },
+  put: async (p, body = {}) => {
+    const r = await fetch(p, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) return null;
+    return r.json();
   }
 };
 
@@ -34,10 +39,12 @@ const monitorI18n = {
     title_forms: 'Nexo Monitor | 数据表单',
     title_form: 'Nexo Monitor | 表单详情',
     title_tool: 'Nexo Monitor | 数据生成工具',
+    title_polymarket_risk: 'Nexo Monitor | Polymarket 风控配置',
     nav_ops: '运维看板',
     nav_business: '业务运营',
     nav_tool: '数据生成工具',
     nav_forms: '数据表单',
+    nav_polymarket_risk: 'Polymarket 风控',
     logout: '退出',
     login_title: 'Nexo Monitor Console',
     login_sub: '运维、业务与数据表单分析',
@@ -94,7 +101,16 @@ const monitorI18n = {
     tool_save_failed: '保存失败，请重试。',
     chart_visits: '访问量',
     chart_input: '输入',
-    chart_output: '输出'
+    chart_output: '输出',
+    pm_risk_title: 'Polymarket 风控模板配置',
+    pm_account: '账户',
+    pm_load: '加载当前配置',
+    pm_use_template: '使用默认模板',
+    pm_save: '保存配置',
+    pm_saved: '风控配置已保存。',
+    pm_save_failed: '保存失败，请重试。',
+    pm_no_account: '暂无 Polymarket 账户，请先完成账户连接。',
+    pm_loaded: '已加载当前风控配置。'
   },
   en: {
     title_login: 'Nexo Monitor | Login',
@@ -103,10 +119,12 @@ const monitorI18n = {
     title_forms: 'Nexo Monitor | Data Forms',
     title_form: 'Nexo Monitor | Form Detail',
     title_tool: 'Nexo Monitor | Data Tool',
+    title_polymarket_risk: 'Nexo Monitor | Polymarket Risk Config',
     nav_ops: 'Ops Dashboard',
     nav_business: 'Business',
     nav_tool: 'Data Tool',
     nav_forms: 'Data Forms',
+    nav_polymarket_risk: 'Polymarket Risk',
     logout: 'Logout',
     login_title: 'Nexo Monitor Console',
     login_sub: 'Operations, business and data-form analytics.',
@@ -163,7 +181,16 @@ const monitorI18n = {
     tool_save_failed: 'Save failed, please retry.',
     chart_visits: 'Visits',
     chart_input: 'Input',
-    chart_output: 'Output'
+    chart_output: 'Output',
+    pm_risk_title: 'Polymarket Risk Template Config',
+    pm_account: 'Account',
+    pm_load: 'Load Current',
+    pm_use_template: 'Use Default Template',
+    pm_save: 'Save Config',
+    pm_saved: 'Risk limits saved.',
+    pm_save_failed: 'Save failed, please retry.',
+    pm_no_account: 'No Polymarket account found. Please connect account first.',
+    pm_loaded: 'Current risk limits loaded.'
   }
 };
 
@@ -190,6 +217,7 @@ function applyMonitorI18n(){
   if(page === 'forms') document.title = mt('title_forms');
   if(page === 'form-detail') document.title = mt('title_form');
   if(page === 'data-tool') document.title = mt('title_tool');
+  if(page === 'polymarket-risk') document.title = mt('title_polymarket_risk');
   document.documentElement.lang = getMonitorLang() === 'en' ? 'en' : 'zh-CN';
   document.querySelectorAll('[data-i18n]').forEach((el)=>{
     const key = el.getAttribute('data-i18n');
@@ -641,6 +669,108 @@ async function initForms(){
   q('forms-list').innerHTML = (data.forms||[]).map(f=>`<a href="./form.html?name=${encodeURIComponent(f.name)}"><span>${f.label}</span><span>${f.count}</span></a>`).join('');
 }
 
+function _pmGetNumber(id, fallback = 0){
+  const v = Number(q(id)?.value);
+  return Number.isFinite(v) ? v : fallback;
+}
+
+function _pmGetBool(id){
+  return q(id)?.checked ? 1 : 0;
+}
+
+function _pmApplyLimits(lim){
+  const setValue = (id, value) => { if(q(id)) q(id).value = value ?? ''; };
+  setValue('pm-max-daily-notional', lim?.max_daily_notional ?? 500);
+  setValue('pm-max-order-notional', lim?.max_order_notional ?? 50);
+  setValue('pm-max-market-exposure', lim?.max_market_exposure ?? 120);
+  setValue('pm-max-slippage-bps', lim?.max_slippage_bps ?? 20);
+  setValue('pm-max-open-orders', lim?.max_open_orders ?? 3);
+  setValue('pm-min-expected-edge-bps', lim?.min_expected_edge_bps ?? 40);
+  setValue('pm-min-model-confidence', lim?.min_model_confidence ?? 0.65);
+  setValue('pm-min-orderbook-depth', lim?.min_orderbook_depth ?? 300);
+  setValue('pm-order-cooldown-sec', lim?.order_cooldown_sec ?? 30);
+  setValue('pm-max-daily-loss', lim?.max_daily_realized_loss ?? 80);
+  setValue('pm-max-consecutive-failed', lim?.max_consecutive_failed_orders ?? 5);
+  setValue('pm-max-reject-ratio', lim?.max_reject_ratio_pct_10m ?? 40);
+  setValue('pm-default-order-type', lim?.default_order_type || 'GTC');
+  setValue('pm-cancel-stale-after-sec', lim?.cancel_stale_after_sec ?? 120);
+  if(q('pm-auto-trading')) q('pm-auto-trading').checked = !!Number(lim?.auto_trading ?? 0);
+  if(q('pm-halt-api-degraded')) q('pm-halt-api-degraded').checked = !!Number(lim?.halt_on_api_degraded ?? 1);
+  if(q('pm-post-only')) q('pm-post-only').checked = !!Number(lim?.post_only ?? 1);
+  if(q('pm-allow-taker')) q('pm-allow-taker').checked = !!Number(lim?.allow_taker ?? 0);
+  if(q('pm-paper-mode')) q('pm-paper-mode').checked = !!Number(lim?.paper_mode ?? 1);
+}
+
+function _pmCollectLimits(){
+  return {
+    max_daily_notional: _pmGetNumber('pm-max-daily-notional', 500),
+    max_order_notional: _pmGetNumber('pm-max-order-notional', 50),
+    max_market_exposure: _pmGetNumber('pm-max-market-exposure', 120),
+    max_slippage_bps: _pmGetNumber('pm-max-slippage-bps', 20),
+    max_open_orders: _pmGetNumber('pm-max-open-orders', 3),
+    auto_trading: _pmGetBool('pm-auto-trading'),
+    min_expected_edge_bps: _pmGetNumber('pm-min-expected-edge-bps', 40),
+    min_model_confidence: _pmGetNumber('pm-min-model-confidence', 0.65),
+    min_orderbook_depth: _pmGetNumber('pm-min-orderbook-depth', 300),
+    order_cooldown_sec: _pmGetNumber('pm-order-cooldown-sec', 30),
+    max_daily_realized_loss: _pmGetNumber('pm-max-daily-loss', 80),
+    max_consecutive_failed_orders: _pmGetNumber('pm-max-consecutive-failed', 5),
+    max_reject_ratio_pct_10m: _pmGetNumber('pm-max-reject-ratio', 40),
+    halt_on_api_degraded: _pmGetBool('pm-halt-api-degraded'),
+    default_order_type: String(q('pm-default-order-type')?.value || 'GTC').toUpperCase(),
+    post_only: _pmGetBool('pm-post-only'),
+    allow_taker: _pmGetBool('pm-allow-taker'),
+    cancel_stale_after_sec: _pmGetNumber('pm-cancel-stale-after-sec', 120),
+    paper_mode: _pmGetBool('pm-paper-mode'),
+  };
+}
+
+async function initPolymarketRisk(){
+  if(!(await requireAuth())) return;
+  setupLogout();
+  const accountSelect = q('pm-account');
+  const statusEl = q('pm-risk-status');
+  if(!accountSelect) return;
+  const setStatus = (key) => { if(statusEl) statusEl.textContent = mt(key); };
+
+  const accountRes = await api.get('/monitor-api/polymarket/accounts');
+  const accounts = Array.isArray(accountRes?.items) ? accountRes.items : [];
+  accountSelect.innerHTML = accounts.map((a)=>`<option value="${asText(a.id)}">${asText(a.id)} · ${asText(a.funder_address)}</option>`).join('');
+  if(!accounts.length){
+    setStatus('pm_no_account');
+    return;
+  }
+
+  const loadCurrent = async () => {
+    const accountId = asText(accountSelect.value);
+    if(!accountId) return;
+    const res = await api.get(`/monitor-api/polymarket/risk-limits?account_id=${encodeURIComponent(accountId)}`);
+    if(!res?.ok) return;
+    _pmApplyLimits(res.limits || res.template || {});
+    setStatus('pm_loaded');
+  };
+
+  accountSelect.addEventListener('change', loadCurrent);
+  q('pm-load')?.addEventListener('click', loadCurrent);
+  q('pm-template')?.addEventListener('click', async ()=>{
+    const accountId = asText(accountSelect.value);
+    if(!accountId) return;
+    const res = await api.get(`/monitor-api/polymarket/risk-limits?account_id=${encodeURIComponent(accountId)}`);
+    _pmApplyLimits(res?.template || {});
+  });
+  q('pm-save')?.addEventListener('click', async ()=>{
+    const accountId = asText(accountSelect.value);
+    if(!accountId) return;
+    const out = await api.put('/monitor-api/polymarket/risk-limits', {
+      account_id: accountId,
+      limits: _pmCollectLimits(),
+    });
+    setStatus(out?.ok ? 'pm_saved' : 'pm_save_failed');
+  });
+
+  await loadCurrent();
+}
+
 async function initFormDetail(){
   if(!(await requireAuth())) return;
   setupLogout();
@@ -731,6 +861,7 @@ async function initDataTool(){
   if(page==='login') return initLogin();
   if(page==='ops') return initOps();
   if(page==='subscribers') return initSubscribers();
+  if(page==='polymarket-risk') return initPolymarketRisk();
   if(page==='data-tool') return initDataTool();
   if(page==='forms') return initForms();
   if(page==='form-detail') return initFormDetail();

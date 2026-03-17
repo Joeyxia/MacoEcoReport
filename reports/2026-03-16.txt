@@ -1,0 +1,18 @@
+Macro Daily Report (2026-03-16)
+Model As-Of: 2026-03-16
+Composite Score: 68.49 (温和扩张)
+
+Key Indicators To Watch
+- YC_10Y3M: 50.0
+- VIX: 24.23
+- HY_OAS: 309.0
+- CORE_CPI_YOY: 2.7335
+- UNRATE: 4.4
+- WTI: 94.65
+- BTC: 71105.0
+
+Short Summary
+- Macro model updated on 2026-03-16. Public-source updater refreshed 0 indicators; 45 indicators still require manual/proprietary updates. Online freshness pass: 0/25. Composite score: 68.49 (温和扩张).
+- Data generated at: 2026-03-16T01:43:57Z
+- Weakest dimensions: D06 房地产与利率敏感部门 (45.39), D09 财政政策与债务约束 (48.54), D01 货币政策与流动性 (50.32)
+- Strongest dimensions: D13 AI资本开支周期（主题） (92.86), D10 金融条件与信用传导 (91.95), D03 通胀与价格压力 (90.79)

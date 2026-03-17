@@ -18,6 +18,7 @@ const stockI18n = {
     navPortfolio: "Portfolio Watchlist",
     navRegime: "Regime & Transmission",
     navStock: "Stock Prediction",
+    navPolymarket: "Polymarket",
     navOpenrouter: "OpenRouter",
     navAbout: "About Nexo",
     eyebrow: "Quant Signal Engine",
@@ -66,6 +67,7 @@ const stockI18n = {
     navPortfolio: "组合观察池",
     navRegime: "状态与传导",
     navStock: "股票预测",
+    navPolymarket: "Polymarket",
     navOpenrouter: "OpenRouter",
     navAbout: "功能介绍",
     eyebrow: "量化信号引擎",
@@ -171,6 +173,7 @@ function applyStockI18n(){
   setText("stock-nav-portfolio", st("navPortfolio"));
   setText("stock-nav-regime", st("navRegime"));
   setText("stock-nav-stock", st("navStock"));
+  setText("stock-nav-polymarket", st("navPolymarket"));
   setText("stock-nav-openrouter", st("navOpenrouter"));
   setText("stock-nav-about", st("navAbout"));
   setText("stock-eyebrow", st("eyebrow"));

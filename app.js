@@ -46,6 +46,7 @@ const i18n = {
     nav_ai_assistant: "AI Assistant",
     nav_openrouter: "OpenRouter",
     nav_stock_prediction: "Stock Prediction",
+    nav_polymarket: "Polymarket",
     nav_portfolio_watchlist: "Portfolio Watchlist",
     nav_regime_transmission: "Regime & Transmission",
     nav_intro: "About Nexo",
@@ -223,6 +224,7 @@ const i18n = {
     nav_ai_assistant: "AI 助手",
     nav_openrouter: "OpenRouter",
     nav_stock_prediction: "股票预测",
+    nav_polymarket: "Polymarket",
     nav_portfolio_watchlist: "组合观察池",
     nav_regime_transmission: "状态与传导",
     nav_intro: "功能介绍",
@@ -3361,10 +3363,7 @@ async function init() {
   applyI18n();
   ensureSiteFooter();
   setupNavPrefetch();
-  await migrateBrowserDataToServer();
-
   const page = document.body.dataset.page;
-  const model = await ensureModelData(await loadCurrentModel());
 
   setupLangToggle(async () => {
     const currentModel = await loadCurrentModel();
@@ -3379,6 +3378,13 @@ async function init() {
     if (page === "ai-assistant") await initAiAssistantPage();
     if (page === "openrouter") await renderOpenRouterPage();
   });
+
+  // Static intro page should not depend on model/db boot sequence.
+  // This guarantees language toggle always works even if data APIs are slow/unavailable.
+  if (page === "about") return;
+
+  await migrateBrowserDataToServer();
+  const model = await ensureModelData(await loadCurrentModel());
 
   if (page === "dashboard") await initDashboard();
   if (page === "daily-report") await renderDailyReport(model);

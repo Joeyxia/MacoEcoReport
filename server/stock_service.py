@@ -1717,6 +1717,8 @@ def get_stock_form_rows(form_name: str, limit: int = 500):
     "prediction_results": ("SELECT * FROM prediction_results ORDER BY prediction_month DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
     "feature_importance": ("SELECT * FROM feature_importance ORDER BY created_at DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
     "latest_signals": ("SELECT * FROM latest_signals ORDER BY updated_at DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
+    "risk_limits": ("SELECT * FROM risk_limits ORDER BY updated_at DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
+    "trading_accounts": ("SELECT * FROM trading_accounts ORDER BY updated_at DESC, id DESC LIMIT ?", (max(1, int(limit)),)),
   }
   if key not in table_map:
     conn.close()

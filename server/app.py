@@ -86,6 +86,10 @@ try:
     get_opportunity_detail as polymarket_get_opportunity_detail,
     toggle_strategy as polymarket_toggle_strategy,
     risk_overview as polymarket_risk_overview,
+    list_trading_accounts as polymarket_list_trading_accounts,
+    get_risk_limits as polymarket_get_risk_limits,
+    upsert_risk_limits as polymarket_upsert_risk_limits,
+    DEFAULT_RISK_TEMPLATE as POLYMARKET_DEFAULT_RISK_TEMPLATE,
     evaluate_and_execute as polymarket_evaluate_and_execute,
     list_executions as polymarket_list_executions,
     replay_summary as polymarket_replay_summary,
@@ -191,6 +195,10 @@ except ImportError:
     get_opportunity_detail as polymarket_get_opportunity_detail,
     toggle_strategy as polymarket_toggle_strategy,
     risk_overview as polymarket_risk_overview,
+    list_trading_accounts as polymarket_list_trading_accounts,
+    get_risk_limits as polymarket_get_risk_limits,
+    upsert_risk_limits as polymarket_upsert_risk_limits,
+    DEFAULT_RISK_TEMPLATE as POLYMARKET_DEFAULT_RISK_TEMPLATE,
     evaluate_and_execute as polymarket_evaluate_and_execute,
     list_executions as polymarket_list_executions,
     replay_summary as polymarket_replay_summary,
@@ -1354,6 +1362,37 @@ def monitor_biz_invites():
   return jsonify({"ok": True, "item": row}), 201
 
 
+@app.route("/monitor-api/polymarket/accounts", methods=["GET"])
+def monitor_polymarket_accounts():
+  _, err = _require_monitor_auth()
+  if err:
+    return err
+  user_id = str(request.args.get("user_id") or "").strip()
+  items = polymarket_list_trading_accounts(user_id=user_id)
+  return _etag_response({"ok": True, "count": len(items), "items": items})
+
+
+@app.route("/monitor-api/polymarket/risk-limits", methods=["GET", "PUT", "OPTIONS"])
+def monitor_polymarket_risk_limits():
+  if request.method == "OPTIONS":
+    return ("", 204)
+  user, err = _require_monitor_auth()
+  if err:
+    return err
+  if request.method == "GET":
+    account_id = str(request.args.get("account_id") or "").strip()
+    if not account_id:
+      return jsonify({"ok": False, "error": "missing_account_id"}), 400
+    limits = polymarket_get_risk_limits(account_id)
+    return _etag_response({"ok": True, "account_id": account_id, "limits": limits, "template": POLYMARKET_DEFAULT_RISK_TEMPLATE})
+  payload = request.get_json(silent=True) or {}
+  account_id = str(payload.get("account_id") or "").strip()
+  if not account_id:
+    return jsonify({"ok": False, "error": "missing_account_id"}), 400
+  out = polymarket_upsert_risk_limits(account_id=account_id, payload=payload.get("limits") or payload, actor=str(user.get("email") or "operator"))
+  return jsonify({**out, "template": POLYMARKET_DEFAULT_RISK_TEMPLATE}), (200 if out.get("ok") else 400)
+
+
 @app.route("/monitor-api/data/forms", methods=["GET"])
 def monitor_data_forms():
   _, err = _require_monitor_auth()
@@ -1379,6 +1418,8 @@ def monitor_data_forms():
     {"name": "prediction_results", "label": "Prediction Results", "count": int(stock_counts.get("prediction_results") or 0)},
     {"name": "feature_importance", "label": "Feature Importance", "count": int(stock_counts.get("feature_importance") or 0)},
     {"name": "latest_signals", "label": "Latest Signals", "count": int(stock_counts.get("latest_signals") or 0)},
+    {"name": "polymarket_accounts", "label": "Polymarket Accounts", "count": len(polymarket_list_trading_accounts())},
+    {"name": "polymarket_risk_limits", "label": "Polymarket Risk Limits", "count": len(get_stock_form_rows("risk_limits", limit=2000) or [])},
   ]
   return _etag_response({"forms": forms})
 
@@ -1407,8 +1448,13 @@ def monitor_data_form_rows(name):
     "prediction_results",
     "feature_importance",
     "latest_signals",
+    "risk_limits",
   }:
     return _etag_response({"name": key, "rows": get_stock_form_rows(key, limit=500)})
+  if key == "polymarket_accounts":
+    return _etag_response({"name": key, "rows": polymarket_list_trading_accounts()})
+  if key == "polymarket_risk_limits":
+    return _etag_response({"name": key, "rows": get_stock_form_rows("risk_limits", limit=500)})
   return jsonify({"error": "not_found"}), 404
 
 

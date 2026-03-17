@@ -612,6 +612,60 @@ body[data-page="data-tool"] .report-open:hover {
   background: rgba(10, 122, 104, 0.12);
 }
 
+body[data-page="polymarket-risk"] .pm-risk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+body[data-page="polymarket-risk"] .pm-risk-actions label {
+  font-weight: 600;
+}
+
+body[data-page="polymarket-risk"] .pm-risk-actions select,
+body[data-page="polymarket-risk"] .pm-risk-grid input,
+body[data-page="polymarket-risk"] .pm-risk-grid select {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-height: 38px;
+  padding: 0.42rem 0.6rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+body[data-page="polymarket-risk"] .pm-risk-actions select {
+  min-width: 320px;
+  max-width: 100%;
+}
+
+body[data-page="polymarket-risk"] .pm-risk-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 0.65rem 0.9rem;
+  margin-top: 0.6rem;
+}
+
+body[data-page="polymarket-risk"] .pm-risk-grid label {
+  display: grid;
+  gap: 0.34rem;
+  font-size: 0.9rem;
+}
+
+body[data-page="polymarket-risk"] .pm-risk-checks {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.2rem;
+}
+
+body[data-page="polymarket-risk"] .pm-risk-checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 @keyframes glow-move {
   from {
     transform: translate3d(-1.2%, -1%, 0) scale(1);
