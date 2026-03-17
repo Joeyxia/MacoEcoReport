@@ -719,7 +719,7 @@ def scan_opportunities(limit=50):
             continue
           filtered.append(m)
         markets = filtered[:250]
-        live_mode = True
+        live_mode = bool(markets)
     if not markets:
       # fallback for development/demo only
       ensure_demo_data()
@@ -729,6 +729,8 @@ def scan_opportunities(limit=50):
     for m in markets:
       if live_mode:
         toks = m.get("tokens") or []
+        if not isinstance(toks, list) or len(toks) < 2:
+          continue
         t0 = str((toks[0] or {}).get("token_id") or "")
         t1 = str((toks[1] or {}).get("token_id") or "")
         b0 = live_client.fetch_order_book(t0)
