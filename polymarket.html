@@ -23,6 +23,11 @@
       .pm-d-item { background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:8px 10px; min-width:220px; }
       .pm-d-k { font-size:12px; color:#5a727a; }
       .pm-d-v { font-size:16px; color:#14303a; font-weight:700; margin-top:2px; }
+      .pm-modal-mask { position: fixed; inset: 0; background: rgba(10,20,30,.38); z-index: 1200; display: none; align-items: center; justify-content: center; padding: 14px; }
+      .pm-modal { width: min(760px, 100%); background:#fff; border:1px solid rgba(10,40,40,.15); border-radius:14px; padding:14px; box-shadow: 0 12px 36px rgba(20,40,56,.2); }
+      .pm-modal-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+      .pm-modal-title { margin:0; font-size:20px; color:#112a33; }
+      .pm-modal-close { border:1px solid rgba(10,40,40,.24); background:#fff; color:#24505a; border-radius:10px; padding:6px 10px; cursor:pointer; }
       .pm-title { font-size: 22px; font-weight: 700; margin: 0 0 8px; color:#102a33; }
       .pm-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 8px 0; }
       .pm-input { border:1px solid rgba(10,40,40,.25); border-radius: 10px; padding:10px 12px; min-width: 240px; font-size: 14px; }
@@ -85,6 +90,9 @@
           <div id="pm-diag-market-label" class="pm-d-k">Live Tradable Markets</div>
           <div class="pm-d-v" id="diagMarketCount">--</div>
         </div>
+        <div class="pm-d-item" style="display:flex;align-items:center;justify-content:center;">
+          <button id="pmDiagDetailBtn" class="pm-btn ghost" type="button">Diagnostics Details</button>
+        </div>
       </div>
       <div id="actionToast" class="pm-toast info">Ready.</div>
 
@@ -140,10 +148,20 @@
         </div>
       </section>
     </main>
+    <div id="pmDiagModalMask" class="pm-modal-mask" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="pm-modal">
+        <div class="pm-modal-head">
+          <h3 id="pmDiagModalTitle" class="pm-modal-title">Diagnostics Details</h3>
+          <button id="pmDiagModalClose" class="pm-modal-close" type="button">Close</button>
+        </div>
+        <div id="pmDiagModalBody" class="pm-mono">--</div>
+      </div>
+    </div>
 
     <script>
       let accountId = "";
       let currentUserEmail = "";
+      let lastDiagData = null;
       const pmI18n = {
         en: {
           title: "Polymarket Quant Trading Console (MVP)",
@@ -223,6 +241,18 @@
           accountStatus: "Account Status",
           syncDelay: "Sync Delay",
           accountId: "Account ID"
+          ,
+          diagDetailBtn: "Diagnostics Details",
+          diagDetailTitle: "Diagnostics Details",
+          close: "Close",
+          diagAccountId: "Account ID",
+          diagRawCount: "Raw Market Count",
+          diagTradableCount: "Tradable Market Count",
+          diagLiveEnabled: "Live Enabled",
+          diagMarketError: "Market Error",
+          diagBalanceSource: "Balance Source",
+          diagSignerMatch: "Signer Match",
+          diagUpdatedAt: "Updated At"
         },
         zh: {
           title: "Polymarket 量化交易控制台（MVP）",
@@ -302,6 +332,18 @@
           accountStatus: "账户状态",
           syncDelay: "同步延迟",
           accountId: "账户 ID"
+          ,
+          diagDetailBtn: "诊断详情",
+          diagDetailTitle: "诊断详情",
+          close: "关闭",
+          diagAccountId: "账户 ID",
+          diagRawCount: "实时原始市场数量",
+          diagTradableCount: "可交易市场数量",
+          diagLiveEnabled: "实盘开关",
+          diagMarketError: "市场错误信息",
+          diagBalanceSource: "余额来源",
+          diagSignerMatch: "签名匹配",
+          diagUpdatedAt: "更新时间"
         }
       };
 
@@ -341,6 +383,9 @@
         document.getElementById("pm-col-theory").textContent = t("colTheory");
         document.getElementById("pm-col-source").textContent = t("colSource");
         document.getElementById("pm-col-action").textContent = t("colAction");
+        document.getElementById("pmDiagDetailBtn").textContent = t("diagDetailBtn");
+        document.getElementById("pmDiagModalTitle").textContent = t("diagDetailTitle");
+        document.getElementById("pmDiagModalClose").textContent = t("close");
         if (document.getElementById("actionToast").textContent.trim() === "") {
           document.getElementById("actionToast").textContent = t("ready");
         }
@@ -426,6 +471,7 @@
         if(!accountId) return;
         try{
           const d = await jfetch(`/api/v1/polymarket/diagnostics?account_id=${encodeURIComponent(accountId)}`);
+          lastDiagData = { ...d, updated_at: new Date().toISOString() };
           setDiag("diagBalanceSource", d.balance_source || "--");
           setDiag("diagSignerMatch", d.signer_match ? t("signerOk") : t("signerBad"));
           const mc = Number(d.tradable_market_count || 0);
@@ -434,6 +480,31 @@
         }catch(_e){
           setDiag("diagMarketCount", t("marketReadFail"));
         }
+      }
+
+      function openDiagModal(){
+        const mask = document.getElementById("pmDiagModalMask");
+        const body = document.getElementById("pmDiagModalBody");
+        const d = lastDiagData || {};
+        const lines = [
+          `${t("diagAccountId")}: ${d.account_id || accountId || "--"}`,
+          `${t("diagBalanceSource")}: ${d.balance_source || "--"}`,
+          `${t("diagSignerMatch")}: ${d.signer_match === undefined ? "--" : (d.signer_match ? t("signerOk") : t("signerBad"))}`,
+          `${t("diagRawCount")}: ${d.raw_market_count ?? "--"}`,
+          `${t("diagTradableCount")}: ${d.tradable_market_count ?? "--"}`,
+          `${t("diagLiveEnabled")}: ${d.live_enabled === undefined ? "--" : (d.live_enabled ? t("ynYes") : t("ynNo"))}`,
+          `${t("diagMarketError")}: ${d.market_error || "--"}`,
+          `${t("diagUpdatedAt")}: ${d.updated_at || "--"}`
+        ];
+        body.textContent = lines.join("\n");
+        mask.style.display = "flex";
+        mask.setAttribute("aria-hidden", "false");
+      }
+
+      function closeDiagModal(){
+        const mask = document.getElementById("pmDiagModalMask");
+        mask.style.display = "none";
+        mask.setAttribute("aria-hidden", "true");
       }
 
       async function bootstrapUserAndAccount(){
@@ -621,6 +692,11 @@
         applyPolymarketI18n();
         document.getElementById("lang-toggle")?.addEventListener("click", () => {
           setTimeout(() => applyPolymarketI18n(), 0);
+        });
+        document.getElementById("pmDiagDetailBtn")?.addEventListener("click", openDiagModal);
+        document.getElementById("pmDiagModalClose")?.addEventListener("click", closeDiagModal);
+        document.getElementById("pmDiagModalMask")?.addEventListener("click", (e) => {
+          if (e.target && e.target.id === "pmDiagModalMask") closeDiagModal();
         });
         toast(t("ready"), "info");
         await bootstrapUserAndAccount();
