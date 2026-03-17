@@ -93,6 +93,24 @@ def _calc_depth(levels, max_levels=5):
   return round(depth, 6)
 
 
+def _filter_live_markets(raw_items):
+  filtered = []
+  for m in raw_items or []:
+    if not isinstance(m, dict):
+      continue
+    if not bool(m.get("active")):
+      continue
+    if bool(m.get("closed")):
+      continue
+    if not bool(m.get("accepting_orders")):
+      continue
+    toks = m.get("tokens") or []
+    if not isinstance(toks, list) or len(toks) < 2:
+      continue
+    filtered.append(m)
+  return filtered
+
+
 def _fetchone(conn, sql, params=()):
   cur = conn.execute(sql, params)
   row = cur.fetchone()
@@ -740,22 +758,7 @@ def scan_opportunities(limit=50):
     if live_client.enabled:
       lm = live_client.fetch_markets(max_markets=400, max_pages=5)
       if lm.get("ok"):
-        raw = lm.get("items") or []
-        filtered = []
-        for m in raw:
-          if not isinstance(m, dict):
-            continue
-          if not bool(m.get("active")):
-            continue
-          if bool(m.get("closed")):
-            continue
-          if not bool(m.get("accepting_orders")):
-            continue
-          toks = m.get("tokens") or []
-          if not isinstance(toks, list) or len(toks) < 2:
-            continue
-          filtered.append(m)
-        markets = filtered[:250]
+        markets = _filter_live_markets(lm.get("items") or [])[:250]
         live_mode = bool(markets)
     if not markets and not live_client.enabled:
       # fallback for development/demo only when live mode is disabled
@@ -855,6 +858,37 @@ def scan_opportunities(limit=50):
     return results[: max(1, min(int(limit or 50), 300))]
   finally:
     conn.close()
+
+
+def get_live_market_diagnostics():
+  live_client = PolymarketLiveClient()
+  if not live_client.enabled:
+    return {
+      "ok": True,
+      "live_enabled": False,
+      "raw_market_count": 0,
+      "tradable_market_count": 0,
+      "source": "disabled",
+    }
+  lm = live_client.fetch_markets(max_markets=500, max_pages=6)
+  if not lm.get("ok"):
+    return {
+      "ok": False,
+      "live_enabled": True,
+      "error": str(lm.get("error") or "fetch_markets_failed"),
+      "detail": str(lm.get("detail") or "")[:240],
+      "raw_market_count": 0,
+      "tradable_market_count": 0,
+    }
+  raw = lm.get("items") or []
+  filtered = _filter_live_markets(raw)
+  return {
+    "ok": True,
+    "live_enabled": True,
+    "raw_market_count": len(raw),
+    "tradable_market_count": len(filtered),
+    "source": "polymarket_live",
+  }
 
 
 def estimate_simulation(legs):

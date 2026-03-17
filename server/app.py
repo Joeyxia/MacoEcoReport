@@ -93,6 +93,7 @@ try:
     evaluate_and_execute as polymarket_evaluate_and_execute,
     list_executions as polymarket_list_executions,
     replay_summary as polymarket_replay_summary,
+    get_live_market_diagnostics as polymarket_get_live_market_diagnostics,
   )
   from .regime_service import (
     upsert_regime_snapshot,
@@ -202,6 +203,7 @@ except ImportError:
     evaluate_and_execute as polymarket_evaluate_and_execute,
     list_executions as polymarket_list_executions,
     replay_summary as polymarket_replay_summary,
+    get_live_market_diagnostics as polymarket_get_live_market_diagnostics,
   )
   from regime_service import (
     upsert_regime_snapshot,
@@ -2432,6 +2434,32 @@ def polymarket_opportunities_scan():
     return jsonify({"ok": True, "items": items, "count": len(items)})
   except Exception as e:
     return jsonify({"ok": False, "error": "scan_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/v1/polymarket/diagnostics", methods=["GET"])
+def polymarket_live_diagnostics():
+  user, err = _require_public_user()
+  if err:
+    return err
+  try:
+    email = str(user.get("email") or "").strip().lower()
+    account_id, own_err = _polymarket_resolve_account_for_user(email, str(request.args.get("account_id") or "").strip())
+    if own_err:
+      return own_err
+    status = polymarket_get_account_status(account_id)
+    market_diag = polymarket_get_live_market_diagnostics()
+    return jsonify({
+      "ok": True,
+      "account_id": account_id,
+      "balance_source": str((((status or {}).get("balances") or [{}])[0] or {}).get("source") or "local_cache"),
+      "signer_match": bool(((status or {}).get("health") or {}).get("signer_match")),
+      "tradable_market_count": int((market_diag or {}).get("tradable_market_count") or 0),
+      "raw_market_count": int((market_diag or {}).get("raw_market_count") or 0),
+      "live_enabled": bool((market_diag or {}).get("live_enabled")),
+      "market_error": str((market_diag or {}).get("error") or ""),
+    })
+  except Exception as e:
+    return jsonify({"ok": False, "error": "diagnostics_failed", "detail": str(e)[:240]}), 500
 
 
 @app.route("/api/v1/opportunities", methods=["GET"])

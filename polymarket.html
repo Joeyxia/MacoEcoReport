@@ -10,6 +10,10 @@
     .pm-grid { display: grid; gap: 12px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
     .pm-card { grid-column: span 12; background: #fff; border: 1px solid rgba(10,40,40,.12); border-radius: 14px; padding: 14px; }
     .pm-card.half { grid-column: span 6; }
+    .pm-diagnose { display:flex; gap:10px; flex-wrap:wrap; margin: 8px 0 12px; }
+    .pm-d-item { background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:8px 10px; min-width:220px; }
+    .pm-d-k { font-size:12px; color:#5a727a; }
+    .pm-d-v { font-size:16px; color:#14303a; font-weight:700; margin-top:2px; }
     .pm-title { font-size: 22px; font-weight: 700; margin: 0 0 8px; color:#102a33; }
     .pm-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 8px 0; }
     .pm-input { border:1px solid rgba(10,40,40,.25); border-radius: 10px; padding:10px 12px; min-width: 240px; font-size: 14px; }
@@ -38,6 +42,20 @@
   <main class="pm-wrap">
     <h1 class="pm-title">Polymarket 量化交易系统（MVP）</h1>
     <p style="color:#4c636b;margin-top:0;">已实现：市场/盘口接入、套利扫描、VWAP仿真、账户接入、自动交易开关、风险总览、模拟执行与审计留痕。</p>
+    <div id="diagBar" class="pm-diagnose">
+      <div class="pm-d-item">
+        <div class="pm-d-k">账户余额来源</div>
+        <div class="pm-d-v" id="diagBalanceSource">--</div>
+      </div>
+      <div class="pm-d-item">
+        <div class="pm-d-k">签名匹配</div>
+        <div class="pm-d-v" id="diagSignerMatch">--</div>
+      </div>
+      <div class="pm-d-item">
+        <div class="pm-d-k">实时市场数量</div>
+        <div class="pm-d-v" id="diagMarketCount">--</div>
+      </div>
+    </div>
     <div id="actionToast" class="pm-toast info">准备就绪。</div>
 
     <section class="pm-grid">
@@ -104,6 +122,10 @@
     }
 
     function setText(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj, null, 2); }
+    function setDiag(id, value){
+      const el = document.getElementById(id);
+      if(el){ el.textContent = value; }
+    }
     function nowStr(){ return new Date().toLocaleString(); }
     function toast(msg, type){
       const el = document.getElementById("actionToast");
@@ -161,7 +183,26 @@
       const d = await jfetch(`/api/v1/accounts/polymarket/status?account_id=${encodeURIComponent(accountId)}`);
       renderAccountSummary(d);
       setText("accountStatus", d);
+      const bal = (d.balances && d.balances[0]) || {};
+      setDiag("diagBalanceSource", bal.source || "local_cache");
+      setDiag("diagSignerMatch", (d?.health?.signer_match === undefined) ? "--" : (d.health.signer_match ? "匹配" : "不匹配"));
       return d;
+    }
+
+    async function refreshDiagnostics(){
+      if(!accountId) return;
+      try{
+        const d = await jfetch(`/api/v1/polymarket/diagnostics?account_id=${encodeURIComponent(accountId)}`);
+        setDiag("diagBalanceSource", d.balance_source || "--");
+        setDiag("diagSignerMatch", d.signer_match ? "匹配" : "不匹配");
+        const mc = Number(d.tradable_market_count || 0);
+        setDiag("diagMarketCount", Number.isFinite(mc) ? String(mc) : "--");
+        if(d.market_error){
+          toast(`实时市场诊断异常：${d.market_error}`, "err");
+        }
+      }catch(_e){
+        setDiag("diagMarketCount", "读取失败");
+      }
     }
 
     async function bootstrapUserAndAccount(){
@@ -177,6 +218,7 @@
         if(Array.isArray(out.items) && out.items.length){
           accountId = String(out.items[0].id || "");
           await refreshAccount();
+          await refreshDiagnostics();
           toast(`已加载当前用户账户：${accountId}`, "ok");
         } else {
           toast("当前登录邮箱尚未绑定 Polymarket 账户，请先连接账户。", "info");
@@ -247,6 +289,7 @@
         setBusy(btn, true);
         toast("正在扫描套利机会...", "info");
         await scan();
+        await refreshDiagnostics();
         toast("扫描完成，已刷新机会列表", "ok");
       }catch(e){ toast(`扫描失败：${e.message}`, "err"); }
       finally{ setBusy(btn, false); }
@@ -270,6 +313,7 @@
         });
         accountId = out.account_id || "";
         const status = await refreshAccount();
+        await refreshDiagnostics();
         toast(`连接成功：${accountId}（钱包连接=${status?.approvals?.wallet_connected ? "是" : "否"}）`, "ok");
       }catch(e){ toast("连接失败: " + e.message, "err"); }
       finally{ setBusy(btn, false); }
