@@ -155,6 +155,27 @@ def _sanitize_risk_payload(payload):
   return out
 
 
+def _unwrap_enc(v):
+  s = str(v or "")
+  return s[4:] if s.startswith("enc:") else s
+
+
+def _get_live_credential_bundle(conn, account_id):
+  acc = _fetchone(conn, "SELECT id, signer_address, funder_address, signature_type FROM trading_accounts WHERE id=?", (account_id,)) or {}
+  cred = _fetchone(
+    conn,
+    "SELECT api_key_enc, secret_enc, passphrase_enc, status, key_version FROM polymarket_api_credentials WHERE account_id=?",
+    (account_id,),
+  ) or {}
+  return {
+    "account": acc,
+    "credential": cred,
+    "api_key": _unwrap_enc(cred.get("api_key_enc")),
+    "api_secret": _unwrap_enc(cred.get("secret_enc")),
+    "api_passphrase": _unwrap_enc(cred.get("passphrase_enc")),
+  }
+
+
 def _write_audit(conn, actor, object_type, object_id, action, result, metadata):
   conn.execute(
     """
@@ -428,7 +449,7 @@ def get_account_status(account_id):
       (account_id,),
     ) or {}
     risk = get_risk_limits(account_id)
-    return {
+    out = {
       "ok": True,
       "account_id": account_id,
       "balances": balances,
@@ -443,6 +464,34 @@ def get_account_status(account_id):
       },
       "limits": risk,
     }
+    live_client = PolymarketLiveClient()
+    if live_client.enabled:
+      bundle = _get_live_credential_bundle(conn, account_id)
+      if str((bundle.get("credential") or {}).get("status") or "") == "active":
+        private_key = str(os.environ.get("POLYMARKET_PRIVATE_KEY", "")).strip()
+        bal = live_client.get_balance(
+          signer_private_key=private_key,
+          funder_address=str((bundle.get("account") or {}).get("funder_address") or ""),
+          signature_type=str((bundle.get("account") or {}).get("signature_type") or "eoa"),
+          api_key=str(bundle.get("api_key") or ""),
+          api_secret=str(bundle.get("api_secret") or ""),
+          api_passphrase=str(bundle.get("api_passphrase") or ""),
+        )
+        if bal.get("ok"):
+          bd = bal.get("balance") or {}
+          avail = float(str((bd.get("balance") or "0")).strip() or 0)
+          out["balances"] = [{
+            "asset_symbol": "USDC",
+            "available_balance": round(avail, 6),
+            "locked_balance": 0,
+            "snapshot_at": now_iso(),
+            "source": "polymarket_live",
+          }]
+          out["health"]["live_balance_ok"] = True
+        else:
+          out["health"]["live_balance_ok"] = False
+          out["health"]["live_balance_error"] = str(bal.get("error") or "")
+    return out
   finally:
     conn.close()
 
@@ -648,13 +697,61 @@ def _latest_book(conn, asset_id):
 def scan_opportunities(limit=50):
   conn = get_conn()
   try:
-    ensure_demo_data()
-    markets = _fetchall(conn, "SELECT * FROM markets WHERE status='active' ORDER BY updated_at DESC LIMIT 200")
+    live_client = PolymarketLiveClient()
+    markets = []
+    live_mode = False
+    if live_client.enabled:
+      lm = live_client.fetch_markets(max_markets=400, max_pages=5)
+      if lm.get("ok"):
+        raw = lm.get("items") or []
+        filtered = []
+        for m in raw:
+          if not isinstance(m, dict):
+            continue
+          if not bool(m.get("active")):
+            continue
+          if bool(m.get("closed")):
+            continue
+          if not bool(m.get("accepting_orders")):
+            continue
+          toks = m.get("tokens") or []
+          if not isinstance(toks, list) or len(toks) < 2:
+            continue
+          filtered.append(m)
+        markets = filtered[:250]
+        live_mode = True
+    if not markets:
+      # fallback for development/demo only
+      ensure_demo_data()
+      markets = _fetchall(conn, "SELECT * FROM markets WHERE status='active' ORDER BY updated_at DESC LIMIT 200")
     results = []
     ts = now_iso()
     for m in markets:
-      yes = _latest_book(conn, f"{m['id']}:YES")
-      no = _latest_book(conn, f"{m['id']}:NO")
+      if live_mode:
+        toks = m.get("tokens") or []
+        t0 = str((toks[0] or {}).get("token_id") or "")
+        t1 = str((toks[1] or {}).get("token_id") or "")
+        b0 = live_client.fetch_order_book(t0)
+        b1 = live_client.fetch_order_book(t1)
+        if not b0.get("ok") or not b1.get("ok"):
+          continue
+        yes = {
+          "asset_id": t0,
+          "best_bid": b0.get("best_bid"),
+          "best_ask": b0.get("best_ask"),
+          "bid_levels": b0.get("bids") or [],
+          "ask_levels": b0.get("asks") or [],
+        }
+        no = {
+          "asset_id": t1,
+          "best_bid": b1.get("best_bid"),
+          "best_ask": b1.get("best_ask"),
+          "bid_levels": b1.get("bids") or [],
+          "ask_levels": b1.get("asks") or [],
+        }
+      else:
+        yes = _latest_book(conn, f"{m['id']}:YES")
+        no = _latest_book(conn, f"{m['id']}:NO")
       if not yes or not no:
         continue
       ask_sum = (float(yes.get("best_ask") or 0) + float(no.get("best_ask") or 0))
@@ -666,22 +763,24 @@ def scan_opportunities(limit=50):
         strategy_type = "single_market_buy_both"
         theory_profit = 1.0 - ask_sum
         legs = [
-          {"asset_id": yes["asset_id"], "side": "BUY", "qty": 100, "limit_price": yes.get("best_ask")},
-          {"asset_id": no["asset_id"], "side": "BUY", "qty": 100, "limit_price": no.get("best_ask")},
+          {"asset_id": yes["asset_id"], "side": "BUY", "qty": 1, "limit_price": yes.get("best_ask")},
+          {"asset_id": no["asset_id"], "side": "BUY", "qty": 1, "limit_price": no.get("best_ask")},
         ]
       elif bid_sum > 1.005:
         strategy_type = "single_market_sell_both"
         theory_profit = bid_sum - 1.0
         legs = [
-          {"asset_id": yes["asset_id"], "side": "SELL", "qty": 100, "limit_price": yes.get("best_bid")},
-          {"asset_id": no["asset_id"], "side": "SELL", "qty": 100, "limit_price": no.get("best_bid")},
+          {"asset_id": yes["asset_id"], "side": "SELL", "qty": 1, "limit_price": yes.get("best_bid")},
+          {"asset_id": no["asset_id"], "side": "SELL", "qty": 1, "limit_price": no.get("best_bid")},
         ]
       if not strategy_type:
         continue
       confidence = _clamp(0.5 + theory_profit * 4, 0.5, 0.99)
       sim = estimate_simulation(legs)
       vwap_profit = round(max(-1, theory_profit - (sim.get("slippage_bps") or 0) / 10000), 6)
-      opp_id = f"opp-{m['id']}-{int(datetime.now().timestamp())}"
+      market_id = str((m.get("condition_id") if live_mode else m.get("id")) or "")
+      market_title = str((m.get("question") if live_mode else m.get("title")) or market_id)
+      opp_id = f"opp-{market_id}-{int(datetime.now().timestamp())}"
       conn.execute(
         """
         INSERT INTO arbitrage_opportunities(
@@ -697,19 +796,20 @@ def scan_opportunities(limit=50):
         """,
         (
           opp_id, strategy_type, ts, round(theory_profit, 6), vwap_profit, round(confidence, 4),
-          json.dumps(legs, ensure_ascii=False), m["id"], ts, ts,
+          json.dumps(legs, ensure_ascii=False), market_id, ts, ts,
         ),
       )
       results.append({
         "id": opp_id,
-        "market_id": m["id"],
-        "market_title": m["title"],
+        "market_id": market_id,
+        "market_title": market_title,
         "strategy_type": strategy_type,
         "theory_profit": round(theory_profit, 6),
         "vwap_profit": vwap_profit,
         "confidence": round(confidence, 4),
         "simulation": sim,
         "legs": legs,
+        "source": "polymarket_live" if live_mode else "demo_seed",
       })
     conn.commit()
     results.sort(key=lambda x: x.get("vwap_profit", 0), reverse=True)
@@ -723,11 +823,21 @@ def estimate_simulation(legs):
   try:
     worst_slippage_bps = 0.0
     leg_results = []
+    live_client = PolymarketLiveClient()
     for lg in legs or []:
       asset_id = str(lg.get("asset_id") or "")
       side = str(lg.get("side") or "BUY").upper()
       qty = float(lg.get("qty") or 0)
       book = _latest_book(conn, asset_id)
+      if not book and live_client.enabled and asset_id:
+        lb = live_client.fetch_order_book(asset_id)
+        if lb.get("ok"):
+          book = {
+            "best_bid": lb.get("best_bid"),
+            "best_ask": lb.get("best_ask"),
+            "bid_levels": lb.get("bids") or [],
+            "ask_levels": lb.get("asks") or [],
+          }
       if not book:
         continue
       levels = book.get("ask_levels") if side == "BUY" else book.get("bid_levels")
@@ -902,31 +1012,133 @@ def evaluate_and_execute(account_id, opportunity_id, actor="system"):
 
     ts = now_iso()
     exe_id = f"exe-{abs(hash(opportunity_id + account_id + ts)) % 1000000000}"
-    realized_profit = round(expected_profit * random.uniform(0.85, 1.05), 6)
     latency = random.randint(120, 960)
+    is_paper = int(lim.get("paper_mode") or 1) == 1
+    if is_paper:
+      realized_profit = round(expected_profit * random.uniform(0.85, 1.05), 6)
+      conn.execute(
+        """
+        INSERT INTO executions(
+          id, arb_id, account_id, status, expected_profit, realized_profit, latency_ms, abort_reason, created_at, updated_at
+        ) VALUES (?, ?, ?, 'filled', ?, ?, ?, '', ?, ?)
+        """,
+        (exe_id, opportunity_id, account_id, expected_profit, realized_profit, latency, ts, ts),
+      )
+      for idx, lg in enumerate(legs):
+        conn.execute(
+          """
+          INSERT INTO execution_legs(
+            execution_id, leg_index, market_id, token_id, side, qty, limit_price, fill_qty, avg_fill_price, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          """,
+          (
+            exe_id,
+            idx,
+            (lg.get("asset_id") or "").split(":")[0],
+            lg.get("asset_id"),
+            lg.get("side"),
+            lg.get("qty"),
+            lg.get("limit_price"),
+            lg.get("qty"),
+            lg.get("limit_price"),
+            ts,
+            ts,
+          ),
+        )
+      conn.execute("UPDATE arbitrage_opportunities SET status='executed', updated_at=? WHERE id=?", (ts, opportunity_id))
+      _write_audit(
+        conn,
+        actor,
+        "execution",
+        exe_id,
+        "place_order",
+        "ok",
+        {"account_id": account_id, "opportunity_id": opportunity_id, "expected_profit": expected_profit, "mode": "paper"},
+      )
+      conn.commit()
+      return {
+        "ok": True,
+        "execution_id": exe_id,
+        "status": "filled",
+        "mode": "paper",
+        "expected_profit": expected_profit,
+        "realized_profit": realized_profit,
+        "latency_ms": latency,
+        "simulation": sim,
+      }
+
+    live_client = PolymarketLiveClient()
+    if not live_client.enabled:
+      return {"ok": False, "error": "live_disabled"}
+    if not live_client.allow_live_orders:
+      return {"ok": False, "error": "live_orders_disabled"}
+
+    bundle = _get_live_credential_bundle(conn, account_id)
+    if str((bundle.get("credential") or {}).get("status") or "") != "active":
+      return {"ok": False, "error": "credential_not_active"}
+    private_key = str(os.environ.get("POLYMARKET_PRIVATE_KEY", "")).strip()
+    if not private_key:
+      return {"ok": False, "error": "missing_private_key"}
+
+    live_orders = []
+    nlegs = max(1, len(legs))
+    max_order_notional = float(lim.get("max_order_notional") or 0)
+    for idx, lg in enumerate(legs):
+      px = float(lg.get("limit_price") or 0)
+      side = str(lg.get("side") or "BUY").upper()
+      token_id = str(lg.get("asset_id") or "")
+      if px <= 0 or not token_id:
+        return {"ok": False, "error": "invalid_leg_data", "leg_index": idx}
+      qty_by_risk = max_order_notional / (max(px, 1e-9) * nlegs) if max_order_notional > 0 else float(lg.get("qty") or 0)
+      qty = float(lg.get("qty") or 0)
+      if qty_by_risk > 0:
+        qty = min(qty, qty_by_risk) if qty > 0 else qty_by_risk
+      qty = max(0.01, round(qty, 4))
+      p = live_client.place_limit_order(
+        signer_private_key=private_key,
+        funder_address=str((bundle.get("account") or {}).get("funder_address") or ""),
+        signature_type=str((bundle.get("account") or {}).get("signature_type") or "eoa"),
+        api_key=str(bundle.get("api_key") or ""),
+        api_secret=str(bundle.get("api_secret") or ""),
+        api_passphrase=str(bundle.get("api_passphrase") or ""),
+        token_id=token_id,
+        side=side,
+        price=px,
+        size=qty,
+        post_only=bool(int(lim.get("post_only") or 0) == 1),
+        order_type=str(lim.get("default_order_type") or "GTC"),
+      )
+      if not p.get("ok"):
+        return {"ok": False, "error": p.get("error") or "place_order_failed", "detail": p.get("detail"), "leg_index": idx}
+      live_orders.append({
+        "token_id": token_id,
+        "side": side,
+        "qty": qty,
+        "limit_price": px,
+        "order_id": p.get("order_id"),
+      })
+
     conn.execute(
       """
       INSERT INTO executions(
         id, arb_id, account_id, status, expected_profit, realized_profit, latency_ms, abort_reason, created_at, updated_at
-      ) VALUES (?, ?, ?, 'filled', ?, ?, ?, '', ?, ?)
+      ) VALUES (?, ?, ?, 'submitted', ?, 0, ?, '', ?, ?)
       """,
-      (exe_id, opportunity_id, account_id, expected_profit, realized_profit, latency, ts, ts),
+      (exe_id, opportunity_id, account_id, expected_profit, latency, ts, ts),
     )
-    for idx, lg in enumerate(legs):
+    for idx, lg in enumerate(live_orders):
       conn.execute(
         """
         INSERT INTO execution_legs(
           execution_id, leg_index, market_id, token_id, side, qty, limit_price, fill_qty, avg_fill_price, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
         """,
         (
           exe_id,
           idx,
-          (lg.get("asset_id") or "").split(":")[0],
-          lg.get("asset_id"),
+          str(lg.get("token_id") or "").split(":")[0],
+          lg.get("token_id"),
           lg.get("side"),
-          lg.get("qty"),
-          lg.get("limit_price"),
           lg.get("qty"),
           lg.get("limit_price"),
           ts,
@@ -941,17 +1153,19 @@ def evaluate_and_execute(account_id, opportunity_id, actor="system"):
       exe_id,
       "place_order",
       "ok",
-      {"account_id": account_id, "opportunity_id": opportunity_id, "expected_profit": expected_profit},
+      {"account_id": account_id, "opportunity_id": opportunity_id, "expected_profit": expected_profit, "mode": "live", "orders": live_orders},
     )
     conn.commit()
     return {
       "ok": True,
       "execution_id": exe_id,
-      "status": "filled",
+      "status": "submitted",
+      "mode": "live",
       "expected_profit": expected_profit,
-      "realized_profit": realized_profit,
+      "realized_profit": 0,
       "latency_ms": latency,
       "simulation": sim,
+      "orders": live_orders,
     }
   finally:
     conn.close()

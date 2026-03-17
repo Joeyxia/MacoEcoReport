@@ -80,7 +80,7 @@
         <table class="pm-table" id="oppTable">
           <thead>
             <tr>
-              <th>ID</th><th>Market</th><th>Type</th><th>Theory</th><th>VWAP</th><th>Conf</th><th>Action</th>
+              <th>ID</th><th>Market</th><th>Type</th><th>Theory</th><th>VWAP</th><th>Conf</th><th>Source</th><th>Action</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -193,7 +193,8 @@
           <td>${Number(x.theory_profit||0).toFixed(4)}</td>
           <td>${Number(x.vwap_profit||0).toFixed(4)}</td>
           <td>${Number(x.confidence||0).toFixed(2)}</td>
-          <td><button class="pm-btn ghost" data-id="${x.id}">模拟执行</button></td>
+          <td>${x.source || "--"}</td>
+          <td><button class="pm-btn ghost" data-id="${x.id}">执行</button></td>
         `;
         tb.appendChild(tr);
       }
@@ -206,7 +207,7 @@
               headers:{"Content-Type":"application/json"},
               body: JSON.stringify({account_id: accountId, actor: "web-demo"})
             });
-            alert("执行成功: " + (out.execution_id || ""));
+            alert(`执行成功: ${out.execution_id || ""} (mode=${out.mode || "unknown"}, status=${out.status || "-"})`);
             await document.getElementById("btnRisk").click();
           }catch(e){ alert("执行失败: " + e.message); }
         };
