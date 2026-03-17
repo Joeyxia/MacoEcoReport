@@ -720,8 +720,8 @@ def scan_opportunities(limit=50):
           filtered.append(m)
         markets = filtered[:250]
         live_mode = bool(markets)
-    if not markets:
-      # fallback for development/demo only
+    if not markets and not live_client.enabled:
+      # fallback for development/demo only when live mode is disabled
       ensure_demo_data()
       markets = _fetchall(conn, "SELECT * FROM markets WHERE status='active' ORDER BY updated_at DESC LIMIT 200")
     results = []
