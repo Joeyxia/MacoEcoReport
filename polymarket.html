@@ -135,11 +135,17 @@
       const connected = d?.approvals?.wallet_connected;
       const creds = d?.approvals?.credentials_active;
       const auto = Number(d?.limits?.auto_trading || 0) === 1;
+      const signer = d?.account?.signer_address || "--";
+      const funder = d?.account?.funder_address || "--";
+      const signerMatch = d?.health?.signer_match;
       sum.innerHTML = `
         <div class="pm-k">账户 ID</div><div class="pm-v">${d.account_id || "--"}</div>
+        <div class="pm-k">Signer</div><div class="pm-v">${signer}</div>
+        <div class="pm-k">Funder</div><div class="pm-v">${funder}</div>
         <div class="pm-k">钱包已连接</div><div class="pm-v">${ynTag(connected)}</div>
         <div class="pm-k">凭证已激活</div><div class="pm-v">${ynTag(creds)}</div>
         <div class="pm-k">自动交易</div><div class="pm-v">${ynTag(auto)}</div>
+        <div class="pm-k">签名地址匹配</div><div class="pm-v">${signerMatch === undefined ? "--" : ynTag(!!signerMatch)}</div>
         <div class="pm-k">可用余额</div><div class="pm-v">${fmtNum(bal.available_balance)} ${bal.asset_symbol || "USDC"}</div>
         <div class="pm-k">账户状态</div><div class="pm-v">${d?.health?.account_status || "--"}</div>
         <div class="pm-k">同步延迟</div><div class="pm-v">${d?.health?.sync_delay_sec ?? "--"} 秒</div>

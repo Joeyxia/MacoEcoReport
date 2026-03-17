@@ -160,6 +160,17 @@ def _unwrap_enc(v):
   return s[4:] if s.startswith("enc:") else s
 
 
+def _env_signer_address():
+  pk = str(os.environ.get("POLYMARKET_PRIVATE_KEY", "")).strip()
+  if not pk:
+    return ""
+  try:
+    from eth_account import Account  # type: ignore
+    return str(Account.from_key(pk).address or "").strip().lower()
+  except Exception:
+    return ""
+
+
 def _get_live_credential_bundle(conn, account_id):
   acc = _fetchone(conn, "SELECT id, signer_address, funder_address, signature_type FROM trading_accounts WHERE id=?", (account_id,)) or {}
   cred = _fetchone(
@@ -281,6 +292,13 @@ def ensure_demo_data():
 def account_connect(user_id, account_type, signer_address, funder_address, signature_type):
   conn = get_conn()
   try:
+    live_client = PolymarketLiveClient()
+    env_signer = _env_signer_address()
+    in_signer = str(signer_address or "").strip().lower()
+    # Live mode is bound to server signer key; reject mismatched signer to avoid "wrong wallet" confusion.
+    if live_client.enabled and env_signer and in_signer and in_signer != env_signer:
+      return {"ok": False, "error": "signer_mismatch_with_server_key", "expected_signer": env_signer}
+
     account_id = f"acct-{str(user_id or 'user')}-{abs(hash(str(signer_address or 'na'))) % 1000000}"
     ts = now_iso()
     conn.execute(
@@ -358,6 +376,10 @@ def derive_credentials(account_id):
     ts = now_iso()
     key_id = f"pmk-{abs(hash(account_id + ts)) % 100000000}"
     live_client = PolymarketLiveClient()
+    env_signer = _env_signer_address()
+    if live_client.enabled and env_signer and str(acc.get("signer_address") or "").strip().lower() != env_signer:
+      return {"ok": False, "error": "signer_mismatch_with_server_key", "expected_signer": env_signer}
+
     private_key = str(os.environ.get("POLYMARKET_PRIVATE_KEY", "")).strip()
     live = live_client.derive_api_credentials(
       signer_private_key=private_key,
@@ -452,6 +474,12 @@ def get_account_status(account_id):
     out = {
       "ok": True,
       "account_id": account_id,
+      "account": {
+        "user_id": acc.get("user_id"),
+        "signer_address": acc.get("signer_address"),
+        "funder_address": acc.get("funder_address"),
+        "signature_type": acc.get("signature_type"),
+      },
       "balances": balances,
       "positions": positions,
       "approvals": {
@@ -466,8 +494,17 @@ def get_account_status(account_id):
     }
     live_client = PolymarketLiveClient()
     if live_client.enabled:
+      env_signer = _env_signer_address()
+      out["health"]["env_signer"] = env_signer
+      out["health"]["signer_match"] = bool(
+        env_signer and str(acc.get("signer_address") or "").strip().lower() == env_signer
+      )
       bundle = _get_live_credential_bundle(conn, account_id)
       if str((bundle.get("credential") or {}).get("status") or "") == "active":
+        if env_signer and str((bundle.get("account") or {}).get("signer_address") or "").strip().lower() != env_signer:
+          out["health"]["live_balance_ok"] = False
+          out["health"]["live_balance_error"] = "signer_mismatch_with_server_key"
+          return out
         private_key = str(os.environ.get("POLYMARKET_PRIVATE_KEY", "")).strip()
         bal = live_client.get_balance(
           signer_private_key=private_key,
@@ -1074,6 +1111,9 @@ def evaluate_and_execute(account_id, opportunity_id, actor="system"):
       return {"ok": False, "error": "live_disabled"}
     if not live_client.allow_live_orders:
       return {"ok": False, "error": "live_orders_disabled"}
+    env_signer = _env_signer_address()
+    if env_signer and str(acc.get("signer_address") or "").strip().lower() != env_signer:
+      return {"ok": False, "error": "signer_mismatch_with_server_key", "expected_signer": env_signer}
 
     bundle = _get_live_credential_bundle(conn, account_id)
     if str((bundle.get("credential") or {}).get("status") or "") != "active":

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import time
+from typing import Any, Dict, List
 
 
 def _signature_type_to_int(raw):
@@ -102,24 +103,91 @@ class PolymarketLiveClient:
       funder_address = str(os.environ.get("POLYMARKET_FUNDER_ADDRESS", "")).strip()
       signature_type = str(os.environ.get("POLYMARKET_SIGNATURE_TYPE", "eoa")).strip()
       client = self._new_client(signer_private_key, funder_address, signature_type)
-      out = []
-      cursor = "MA=="
-      pages = 0
-      while pages < max(1, int(max_pages)):
-        rsp = client.get_markets(next_cursor=cursor)
-        data = rsp.get("data") if isinstance(rsp, dict) else []
-        if not isinstance(data, list) or not data:
+      out: List[Dict[str, Any]] = []
+      max_markets_i = max(1, int(max_markets))
+
+      # Prefer active sampling endpoints: they tend to return currently tradable markets.
+      if hasattr(client, "get_sampling_simplified_markets"):
+        rsp = client.get_sampling_simplified_markets()
+        out.extend(self._normalize_markets(rsp))
+      elif hasattr(client, "get_sampling_markets"):
+        rsp = client.get_sampling_markets()
+        out.extend(self._normalize_markets(rsp))
+
+      # Fallback to paginated endpoints if sampling returns nothing.
+      if not out:
+        cursor = "MA=="
+        pages = 0
+        while pages < max(1, int(max_pages)):
+          if hasattr(client, "get_simplified_markets"):
+            rsp = client.get_simplified_markets(next_cursor=cursor)
+          else:
+            rsp = client.get_markets(next_cursor=cursor)
+          data = self._normalize_markets(rsp)
+          if not data:
+            break
+          out.extend(data)
+          if isinstance(rsp, dict):
+            cursor = str((rsp or {}).get("next_cursor") or "")
+          else:
+            cursor = ""
+          pages += 1
+          if len(out) >= max_markets_i or not cursor:
+            break
+
+      # Deduplicate by condition_id while preserving order.
+      dedup = []
+      seen = set()
+      for m in out:
+        cid = str(m.get("condition_id") or "")
+        if not cid or cid in seen:
+          continue
+        seen.add(cid)
+        dedup.append(m)
+        if len(dedup) >= max_markets_i:
           break
-        out.extend(data)
-        cursor = str((rsp or {}).get("next_cursor") or "")
-        pages += 1
-        if len(out) >= max(1, int(max_markets)):
-          break
-        if not cursor:
-          break
-      return {"ok": True, "items": out[: max(1, int(max_markets))]}
+      return {"ok": True, "items": dedup}
     except Exception as e:
       return {"ok": False, "error": "fetch_markets_failed", "detail": str(e)[:320]}
+
+  def _normalize_markets(self, rsp):
+    if isinstance(rsp, dict):
+      data = rsp.get("data")
+      items = data if isinstance(data, list) else []
+    elif isinstance(rsp, list):
+      items = rsp
+    else:
+      items = []
+    out = []
+    for m in items:
+      if not isinstance(m, dict):
+        continue
+      toks = m.get("tokens") or m.get("outcomes") or []
+      parsed_tokens = []
+      if isinstance(toks, list):
+        for t in toks:
+          if not isinstance(t, dict):
+            continue
+          token_id = str(t.get("token_id") or t.get("tokenId") or t.get("id") or "")
+          if not token_id:
+            continue
+          parsed_tokens.append(
+            {
+              "token_id": token_id,
+              "outcome": str(t.get("outcome") or t.get("name") or ""),
+            }
+          )
+      out.append(
+        {
+          "condition_id": str(m.get("condition_id") or m.get("conditionId") or m.get("id") or ""),
+          "question": str(m.get("question") or m.get("title") or ""),
+          "active": bool(m.get("active", True)),
+          "closed": bool(m.get("closed", False)),
+          "accepting_orders": bool(m.get("accepting_orders", m.get("acceptingOrders", True))),
+          "tokens": parsed_tokens,
+        }
+      )
+    return out
 
   def fetch_order_book(self, token_id: str):
     if not self.enabled:
