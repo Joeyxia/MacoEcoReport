@@ -347,50 +347,50 @@
         }
       };
 
-      function getLang() {
+      function pmGetLang() {
         try { return localStorage.getItem("macro-monitor-lang") === "zh" ? "zh" : "en"; } catch { return "en"; }
       }
-      function t(key) {
-        const lang = getLang();
+      function pmT(key) {
+        const lang = pmGetLang();
         return (pmI18n[lang] && pmI18n[lang][key]) || pmI18n.en[key] || key;
       }
       function applyPolymarketI18n() {
-        document.documentElement.lang = getLang() === "zh" ? "zh-CN" : "en";
-        document.getElementById("pm-page-title").textContent = t("title");
-        document.getElementById("pm-page-desc").textContent = t("desc");
-        document.getElementById("pm-diag-balance-label").textContent = t("diagBalance");
-        document.getElementById("pm-diag-signer-label").textContent = t("diagSigner");
-        document.getElementById("pm-diag-market-label").textContent = t("diagMarket");
-        document.getElementById("pm-account-title").textContent = t("account");
-        document.getElementById("pm-risk-title").textContent = t("risk");
-        document.getElementById("pm-scan-title").textContent = t("scan");
-        document.getElementById("signer").placeholder = t("signerPh");
-        document.getElementById("funder").placeholder = t("funderPh");
-        document.querySelector('#sigType option[value="proxy"]').textContent = t("sigProxy");
-        document.querySelector('#sigType option[value="eoa"]').textContent = t("sigEoa");
-        document.getElementById("btnConnect").textContent = t("connect");
-        document.getElementById("btnDerive").textContent = t("derive");
-        document.getElementById("btnEnable").textContent = t("enableAuto");
-        document.getElementById("btnDisable").textContent = t("disableAuto");
-        document.getElementById("pm-raw-summary").textContent = t("rawSummary");
-        document.getElementById("btnRisk").textContent = t("riskBtn");
-        document.getElementById("btnCancelAll").textContent = t("cancelAll");
-        document.getElementById("btnReplay").textContent = t("replay");
-        document.getElementById("btnSeed").textContent = t("seed");
-        document.getElementById("btnScan").textContent = t("scanBtn");
-        document.getElementById("pm-col-market").textContent = t("colMarket");
-        document.getElementById("pm-col-type").textContent = t("colType");
-        document.getElementById("pm-col-theory").textContent = t("colTheory");
-        document.getElementById("pm-col-source").textContent = t("colSource");
-        document.getElementById("pm-col-action").textContent = t("colAction");
-        document.getElementById("pmDiagDetailBtn").textContent = t("diagDetailBtn");
-        document.getElementById("pmDiagModalTitle").textContent = t("diagDetailTitle");
-        document.getElementById("pmDiagModalClose").textContent = t("close");
+        document.documentElement.lang = pmGetLang() === "zh" ? "zh-CN" : "en";
+        document.getElementById("pm-page-title").textContent = pmT("title");
+        document.getElementById("pm-page-desc").textContent = pmT("desc");
+        document.getElementById("pm-diag-balance-label").textContent = pmT("diagBalance");
+        document.getElementById("pm-diag-signer-label").textContent = pmT("diagSigner");
+        document.getElementById("pm-diag-market-label").textContent = pmT("diagMarket");
+        document.getElementById("pm-account-title").textContent = pmT("account");
+        document.getElementById("pm-risk-title").textContent = pmT("risk");
+        document.getElementById("pm-scan-title").textContent = pmT("scan");
+        document.getElementById("signer").placeholder = pmT("signerPh");
+        document.getElementById("funder").placeholder = pmT("funderPh");
+        document.querySelector('#sigType option[value="proxy"]').textContent = pmT("sigProxy");
+        document.querySelector('#sigType option[value="eoa"]').textContent = pmT("sigEoa");
+        document.getElementById("btnConnect").textContent = pmT("connect");
+        document.getElementById("btnDerive").textContent = pmT("derive");
+        document.getElementById("btnEnable").textContent = pmT("enableAuto");
+        document.getElementById("btnDisable").textContent = pmT("disableAuto");
+        document.getElementById("pm-raw-summary").textContent = pmT("rawSummary");
+        document.getElementById("btnRisk").textContent = pmT("riskBtn");
+        document.getElementById("btnCancelAll").textContent = pmT("cancelAll");
+        document.getElementById("btnReplay").textContent = pmT("replay");
+        document.getElementById("btnSeed").textContent = pmT("seed");
+        document.getElementById("btnScan").textContent = pmT("scanBtn");
+        document.getElementById("pm-col-market").textContent = pmT("colMarket");
+        document.getElementById("pm-col-type").textContent = pmT("colType");
+        document.getElementById("pm-col-theory").textContent = pmT("colTheory");
+        document.getElementById("pm-col-source").textContent = pmT("colSource");
+        document.getElementById("pm-col-action").textContent = pmT("colAction");
+        document.getElementById("pmDiagDetailBtn").textContent = pmT("diagDetailBtn");
+        document.getElementById("pmDiagModalTitle").textContent = pmT("diagDetailTitle");
+        document.getElementById("pmDiagModalClose").textContent = pmT("close");
         if (document.getElementById("actionToast").textContent.trim() === "") {
-          document.getElementById("actionToast").textContent = t("ready");
+          document.getElementById("actionToast").textContent = pmT("ready");
         }
         if (currentUserEmail) {
-          document.getElementById("currentUser").textContent = `${t("signedIn")}${currentUserEmail}`;
+          document.getElementById("currentUser").textContent = `${pmT("signedIn")}${currentUserEmail}`;
         }
       }
       window.applyPolymarketI18n = applyPolymarketI18n;
@@ -426,7 +426,7 @@
       function ynTag(v){
         const on = !!v;
         const cls = on ? "on" : "off";
-        const txt = on ? t("ynYes") : t("ynNo");
+        const txt = on ? pmT("ynYes") : pmT("ynNo");
         return `<span class="pm-tag ${cls}">${txt}</span>`;
       }
       function fmtNum(v){
@@ -443,16 +443,16 @@
         const funder = d?.account?.funder_address || "--";
         const signerMatch = d?.health?.signer_match;
         sum.innerHTML = `
-          <div class="pm-k">${t("accountId")}</div><div class="pm-v">${d.account_id || "--"}</div>
-          <div class="pm-k">${t("signerLabel")}</div><div class="pm-v">${signer}</div>
-          <div class="pm-k">${t("funderLabel")}</div><div class="pm-v">${funder}</div>
-          <div class="pm-k">${t("walletConnected")}</div><div class="pm-v">${ynTag(connected)}</div>
-          <div class="pm-k">${t("credentialActive")}</div><div class="pm-v">${ynTag(creds)}</div>
-          <div class="pm-k">${t("autoTrading")}</div><div class="pm-v">${ynTag(auto)}</div>
-          <div class="pm-k">${t("signerMatchLabel")}</div><div class="pm-v">${signerMatch === undefined ? "--" : ynTag(!!signerMatch)}</div>
-          <div class="pm-k">${t("balance")}</div><div class="pm-v">${fmtNum(bal.available_balance)} ${bal.asset_symbol || "USDC"}</div>
-          <div class="pm-k">${t("accountStatus")}</div><div class="pm-v">${d?.health?.account_status || "--"}</div>
-          <div class="pm-k">${t("syncDelay")}</div><div class="pm-v">${d?.health?.sync_delay_sec ?? "--"} s</div>
+          <div class="pm-k">${pmT("accountId")}</div><div class="pm-v">${d.account_id || "--"}</div>
+          <div class="pm-k">${pmT("signerLabel")}</div><div class="pm-v">${signer}</div>
+          <div class="pm-k">${pmT("funderLabel")}</div><div class="pm-v">${funder}</div>
+          <div class="pm-k">${pmT("walletConnected")}</div><div class="pm-v">${ynTag(connected)}</div>
+          <div class="pm-k">${pmT("credentialActive")}</div><div class="pm-v">${ynTag(creds)}</div>
+          <div class="pm-k">${pmT("autoTrading")}</div><div class="pm-v">${ynTag(auto)}</div>
+          <div class="pm-k">${pmT("signerMatchLabel")}</div><div class="pm-v">${signerMatch === undefined ? "--" : ynTag(!!signerMatch)}</div>
+          <div class="pm-k">${pmT("balance")}</div><div class="pm-v">${fmtNum(bal.available_balance)} ${bal.asset_symbol || "USDC"}</div>
+          <div class="pm-k">${pmT("accountStatus")}</div><div class="pm-v">${d?.health?.account_status || "--"}</div>
+          <div class="pm-k">${pmT("syncDelay")}</div><div class="pm-v">${d?.health?.sync_delay_sec ?? "--"} s</div>
         `;
       }
 
@@ -463,7 +463,7 @@
         setText("accountStatus", d);
         const bal = (d.balances && d.balances[0]) || {};
         setDiag("diagBalanceSource", bal.source || "local_cache");
-        setDiag("diagSignerMatch", (d?.health?.signer_match === undefined) ? "--" : (d.health.signer_match ? t("signerOk") : t("signerBad")));
+        setDiag("diagSignerMatch", (d?.health?.signer_match === undefined) ? "--" : (d.health.signer_match ? pmT("signerOk") : pmT("signerBad")));
         return d;
       }
 
@@ -473,12 +473,12 @@
           const d = await jfetch(`/api/v1/polymarket/diagnostics?account_id=${encodeURIComponent(accountId)}`);
           lastDiagData = { ...d, updated_at: new Date().toISOString() };
           setDiag("diagBalanceSource", d.balance_source || "--");
-          setDiag("diagSignerMatch", d.signer_match ? t("signerOk") : t("signerBad"));
+          setDiag("diagSignerMatch", d.signer_match ? pmT("signerOk") : pmT("signerBad"));
           const mc = Number(d.tradable_market_count || 0);
           setDiag("diagMarketCount", Number.isFinite(mc) ? String(mc) : "--");
-          if(d.market_error){ toast(`${t("diagError")}: ${d.market_error}`, "err"); }
+          if(d.market_error){ toast(`${pmT("diagError")}: ${d.market_error}`, "err"); }
         }catch(_e){
-          setDiag("diagMarketCount", t("marketReadFail"));
+          setDiag("diagMarketCount", pmT("marketReadFail"));
         }
       }
 
@@ -487,14 +487,14 @@
         const body = document.getElementById("pmDiagModalBody");
         const d = lastDiagData || {};
         const lines = [
-          `${t("diagAccountId")}: ${d.account_id || accountId || "--"}`,
-          `${t("diagBalanceSource")}: ${d.balance_source || "--"}`,
-          `${t("diagSignerMatch")}: ${d.signer_match === undefined ? "--" : (d.signer_match ? t("signerOk") : t("signerBad"))}`,
-          `${t("diagRawCount")}: ${d.raw_market_count ?? "--"}`,
-          `${t("diagTradableCount")}: ${d.tradable_market_count ?? "--"}`,
-          `${t("diagLiveEnabled")}: ${d.live_enabled === undefined ? "--" : (d.live_enabled ? t("ynYes") : t("ynNo"))}`,
-          `${t("diagMarketError")}: ${d.market_error || "--"}`,
-          `${t("diagUpdatedAt")}: ${d.updated_at || "--"}`
+          `${pmT("diagAccountId")}: ${d.account_id || accountId || "--"}`,
+          `${pmT("diagBalanceSource")}: ${d.balance_source || "--"}`,
+          `${pmT("diagSignerMatch")}: ${d.signer_match === undefined ? "--" : (d.signer_match ? pmT("signerOk") : pmT("signerBad"))}`,
+          `${pmT("diagRawCount")}: ${d.raw_market_count ?? "--"}`,
+          `${pmT("diagTradableCount")}: ${d.tradable_market_count ?? "--"}`,
+          `${pmT("diagLiveEnabled")}: ${d.live_enabled === undefined ? "--" : (d.live_enabled ? pmT("ynYes") : pmT("ynNo"))}`,
+          `${pmT("diagMarketError")}: ${d.market_error || "--"}`,
+          `${pmT("diagUpdatedAt")}: ${d.updated_at || "--"}`
         ];
         body.textContent = lines.join("\n");
         mask.style.display = "flex";
@@ -511,7 +511,7 @@
         try{
           const me = await jfetch("/api/auth/me");
           currentUserEmail = String(me?.user?.email || "").trim().toLowerCase();
-          document.getElementById("currentUser").textContent = currentUserEmail ? `${t("signedIn")}${currentUserEmail}` : "";
+          document.getElementById("currentUser").textContent = currentUserEmail ? `${pmT("signedIn")}${currentUserEmail}` : "";
         }catch(_e){ currentUserEmail = ""; }
         try{
           const out = await jfetch("/api/v1/accounts/polymarket/list");
@@ -519,11 +519,11 @@
             accountId = String(out.items[0].id || "");
             await refreshAccount();
             await refreshDiagnostics();
-            toast(`${t("loadAccountOk")}: ${accountId}`, "ok");
+            toast(`${pmT("loadAccountOk")}: ${accountId}`, "ok");
           } else {
-            toast(t("noAccount"), "info");
+            toast(pmT("noAccount"), "info");
           }
-        }catch(e){ toast(`${t("connectFail")}: ${e.message}`, "err"); }
+        }catch(e){ toast(`${pmT("connectFail")}: ${e.message}`, "err"); }
       }
 
       async function scan(){
@@ -533,7 +533,7 @@
         const items = d.items || [];
         if(!items.length){
           const tr = document.createElement("tr");
-          tr.innerHTML = `<td colspan="8" style="color:#6b7f86;">${t("noOpp")}</td>`;
+          tr.innerHTML = `<td colspan="8" style="color:#6b7f86;">${pmT("noOpp")}</td>`;
           tb.appendChild(tr);
           return;
         }
@@ -547,14 +547,14 @@
             <td>${Number(x.vwap_profit||0).toFixed(4)}</td>
             <td>${Number(x.confidence||0).toFixed(2)}</td>
             <td>${x.source || "--"}</td>
-            <td><button class="pm-btn ghost" data-id="${x.id}">${t("colAction")}</button></td>
+            <td><button class="pm-btn ghost" data-id="${x.id}">${pmT("colAction")}</button></td>
           `;
           tb.appendChild(tr);
         }
         tb.querySelectorAll("button[data-id]").forEach((b)=>{
           b.onclick = async ()=>{
             try{
-              if(!accountId){ alert(t("needAccount")); return; }
+              if(!accountId){ alert(pmT("needAccount")); return; }
               const out = await jfetch(`/api/v1/opportunities/${encodeURIComponent(b.dataset.id)}/execute`, {
                 method:"POST",
                 headers:{"Content-Type":"application/json"},
@@ -571,10 +571,10 @@
         const btn = document.getElementById("btnSeed");
         try{
           setBusy(btn, true);
-          toast(t("loadingSeed"), "info");
+          toast(pmT("loadingSeed"), "info");
           const out = await jfetch("/api/v1/system/seed-demo");
-          toast(`${t("seedOk")} (${Number(out.count || 0)})`, "ok");
-        }catch(e){ toast(`${t("connectFail")}: ${e.message}`, "err"); }
+          toast(`${pmT("seedOk")} (${Number(out.count || 0)})`, "ok");
+        }catch(e){ toast(`${pmT("connectFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
       };
 
@@ -582,11 +582,11 @@
         const btn = document.getElementById("btnScan");
         try{
           setBusy(btn, true);
-          toast(t("loadingScan"), "info");
+          toast(pmT("loadingScan"), "info");
           await scan();
           await refreshDiagnostics();
-          toast(t("scanOk"), "ok");
-        }catch(e){ toast(`${t("scanFail")}: ${e.message}`, "err"); }
+          toast(pmT("scanOk"), "ok");
+        }catch(e){ toast(`${pmT("scanFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
       };
 
@@ -594,12 +594,12 @@
         const btn = document.getElementById("btnConnect");
         try{
           setBusy(btn, true);
-          toast(t("loadingAccount"), "info");
+          toast(pmT("loadingAccount"), "info");
           const signer = document.getElementById("signer").value.trim();
-          if(!signer) throw new Error(t("needSigner"));
+          if(!signer) throw new Error(pmT("needSigner"));
           const sigType = (document.getElementById("sigType").value || "eoa").trim();
           const funderRaw = document.getElementById("funder").value.trim();
-          if(sigType === "proxy" && !funderRaw){ throw new Error(t("needProxyFunder")); }
+          if(sigType === "proxy" && !funderRaw){ throw new Error(pmT("needProxyFunder")); }
           const funder = funderRaw || signer;
           const out = await jfetch("/api/v1/accounts/polymarket/connect", {
             method:"POST", headers:{"Content-Type":"application/json"},
@@ -608,8 +608,8 @@
           accountId = out.account_id || "";
           await refreshAccount();
           await refreshDiagnostics();
-          toast(`${t("connectOk")}: ${accountId}`, "ok");
-        }catch(e){ toast(`${t("connectFail")}: ${e.message}`, "err"); }
+          toast(`${pmT("connectOk")}: ${accountId}`, "ok");
+        }catch(e){ toast(`${pmT("connectFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
       };
 
@@ -617,12 +617,12 @@
         const btn = document.getElementById("btnDerive");
         try{
           setBusy(btn, true);
-          if(!accountId) throw new Error(t("needAccount"));
-          toast(t("loadingDerive"), "info");
+          if(!accountId) throw new Error(pmT("needAccount"));
+          toast(pmT("loadingDerive"), "info");
           await jfetch("/api/v1/accounts/polymarket/derive-credentials",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
           await refreshAccount();
-          toast(t("deriveOk"), "ok");
-        }catch(e){ toast(`${t("deriveFail")}: ${e.message}`, "err"); }
+          toast(pmT("deriveOk"), "ok");
+        }catch(e){ toast(`${pmT("deriveFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
       };
 
@@ -630,12 +630,12 @@
         const btn = document.getElementById("btnEnable");
         try{
           setBusy(btn, true);
-          if(!accountId) throw new Error(t("needAccount"));
-          toast(t("loadingEnable"), "info");
+          if(!accountId) throw new Error(pmT("needAccount"));
+          toast(pmT("loadingEnable"), "info");
           await jfetch("/api/v1/accounts/polymarket/enable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
           await refreshAccount();
-          toast(t("enableOk"), "ok");
-        }catch(e){ toast(`${t("enableFail")}: ${e.message}`, "err"); }
+          toast(pmT("enableOk"), "ok");
+        }catch(e){ toast(`${pmT("enableFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
       };
 
@@ -643,12 +643,12 @@
         const btn = document.getElementById("btnDisable");
         try{
           setBusy(btn, true);
-          if(!accountId) throw new Error(t("needAccount"));
-          toast(t("loadingDisable"), "info");
+          if(!accountId) throw new Error(pmT("needAccount"));
+          toast(pmT("loadingDisable"), "info");
           await jfetch("/api/v1/accounts/polymarket/disable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
           await refreshAccount();
-          toast(t("disableOk"), "ok");
-        }catch(e){ toast(`${t("disableFail")}: ${e.message}`, "err"); }
+          toast(pmT("disableOk"), "ok");
+        }catch(e){ toast(`${pmT("disableFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
       };
 
@@ -656,12 +656,12 @@
         const btn = document.getElementById("btnCancelAll");
         try{
           setBusy(btn, true);
-          if(!accountId) throw new Error(t("needAccount"));
-          toast(t("loadingCancel"), "info");
+          if(!accountId) throw new Error(pmT("needAccount"));
+          toast(pmT("loadingCancel"), "info");
           const out=await jfetch("/api/v1/accounts/polymarket/emergency-cancel-all",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
           setText("riskOut", out);
-          toast(`${t("cancelOk")} (${Number(out.cancelled || 0)})`, "ok");
-        }catch(e){ toast(`${t("cancelFail")}: ${e.message}`, "err"); }
+          toast(`${pmT("cancelOk")} (${Number(out.cancelled || 0)})`, "ok");
+        }catch(e){ toast(`${pmT("cancelFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
       };
 
@@ -669,11 +669,11 @@
         const btn = document.getElementById("btnRisk");
         try{
           setBusy(btn, true);
-          toast(t("loadingRisk"), "info");
+          toast(pmT("loadingRisk"), "info");
           const q=accountId?`?account_id=${encodeURIComponent(accountId)}`:"";
           setText("riskOut", await jfetch("/api/v1/risk/overview"+q));
-          toast(t("riskOk"), "ok");
-        }catch(e){ toast(`${t("riskFail")}: ${e.message}`, "err"); }
+          toast(pmT("riskOk"), "ok");
+        }catch(e){ toast(`${pmT("riskFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
       };
 
@@ -681,10 +681,10 @@
         const btn = document.getElementById("btnReplay");
         try{
           setBusy(btn, true);
-          toast(t("loadingReplay"), "info");
+          toast(pmT("loadingReplay"), "info");
           setText("riskOut", await jfetch("/api/v1/replay/summary?days=7"));
-          toast(t("replayOk"), "ok");
-        }catch(e){ toast(`${t("replayFail")}: ${e.message}`, "err"); }
+          toast(pmT("replayOk"), "ok");
+        }catch(e){ toast(`${pmT("replayFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
       };
 
@@ -698,7 +698,7 @@
         document.getElementById("pmDiagModalMask")?.addEventListener("click", (e) => {
           if (e.target && e.target.id === "pmDiagModalMask") closeDiagModal();
         });
-        toast(t("ready"), "info");
+        toast(pmT("ready"), "info");
         await bootstrapUserAndAccount();
       });
     </script>
