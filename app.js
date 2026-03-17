@@ -38,6 +38,7 @@ const i18n = {
     title_portfolio_watchlist: "Macro Risk Monitor | Portfolio Watchlist",
     title_regime_transmission: "Macro Risk Monitor | Regime & Transmission",
     title_about: "Macro Risk Monitor | About Nexo",
+    title_polymarket_page: "Macro Risk Monitor | Polymarket",
     nav_dashboard: "Dashboard",
     nav_daily_report: "Daily Report",
     nav_indicators: "Indicators",
@@ -216,6 +217,7 @@ const i18n = {
     title_portfolio_watchlist: "宏观风险监测 | 组合观察池",
     title_regime_transmission: "宏观风险监测 | 状态与传导",
     title_about: "宏观风险监测 | Nexo 功能介绍",
+    title_polymarket_page: "宏观风险监测 | Polymarket",
     nav_dashboard: "仪表盘",
     nav_daily_report: "每日报告",
     nav_indicators: "指标库",
@@ -3377,11 +3379,14 @@ async function init() {
     if (page === "subscribe") await setupSubscriptionForm();
     if (page === "ai-assistant") await initAiAssistantPage();
     if (page === "openrouter") await renderOpenRouterPage();
+    if (page === "polymarket" && typeof window.applyPolymarketI18n === "function") {
+      window.applyPolymarketI18n();
+    }
   });
 
   // Static intro page should not depend on model/db boot sequence.
   // This guarantees language toggle always works even if data APIs are slow/unavailable.
-  if (page === "about") return;
+  if (page === "about" || page === "polymarket") return;
 
   await migrateBrowserDataToServer();
   const model = await ensureModelData(await loadCurrentModel());

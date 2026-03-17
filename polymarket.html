@@ -1,394 +1,630 @@
 <!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Polymarket 量化交易系统 · MVP</title>
-  <link rel="stylesheet" href="/styles.css?v=poly1" />
-  <style>
-    .pm-wrap { max-width: 1080px; margin: 0 auto; padding: 18px 16px 80px; }
-    .pm-grid { display: grid; gap: 12px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
-    .pm-card { grid-column: span 12; background: #fff; border: 1px solid rgba(10,40,40,.12); border-radius: 14px; padding: 14px; }
-    .pm-card.half { grid-column: span 6; }
-    .pm-diagnose { display:flex; gap:10px; flex-wrap:wrap; margin: 8px 0 12px; }
-    .pm-d-item { background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:8px 10px; min-width:220px; }
-    .pm-d-k { font-size:12px; color:#5a727a; }
-    .pm-d-v { font-size:16px; color:#14303a; font-weight:700; margin-top:2px; }
-    .pm-title { font-size: 22px; font-weight: 700; margin: 0 0 8px; color:#102a33; }
-    .pm-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 8px 0; }
-    .pm-input { border:1px solid rgba(10,40,40,.25); border-radius: 10px; padding:10px 12px; min-width: 240px; font-size: 14px; }
-    .pm-btn { border:1px solid #0b8170; background:#0b8170; color:#fff; border-radius: 10px; padding:10px 14px; font-weight: 600; cursor:pointer; }
-    .pm-btn.ghost { background:#fff; color:#0b8170; }
-    .pm-table { width:100%; border-collapse: collapse; font-size: 13px; }
-    .pm-table th, .pm-table td { border-bottom:1px solid rgba(10,40,40,.12); padding:8px; text-align:left; vertical-align: top; }
-    .pm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; color:#425a62; }
-    .pm-pill { display:inline-block; border-radius:999px; padding:3px 10px; background:#e8f7f4; color:#0b8170; font-weight:700; font-size:12px; }
-    .pm-toast { margin: 10px 0 14px; border-radius: 10px; padding: 10px 12px; font-size: 14px; border:1px solid rgba(10,40,40,.14); background:#f5fbfa; color:#20505a; display:none; }
-    .pm-toast.ok { display:block; border-color:rgba(12,130,96,.28); background:#eef9f5; color:#0b6f55; }
-    .pm-toast.err { display:block; border-color:rgba(176,40,40,.28); background:#fff4f4; color:#a13030; }
-    .pm-toast.info { display:block; border-color:rgba(10,40,40,.2); background:#f5f7f8; color:#35515a; }
-    .pm-kv { display:grid; grid-template-columns: 180px 1fr; row-gap:8px; column-gap:10px; font-size:14px; color:#1f3d46; margin: 8px 0; }
-    .pm-k { color:#51707a; }
-    .pm-v { font-weight:600; }
-    .pm-tag { display:inline-block; border-radius:999px; padding:2px 8px; font-size:12px; border:1px solid rgba(10,40,40,.16); }
-    .pm-tag.on { color:#0b6f55; border-color:rgba(12,130,96,.35); background:#eef9f5; }
-    .pm-tag.off { color:#7a3d3d; border-color:rgba(176,40,40,.28); background:#fff4f4; }
-    details.pm-raw { margin-top:8px; }
-    details.pm-raw > summary { cursor:pointer; color:#4c636b; font-size:13px; }
-    @media (max-width: 900px){ .pm-card.half { grid-column: span 12; } .pm-input { min-width: 100%; } }
-  </style>
-</head>
-<body>
-  <main class="pm-wrap">
-    <h1 class="pm-title">Polymarket 量化交易系统（MVP）</h1>
-    <p style="color:#4c636b;margin-top:0;">已实现：市场/盘口接入、套利扫描、VWAP仿真、账户接入、自动交易开关、风险总览、模拟执行与审计留痕。</p>
-    <div id="diagBar" class="pm-diagnose">
-      <div class="pm-d-item">
-        <div class="pm-d-k">账户余额来源</div>
-        <div class="pm-d-v" id="diagBalanceSource">--</div>
-      </div>
-      <div class="pm-d-item">
-        <div class="pm-d-k">签名匹配</div>
-        <div class="pm-d-v" id="diagSignerMatch">--</div>
-      </div>
-      <div class="pm-d-item">
-        <div class="pm-d-k">实时市场数量</div>
-        <div class="pm-d-v" id="diagMarketCount">--</div>
-      </div>
-    </div>
-    <div id="actionToast" class="pm-toast info">准备就绪。</div>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="macro-api-base" content="https://api.nexo.hk" />
+    <title data-i18n="title_polymarket_page">Macro Risk Monitor | Polymarket</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=20260318p1" />
+    <script src="auth-guard.js?v=20260317a1" defer></script>
+    <script src="app.js?v=20260317b2" defer></script>
+    <style>
+      .pm-wrap { max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; }
+      .pm-grid { display: grid; gap: 12px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+      .pm-card { grid-column: span 12; background: #fff; border: 1px solid rgba(10,40,40,.12); border-radius: 14px; padding: 14px; }
+      .pm-card.half { grid-column: span 6; }
+      .pm-diagnose { display:flex; gap:10px; flex-wrap:wrap; margin: 8px 0 12px; }
+      .pm-d-item { background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:8px 10px; min-width:220px; }
+      .pm-d-k { font-size:12px; color:#5a727a; }
+      .pm-d-v { font-size:16px; color:#14303a; font-weight:700; margin-top:2px; }
+      .pm-title { font-size: 22px; font-weight: 700; margin: 0 0 8px; color:#102a33; }
+      .pm-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 8px 0; }
+      .pm-input { border:1px solid rgba(10,40,40,.25); border-radius: 10px; padding:10px 12px; min-width: 240px; font-size: 14px; }
+      .pm-btn { border:1px solid #0b8170; background:#0b8170; color:#fff; border-radius: 10px; padding:10px 14px; font-weight: 600; cursor:pointer; }
+      .pm-btn.ghost { background:#fff; color:#0b8170; }
+      .pm-table { width:100%; border-collapse: collapse; font-size: 13px; }
+      .pm-table th, .pm-table td { border-bottom:1px solid rgba(10,40,40,.12); padding:8px; text-align:left; vertical-align: top; }
+      .pm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; color:#425a62; }
+      .pm-pill { display:inline-block; border-radius:999px; padding:3px 10px; background:#e8f7f4; color:#0b8170; font-weight:700; font-size:12px; }
+      .pm-toast { margin: 10px 0 14px; border-radius: 10px; padding: 10px 12px; font-size: 14px; border:1px solid rgba(10,40,40,.14); background:#f5fbfa; color:#20505a; display:none; }
+      .pm-toast.ok { display:block; border-color:rgba(12,130,96,.28); background:#eef9f5; color:#0b6f55; }
+      .pm-toast.err { display:block; border-color:rgba(176,40,40,.28); background:#fff4f4; color:#a13030; }
+      .pm-toast.info { display:block; border-color:rgba(10,40,40,.2); background:#f5f7f8; color:#35515a; }
+      .pm-kv { display:grid; grid-template-columns: 180px 1fr; row-gap:8px; column-gap:10px; font-size:14px; color:#1f3d46; margin: 8px 0; }
+      .pm-k { color:#51707a; }
+      .pm-v { font-weight:600; }
+      .pm-tag { display:inline-block; border-radius:999px; padding:2px 8px; font-size:12px; border:1px solid rgba(10,40,40,.16); }
+      .pm-tag.on { color:#0b6f55; border-color:rgba(12,130,96,.35); background:#eef9f5; }
+      .pm-tag.off { color:#7a3d3d; border-color:rgba(176,40,40,.28); background:#fff4f4; }
+      details.pm-raw { margin-top:8px; }
+      details.pm-raw > summary { cursor:pointer; color:#4c636b; font-size:13px; }
+      @media (max-width: 900px) { .pm-card.half { grid-column: span 12; } .pm-input { min-width: 100%; } }
+    </style>
+  </head>
+  <body data-page="polymarket">
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="index.html" data-i18n="brand_name">Macro Risk Monitor</a>
+      <nav>
+        <a class="nav-link" href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
+        <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
+        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
+        <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
+        <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
+        <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
+        <a class="nav-link" href="portfolio-watchlist.html" data-i18n="nav_portfolio_watchlist">Portfolio Watchlist</a>
+        <a class="nav-link" href="regime-transmission.html" data-i18n="nav_regime_transmission">Regime & Transmission</a>
+        <a class="nav-link" href="stock-prediction.html" data-i18n="nav_stock_prediction">Stock Prediction</a>
+        <a class="nav-link active" href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
+        <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
+        <a class="nav-link" href="about.html" data-i18n="nav_intro">About Nexo</a>
+      </nav>
+      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
+    </header>
 
-    <section class="pm-grid">
-      <div class="pm-card half">
-        <h2 class="pm-title" style="font-size:18px;">账户接入</h2>
-        <div id="currentUser" class="pm-mono" style="margin-bottom:8px;"></div>
-        <div class="pm-row">
-          <input id="signer" class="pm-input" placeholder="signer address (0x...)" />
-          <input id="funder" class="pm-input" placeholder="funder / API wallet address (proxy模式必填)" />
-          <select id="sigType" class="pm-input" style="min-width:170px;max-width:220px;">
-            <option value="proxy" selected>proxy (推荐)</option>
-            <option value="eoa">eoa</option>
-          </select>
+    <main class="page pm-wrap">
+      <h1 id="pm-page-title" class="pm-title">Polymarket Quant Trading Console (MVP)</h1>
+      <p id="pm-page-desc" style="color:#4c636b;margin-top:0;">Live account access, market scan, risk controls, and execution replay.</p>
+
+      <div id="diagBar" class="pm-diagnose">
+        <div class="pm-d-item">
+          <div id="pm-diag-balance-label" class="pm-d-k">Balance Source</div>
+          <div class="pm-d-v" id="diagBalanceSource">--</div>
         </div>
-        <div class="pm-row">
-          <button class="pm-btn" id="btnConnect">连接账户</button>
-          <button class="pm-btn ghost" id="btnDerive">派生凭证</button>
-          <button class="pm-btn ghost" id="btnEnable">开启自动交易</button>
-          <button class="pm-btn ghost" id="btnDisable">关闭自动交易</button>
+        <div class="pm-d-item">
+          <div id="pm-diag-signer-label" class="pm-d-k">Signer Match</div>
+          <div class="pm-d-v" id="diagSignerMatch">--</div>
         </div>
-        <div id="accountStatusSummary" class="pm-kv"></div>
-        <details class="pm-raw">
-          <summary>查看原始返回（JSON）</summary>
-          <div id="accountStatus" class="pm-mono"></div>
-        </details>
-      </div>
-
-      <div class="pm-card half">
-        <h2 class="pm-title" style="font-size:18px;">风控与执行</h2>
-        <div class="pm-row">
-          <button class="pm-btn" id="btnRisk">查看风险总览</button>
-          <button class="pm-btn ghost" id="btnCancelAll">紧急撤单</button>
-          <button class="pm-btn ghost" id="btnReplay">执行复盘摘要</button>
+        <div class="pm-d-item">
+          <div id="pm-diag-market-label" class="pm-d-k">Live Tradable Markets</div>
+          <div class="pm-d-v" id="diagMarketCount">--</div>
         </div>
-        <div id="riskOut" class="pm-mono"></div>
       </div>
+      <div id="actionToast" class="pm-toast info">Ready.</div>
 
-      <div class="pm-card">
-        <h2 class="pm-title" style="font-size:18px;">套利机会扫描</h2>
-        <div class="pm-row">
-          <button class="pm-btn" id="btnSeed">初始化 Demo 市场</button>
-          <button class="pm-btn" id="btnScan">扫描机会</button>
+      <section class="pm-grid">
+        <div class="pm-card half">
+          <h2 id="pm-account-title" class="pm-title" style="font-size:18px;">Account Access</h2>
+          <div id="currentUser" class="pm-mono" style="margin-bottom:8px;"></div>
+          <div class="pm-row">
+            <input id="signer" class="pm-input" placeholder="signer address (0x...)" />
+            <input id="funder" class="pm-input" placeholder="funder/API wallet address (required in proxy mode)" />
+            <select id="sigType" class="pm-input" style="min-width:170px;max-width:220px;">
+              <option value="proxy" selected>proxy (recommended)</option>
+              <option value="eoa">eoa</option>
+            </select>
+          </div>
+          <div class="pm-row">
+            <button class="pm-btn" id="btnConnect">Connect</button>
+            <button class="pm-btn ghost" id="btnDerive">Derive Credentials</button>
+            <button class="pm-btn ghost" id="btnEnable">Enable Auto Trading</button>
+            <button class="pm-btn ghost" id="btnDisable">Disable Auto Trading</button>
+          </div>
+          <div id="accountStatusSummary" class="pm-kv"></div>
+          <details class="pm-raw">
+            <summary id="pm-raw-summary">View Raw Response (JSON)</summary>
+            <div id="accountStatus" class="pm-mono"></div>
+          </details>
         </div>
-        <table class="pm-table" id="oppTable">
-          <thead>
-            <tr>
-              <th>ID</th><th>Market</th><th>Type</th><th>Theory</th><th>VWAP</th><th>Conf</th><th>Source</th><th>Action</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-  <script>
-    let accountId = "";
-    let currentUserEmail = "";
 
-    async function jfetch(url, opt){
-      const r = await fetch(url, opt || {});
-      const d = await r.json().catch(()=>({ok:false,error:"bad_json"}));
-      if(!r.ok || d.ok===false){ throw new Error(d.detail || d.error || ("http_"+r.status)); }
-      return d;
-    }
+        <div class="pm-card half">
+          <h2 id="pm-risk-title" class="pm-title" style="font-size:18px;">Risk & Execution</h2>
+          <div class="pm-row">
+            <button class="pm-btn" id="btnRisk">Risk Overview</button>
+            <button class="pm-btn ghost" id="btnCancelAll">Emergency Cancel All</button>
+            <button class="pm-btn ghost" id="btnReplay">Execution Replay Summary</button>
+          </div>
+          <div id="riskOut" class="pm-mono"></div>
+        </div>
 
-    function setText(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj, null, 2); }
-    function setDiag(id, value){
-      const el = document.getElementById(id);
-      if(el){ el.textContent = value; }
-    }
-    function nowStr(){ return new Date().toLocaleString(); }
-    function toast(msg, type){
-      const el = document.getElementById("actionToast");
-      el.className = `pm-toast ${type || "info"}`;
-      el.textContent = `[${nowStr()}] ${msg}`;
-    }
-    function setBusy(btn, busy, labelBusy){
-      if(!btn) return;
-      if(busy){
-        btn.dataset._txt = btn.textContent;
-        btn.textContent = labelBusy || "处理中...";
-        btn.disabled = true;
-        btn.style.opacity = "0.7";
-      } else {
-        btn.textContent = btn.dataset._txt || btn.textContent;
-        btn.disabled = false;
-        btn.style.opacity = "1";
-      }
-    }
-    function ynTag(v){
-      const on = !!v;
-      const cls = on ? "on" : "off";
-      const txt = on ? "是" : "否";
-      return `<span class="pm-tag ${cls}">${txt}</span>`;
-    }
-    function fmtNum(v){
-      const n = Number(v || 0);
-      return Number.isFinite(n) ? n.toLocaleString() : "--";
-    }
-    function renderAccountSummary(d){
-      const sum = document.getElementById("accountStatusSummary");
-      const bal = (d.balances && d.balances[0]) || {};
-      const connected = d?.approvals?.wallet_connected;
-      const creds = d?.approvals?.credentials_active;
-      const auto = Number(d?.limits?.auto_trading || 0) === 1;
-      const signer = d?.account?.signer_address || "--";
-      const funder = d?.account?.funder_address || "--";
-      const signerMatch = d?.health?.signer_match;
-      sum.innerHTML = `
-        <div class="pm-k">账户 ID</div><div class="pm-v">${d.account_id || "--"}</div>
-        <div class="pm-k">Signer</div><div class="pm-v">${signer}</div>
-        <div class="pm-k">Funder</div><div class="pm-v">${funder}</div>
-        <div class="pm-k">钱包已连接</div><div class="pm-v">${ynTag(connected)}</div>
-        <div class="pm-k">凭证已激活</div><div class="pm-v">${ynTag(creds)}</div>
-        <div class="pm-k">自动交易</div><div class="pm-v">${ynTag(auto)}</div>
-        <div class="pm-k">签名地址匹配</div><div class="pm-v">${signerMatch === undefined ? "--" : ynTag(!!signerMatch)}</div>
-        <div class="pm-k">可用余额</div><div class="pm-v">${fmtNum(bal.available_balance)} ${bal.asset_symbol || "USDC"}</div>
-        <div class="pm-k">账户状态</div><div class="pm-v">${d?.health?.account_status || "--"}</div>
-        <div class="pm-k">同步延迟</div><div class="pm-v">${d?.health?.sync_delay_sec ?? "--"} 秒</div>
-      `;
-    }
+        <div class="pm-card">
+          <h2 id="pm-scan-title" class="pm-title" style="font-size:18px;">Arbitrage Opportunity Scan</h2>
+          <div class="pm-row">
+            <button class="pm-btn" id="btnSeed">Init Demo Market</button>
+            <button class="pm-btn" id="btnScan">Scan Opportunities</button>
+          </div>
+          <table class="pm-table" id="oppTable">
+            <thead>
+              <tr>
+                <th id="pm-col-id">ID</th><th id="pm-col-market">Market</th><th id="pm-col-type">Type</th><th id="pm-col-theory">Theory</th><th id="pm-col-vwap">VWAP</th><th id="pm-col-conf">Conf</th><th id="pm-col-source">Source</th><th id="pm-col-action">Action</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
 
-    async function refreshAccount(){
-      if(!accountId) return;
-      const d = await jfetch(`/api/v1/accounts/polymarket/status?account_id=${encodeURIComponent(accountId)}`);
-      renderAccountSummary(d);
-      setText("accountStatus", d);
-      const bal = (d.balances && d.balances[0]) || {};
-      setDiag("diagBalanceSource", bal.source || "local_cache");
-      setDiag("diagSignerMatch", (d?.health?.signer_match === undefined) ? "--" : (d.health.signer_match ? "匹配" : "不匹配"));
-      return d;
-    }
-
-    async function refreshDiagnostics(){
-      if(!accountId) return;
-      try{
-        const d = await jfetch(`/api/v1/polymarket/diagnostics?account_id=${encodeURIComponent(accountId)}`);
-        setDiag("diagBalanceSource", d.balance_source || "--");
-        setDiag("diagSignerMatch", d.signer_match ? "匹配" : "不匹配");
-        const mc = Number(d.tradable_market_count || 0);
-        setDiag("diagMarketCount", Number.isFinite(mc) ? String(mc) : "--");
-        if(d.market_error){
-          toast(`实时市场诊断异常：${d.market_error}`, "err");
+    <script>
+      let accountId = "";
+      let currentUserEmail = "";
+      const pmI18n = {
+        en: {
+          title: "Polymarket Quant Trading Console (MVP)",
+          desc: "Live account access, market scan, risk controls, and execution replay.",
+          diagBalance: "Balance Source",
+          diagSigner: "Signer Match",
+          diagMarket: "Live Tradable Markets",
+          account: "Account Access",
+          risk: "Risk & Execution",
+          scan: "Arbitrage Opportunity Scan",
+          signerPh: "signer address (0x...)",
+          funderPh: "funder/API wallet address (required in proxy mode)",
+          sigProxy: "proxy (recommended)",
+          sigEoa: "eoa",
+          connect: "Connect",
+          derive: "Derive Credentials",
+          enableAuto: "Enable Auto Trading",
+          disableAuto: "Disable Auto Trading",
+          rawSummary: "View Raw Response (JSON)",
+          riskBtn: "Risk Overview",
+          cancelAll: "Emergency Cancel All",
+          replay: "Execution Replay Summary",
+          seed: "Init Demo Market",
+          scanBtn: "Scan Opportunities",
+          colMarket: "Market",
+          colType: "Type",
+          colTheory: "Theory",
+          colSource: "Source",
+          colAction: "Action",
+          ready: "Ready.",
+          ynYes: "Yes",
+          ynNo: "No",
+          signedIn: "Signed in: ",
+          signerOk: "Matched",
+          signerBad: "Mismatch",
+          noOpp: "No executable arbitrage opportunities at the moment (live markets).",
+          marketReadFail: "Failed",
+          needSigner: "Please enter signer address first",
+          needAccount: "Please connect account first",
+          needProxyFunder: "Proxy mode requires funder/API wallet address",
+          loadingAccount: "Connecting account...",
+          loadingScan: "Scanning opportunities...",
+          loadingSeed: "Initializing demo markets...",
+          loadingRisk: "Loading risk overview...",
+          loadingReplay: "Loading replay summary...",
+          loadingDerive: "Deriving credentials...",
+          loadingEnable: "Enabling auto trading...",
+          loadingDisable: "Disabling auto trading...",
+          loadingCancel: "Cancelling all open orders...",
+          loadAccountOk: "Loaded account",
+          noAccount: "No Polymarket account bound to current user. Please connect first.",
+          seedOk: "Demo init done",
+          scanOk: "Scan complete",
+          riskOk: "Risk overview refreshed",
+          replayOk: "Replay refreshed",
+          deriveOk: "Credentials derived",
+          enableOk: "Auto trading enabled",
+          disableOk: "Auto trading disabled",
+          cancelOk: "Emergency cancel completed",
+          connectOk: "Connected",
+          connectFail: "Connect failed",
+          scanFail: "Scan failed",
+          deriveFail: "Derive credentials failed",
+          enableFail: "Enable auto trading failed",
+          disableFail: "Disable auto trading failed",
+          cancelFail: "Emergency cancel failed",
+          riskFail: "Risk overview failed",
+          replayFail: "Replay failed",
+          diagError: "Live market diagnostics error",
+          walletConnected: "Wallet Connected",
+          credentialActive: "Credential Active",
+          autoTrading: "Auto Trading",
+          signerLabel: "Signer",
+          funderLabel: "Funder",
+          signerMatchLabel: "Signer Match",
+          balance: "Available Balance",
+          accountStatus: "Account Status",
+          syncDelay: "Sync Delay",
+          accountId: "Account ID"
+        },
+        zh: {
+          title: "Polymarket 量化交易控制台（MVP）",
+          desc: "实盘账户接入、市场扫描、风控与执行复盘。",
+          diagBalance: "账户余额来源",
+          diagSigner: "签名匹配",
+          diagMarket: "实时可交易市场数量",
+          account: "账户接入",
+          risk: "风控与执行",
+          scan: "套利机会扫描",
+          signerPh: "signer 地址（0x...）",
+          funderPh: "funder/API wallet 地址（proxy 模式必填）",
+          sigProxy: "proxy（推荐）",
+          sigEoa: "eoa",
+          connect: "连接账户",
+          derive: "派生凭证",
+          enableAuto: "开启自动交易",
+          disableAuto: "关闭自动交易",
+          rawSummary: "查看原始返回（JSON）",
+          riskBtn: "查看风险总览",
+          cancelAll: "紧急撤单",
+          replay: "执行复盘摘要",
+          seed: "初始化 Demo 市场",
+          scanBtn: "扫描机会",
+          colMarket: "市场",
+          colType: "策略类型",
+          colTheory: "理论收益",
+          colSource: "来源",
+          colAction: "动作",
+          ready: "准备就绪。",
+          ynYes: "是",
+          ynNo: "否",
+          signedIn: "已登录：",
+          signerOk: "匹配",
+          signerBad: "不匹配",
+          noOpp: "当前未发现可执行套利机会（实时市场）。",
+          marketReadFail: "读取失败",
+          needSigner: "请先输入 signer 地址",
+          needAccount: "请先连接账户",
+          needProxyFunder: "proxy 模式需要填写 funder/API wallet 地址",
+          loadingAccount: "正在连接账户...",
+          loadingScan: "正在扫描套利机会...",
+          loadingSeed: "正在初始化 Demo 市场...",
+          loadingRisk: "正在加载风险总览...",
+          loadingReplay: "正在加载执行复盘...",
+          loadingDerive: "正在派生交易凭证...",
+          loadingEnable: "正在开启自动交易...",
+          loadingDisable: "正在关闭自动交易...",
+          loadingCancel: "正在执行紧急撤单...",
+          loadAccountOk: "已加载账户",
+          noAccount: "当前登录邮箱尚未绑定 Polymarket 账户，请先连接账户。",
+          seedOk: "初始化完成",
+          scanOk: "扫描完成",
+          riskOk: "风险总览已刷新",
+          replayOk: "执行复盘摘要已刷新",
+          deriveOk: "派生凭证完成",
+          enableOk: "自动交易已开启",
+          disableOk: "自动交易已关闭",
+          cancelOk: "紧急撤单完成",
+          connectOk: "连接成功",
+          connectFail: "连接失败",
+          scanFail: "扫描失败",
+          deriveFail: "派生凭证失败",
+          enableFail: "开启自动交易失败",
+          disableFail: "关闭自动交易失败",
+          cancelFail: "紧急撤单失败",
+          riskFail: "读取风险总览失败",
+          replayFail: "读取执行复盘失败",
+          diagError: "实时市场诊断异常",
+          walletConnected: "钱包已连接",
+          credentialActive: "凭证已激活",
+          autoTrading: "自动交易",
+          signerLabel: "Signer",
+          funderLabel: "Funder",
+          signerMatchLabel: "签名地址匹配",
+          balance: "可用余额",
+          accountStatus: "账户状态",
+          syncDelay: "同步延迟",
+          accountId: "账户 ID"
         }
-      }catch(_e){
-        setDiag("diagMarketCount", "读取失败");
-      }
-    }
+      };
 
-    async function bootstrapUserAndAccount(){
-      try{
-        const me = await jfetch("/api/auth/me");
-        currentUserEmail = String(me?.user?.email || "").trim().toLowerCase();
-        document.getElementById("currentUser").textContent = currentUserEmail ? `当前登录邮箱：${currentUserEmail}` : "";
-      }catch(_e){
-        currentUserEmail = "";
+      function getLang() {
+        try { return localStorage.getItem("macro-monitor-lang") === "zh" ? "zh" : "en"; } catch { return "en"; }
       }
-      try{
-        const out = await jfetch("/api/v1/accounts/polymarket/list");
-        if(Array.isArray(out.items) && out.items.length){
-          accountId = String(out.items[0].id || "");
+      function t(key) {
+        const lang = getLang();
+        return (pmI18n[lang] && pmI18n[lang][key]) || pmI18n.en[key] || key;
+      }
+      function applyPolymarketI18n() {
+        document.documentElement.lang = getLang() === "zh" ? "zh-CN" : "en";
+        document.getElementById("pm-page-title").textContent = t("title");
+        document.getElementById("pm-page-desc").textContent = t("desc");
+        document.getElementById("pm-diag-balance-label").textContent = t("diagBalance");
+        document.getElementById("pm-diag-signer-label").textContent = t("diagSigner");
+        document.getElementById("pm-diag-market-label").textContent = t("diagMarket");
+        document.getElementById("pm-account-title").textContent = t("account");
+        document.getElementById("pm-risk-title").textContent = t("risk");
+        document.getElementById("pm-scan-title").textContent = t("scan");
+        document.getElementById("signer").placeholder = t("signerPh");
+        document.getElementById("funder").placeholder = t("funderPh");
+        document.querySelector('#sigType option[value="proxy"]').textContent = t("sigProxy");
+        document.querySelector('#sigType option[value="eoa"]').textContent = t("sigEoa");
+        document.getElementById("btnConnect").textContent = t("connect");
+        document.getElementById("btnDerive").textContent = t("derive");
+        document.getElementById("btnEnable").textContent = t("enableAuto");
+        document.getElementById("btnDisable").textContent = t("disableAuto");
+        document.getElementById("pm-raw-summary").textContent = t("rawSummary");
+        document.getElementById("btnRisk").textContent = t("riskBtn");
+        document.getElementById("btnCancelAll").textContent = t("cancelAll");
+        document.getElementById("btnReplay").textContent = t("replay");
+        document.getElementById("btnSeed").textContent = t("seed");
+        document.getElementById("btnScan").textContent = t("scanBtn");
+        document.getElementById("pm-col-market").textContent = t("colMarket");
+        document.getElementById("pm-col-type").textContent = t("colType");
+        document.getElementById("pm-col-theory").textContent = t("colTheory");
+        document.getElementById("pm-col-source").textContent = t("colSource");
+        document.getElementById("pm-col-action").textContent = t("colAction");
+        if (document.getElementById("actionToast").textContent.trim() === "") {
+          document.getElementById("actionToast").textContent = t("ready");
+        }
+        if (currentUserEmail) {
+          document.getElementById("currentUser").textContent = `${t("signedIn")}${currentUserEmail}`;
+        }
+      }
+      window.applyPolymarketI18n = applyPolymarketI18n;
+
+      async function jfetch(url, opt){
+        const r = await fetch(url, opt || {});
+        const d = await r.json().catch(()=>({ok:false,error:"bad_json"}));
+        if(!r.ok || d.ok===false){ throw new Error(d.detail || d.error || ("http_"+r.status)); }
+        return d;
+      }
+
+      function setText(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj, null, 2); }
+      function setDiag(id, value){ const el = document.getElementById(id); if(el){ el.textContent = value; } }
+      function nowStr(){ return new Date().toLocaleString(); }
+      function toast(msg, type){
+        const el = document.getElementById("actionToast");
+        el.className = `pm-toast ${type || "info"}`;
+        el.textContent = `[${nowStr()}] ${msg}`;
+      }
+      function setBusy(btn, busy, labelBusy){
+        if(!btn) return;
+        if(busy){
+          btn.dataset._txt = btn.textContent;
+          btn.textContent = labelBusy || "...";
+          btn.disabled = true;
+          btn.style.opacity = "0.7";
+        } else {
+          btn.textContent = btn.dataset._txt || btn.textContent;
+          btn.disabled = false;
+          btn.style.opacity = "1";
+        }
+      }
+      function ynTag(v){
+        const on = !!v;
+        const cls = on ? "on" : "off";
+        const txt = on ? t("ynYes") : t("ynNo");
+        return `<span class="pm-tag ${cls}">${txt}</span>`;
+      }
+      function fmtNum(v){
+        const n = Number(v || 0);
+        return Number.isFinite(n) ? n.toLocaleString() : "--";
+      }
+      function renderAccountSummary(d){
+        const sum = document.getElementById("accountStatusSummary");
+        const bal = (d.balances && d.balances[0]) || {};
+        const connected = d?.approvals?.wallet_connected;
+        const creds = d?.approvals?.credentials_active;
+        const auto = Number(d?.limits?.auto_trading || 0) === 1;
+        const signer = d?.account?.signer_address || "--";
+        const funder = d?.account?.funder_address || "--";
+        const signerMatch = d?.health?.signer_match;
+        sum.innerHTML = `
+          <div class="pm-k">${t("accountId")}</div><div class="pm-v">${d.account_id || "--"}</div>
+          <div class="pm-k">${t("signerLabel")}</div><div class="pm-v">${signer}</div>
+          <div class="pm-k">${t("funderLabel")}</div><div class="pm-v">${funder}</div>
+          <div class="pm-k">${t("walletConnected")}</div><div class="pm-v">${ynTag(connected)}</div>
+          <div class="pm-k">${t("credentialActive")}</div><div class="pm-v">${ynTag(creds)}</div>
+          <div class="pm-k">${t("autoTrading")}</div><div class="pm-v">${ynTag(auto)}</div>
+          <div class="pm-k">${t("signerMatchLabel")}</div><div class="pm-v">${signerMatch === undefined ? "--" : ynTag(!!signerMatch)}</div>
+          <div class="pm-k">${t("balance")}</div><div class="pm-v">${fmtNum(bal.available_balance)} ${bal.asset_symbol || "USDC"}</div>
+          <div class="pm-k">${t("accountStatus")}</div><div class="pm-v">${d?.health?.account_status || "--"}</div>
+          <div class="pm-k">${t("syncDelay")}</div><div class="pm-v">${d?.health?.sync_delay_sec ?? "--"} s</div>
+        `;
+      }
+
+      async function refreshAccount(){
+        if(!accountId) return;
+        const d = await jfetch(`/api/v1/accounts/polymarket/status?account_id=${encodeURIComponent(accountId)}`);
+        renderAccountSummary(d);
+        setText("accountStatus", d);
+        const bal = (d.balances && d.balances[0]) || {};
+        setDiag("diagBalanceSource", bal.source || "local_cache");
+        setDiag("diagSignerMatch", (d?.health?.signer_match === undefined) ? "--" : (d.health.signer_match ? t("signerOk") : t("signerBad")));
+        return d;
+      }
+
+      async function refreshDiagnostics(){
+        if(!accountId) return;
+        try{
+          const d = await jfetch(`/api/v1/polymarket/diagnostics?account_id=${encodeURIComponent(accountId)}`);
+          setDiag("diagBalanceSource", d.balance_source || "--");
+          setDiag("diagSignerMatch", d.signer_match ? t("signerOk") : t("signerBad"));
+          const mc = Number(d.tradable_market_count || 0);
+          setDiag("diagMarketCount", Number.isFinite(mc) ? String(mc) : "--");
+          if(d.market_error){ toast(`${t("diagError")}: ${d.market_error}`, "err"); }
+        }catch(_e){
+          setDiag("diagMarketCount", t("marketReadFail"));
+        }
+      }
+
+      async function bootstrapUserAndAccount(){
+        try{
+          const me = await jfetch("/api/auth/me");
+          currentUserEmail = String(me?.user?.email || "").trim().toLowerCase();
+          document.getElementById("currentUser").textContent = currentUserEmail ? `${t("signedIn")}${currentUserEmail}` : "";
+        }catch(_e){ currentUserEmail = ""; }
+        try{
+          const out = await jfetch("/api/v1/accounts/polymarket/list");
+          if(Array.isArray(out.items) && out.items.length){
+            accountId = String(out.items[0].id || "");
+            await refreshAccount();
+            await refreshDiagnostics();
+            toast(`${t("loadAccountOk")}: ${accountId}`, "ok");
+          } else {
+            toast(t("noAccount"), "info");
+          }
+        }catch(e){ toast(`${t("connectFail")}: ${e.message}`, "err"); }
+      }
+
+      async function scan(){
+        const d = await jfetch("/api/v1/opportunities/scan?limit=30");
+        const tb = document.querySelector("#oppTable tbody");
+        tb.innerHTML = "";
+        const items = d.items || [];
+        if(!items.length){
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td colspan="8" style="color:#6b7f86;">${t("noOpp")}</td>`;
+          tb.appendChild(tr);
+          return;
+        }
+        for(const x of items){
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><span class="pm-pill">${x.id}</span></td>
+            <td>${x.market_title || x.market_id}</td>
+            <td>${x.strategy_type}</td>
+            <td>${Number(x.theory_profit||0).toFixed(4)}</td>
+            <td>${Number(x.vwap_profit||0).toFixed(4)}</td>
+            <td>${Number(x.confidence||0).toFixed(2)}</td>
+            <td>${x.source || "--"}</td>
+            <td><button class="pm-btn ghost" data-id="${x.id}">${t("colAction")}</button></td>
+          `;
+          tb.appendChild(tr);
+        }
+        tb.querySelectorAll("button[data-id]").forEach((b)=>{
+          b.onclick = async ()=>{
+            try{
+              if(!accountId){ alert(t("needAccount")); return; }
+              const out = await jfetch(`/api/v1/opportunities/${encodeURIComponent(b.dataset.id)}/execute`, {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body: JSON.stringify({account_id: accountId, actor: "web-demo"})
+              });
+              alert(`OK: ${out.execution_id || ""} (mode=${out.mode || "unknown"}, status=${out.status || "-"})`);
+              await document.getElementById("btnRisk").click();
+            }catch(e){ alert(`ERROR: ${e.message}`); }
+          };
+        });
+      }
+
+      document.getElementById("btnSeed").onclick = async ()=>{
+        const btn = document.getElementById("btnSeed");
+        try{
+          setBusy(btn, true);
+          toast(t("loadingSeed"), "info");
+          const out = await jfetch("/api/v1/system/seed-demo");
+          toast(`${t("seedOk")} (${Number(out.count || 0)})`, "ok");
+        }catch(e){ toast(`${t("connectFail")}: ${e.message}`, "err"); }
+        finally{ setBusy(btn, false); }
+      };
+
+      document.getElementById("btnScan").onclick = async ()=>{
+        const btn = document.getElementById("btnScan");
+        try{
+          setBusy(btn, true);
+          toast(t("loadingScan"), "info");
+          await scan();
+          await refreshDiagnostics();
+          toast(t("scanOk"), "ok");
+        }catch(e){ toast(`${t("scanFail")}: ${e.message}`, "err"); }
+        finally{ setBusy(btn, false); }
+      };
+
+      document.getElementById("btnConnect").onclick = async ()=>{
+        const btn = document.getElementById("btnConnect");
+        try{
+          setBusy(btn, true);
+          toast(t("loadingAccount"), "info");
+          const signer = document.getElementById("signer").value.trim();
+          if(!signer) throw new Error(t("needSigner"));
+          const sigType = (document.getElementById("sigType").value || "eoa").trim();
+          const funderRaw = document.getElementById("funder").value.trim();
+          if(sigType === "proxy" && !funderRaw){ throw new Error(t("needProxyFunder")); }
+          const funder = funderRaw || signer;
+          const out = await jfetch("/api/v1/accounts/polymarket/connect", {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ account_type:"wallet", signer_address: signer, funder_address: funder, signature_type: sigType })
+          });
+          accountId = out.account_id || "";
           await refreshAccount();
           await refreshDiagnostics();
-          toast(`已加载当前用户账户：${accountId}`, "ok");
-        } else {
-          toast("当前登录邮箱尚未绑定 Polymarket 账户，请先连接账户。", "info");
-        }
-      }catch(e){
-        if(String(e.message || "") === "account_not_found"){
-          toast("当前登录邮箱尚未绑定 Polymarket 账户，请先连接账户。", "info");
-        } else {
-          toast(`读取账户列表失败：${e.message}`, "err");
-        }
-      }
-    }
+          toast(`${t("connectOk")}: ${accountId}`, "ok");
+        }catch(e){ toast(`${t("connectFail")}: ${e.message}`, "err"); }
+        finally{ setBusy(btn, false); }
+      };
 
-    async function scan(){
-      const d = await jfetch("/api/v1/opportunities/scan?limit=30");
-      const tb = document.querySelector("#oppTable tbody");
-      tb.innerHTML = "";
-      const items = d.items || [];
-      if(!items.length){
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="8" style="color:#6b7f86;">当前未发现可执行套利机会（实时市场）。可稍后重试，或放宽风控阈值。</td>`;
-        tb.appendChild(tr);
-        return;
-      }
-      for(const x of items){
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><span class="pm-pill">${x.id}</span></td>
-          <td>${x.market_title || x.market_id}</td>
-          <td>${x.strategy_type}</td>
-          <td>${Number(x.theory_profit||0).toFixed(4)}</td>
-          <td>${Number(x.vwap_profit||0).toFixed(4)}</td>
-          <td>${Number(x.confidence||0).toFixed(2)}</td>
-          <td>${x.source || "--"}</td>
-          <td><button class="pm-btn ghost" data-id="${x.id}">执行</button></td>
-        `;
-        tb.appendChild(tr);
-      }
-      tb.querySelectorAll("button[data-id]").forEach((b)=>{
-        b.onclick = async ()=>{
-          try{
-            if(!accountId){ alert("请先连接账户并开启自动交易"); return; }
-            const out = await jfetch(`/api/v1/opportunities/${encodeURIComponent(b.dataset.id)}/execute`, {
-              method:"POST",
-              headers:{"Content-Type":"application/json"},
-              body: JSON.stringify({account_id: accountId, actor: "web-demo"})
-            });
-            alert(`执行成功: ${out.execution_id || ""} (mode=${out.mode || "unknown"}, status=${out.status || "-"})`);
-            await document.getElementById("btnRisk").click();
-          }catch(e){ alert("执行失败: " + e.message); }
-        };
-      });
-    }
+      document.getElementById("btnDerive").onclick = async ()=>{
+        const btn = document.getElementById("btnDerive");
+        try{
+          setBusy(btn, true);
+          if(!accountId) throw new Error(t("needAccount"));
+          toast(t("loadingDerive"), "info");
+          await jfetch("/api/v1/accounts/polymarket/derive-credentials",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
+          await refreshAccount();
+          toast(t("deriveOk"), "ok");
+        }catch(e){ toast(`${t("deriveFail")}: ${e.message}`, "err"); }
+        finally{ setBusy(btn, false); }
+      };
 
-    document.getElementById("btnSeed").onclick = async ()=>{
-      const btn = document.getElementById("btnSeed");
-      try{
-        setBusy(btn, true);
-        toast("正在初始化 Demo 市场...", "info");
-        const out = await jfetch("/api/v1/system/seed-demo");
-        toast(`初始化完成，共 ${Number(out.count || 0)} 个市场`, "ok");
-      }catch(e){ toast(`初始化失败：${e.message}`, "err"); }
-      finally{ setBusy(btn, false); }
-    };
-    document.getElementById("btnScan").onclick = async ()=>{
-      const btn = document.getElementById("btnScan");
-      try{
-        setBusy(btn, true);
-        toast("正在扫描套利机会...", "info");
-        await scan();
-        await refreshDiagnostics();
-        toast("扫描完成，已刷新机会列表", "ok");
-      }catch(e){ toast(`扫描失败：${e.message}`, "err"); }
-      finally{ setBusy(btn, false); }
-    };
-    document.getElementById("btnConnect").onclick = async ()=>{
-      const btn = document.getElementById("btnConnect");
-      try{
-        setBusy(btn, true);
-        toast("正在连接账户...", "info");
-        const signer = document.getElementById("signer").value.trim();
-        if(!signer) throw new Error("请先输入 signer address");
-        const sigType = (document.getElementById("sigType").value || "eoa").trim();
-        const funderRaw = document.getElementById("funder").value.trim();
-        if(sigType === "proxy" && !funderRaw){
-          throw new Error("proxy 模式需要填写 funder/API wallet 地址");
-        }
-        const funder = funderRaw || signer;
-        const out = await jfetch("/api/v1/accounts/polymarket/connect", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ account_type:"wallet", signer_address: signer, funder_address: funder, signature_type: sigType })
+      document.getElementById("btnEnable").onclick = async ()=>{
+        const btn = document.getElementById("btnEnable");
+        try{
+          setBusy(btn, true);
+          if(!accountId) throw new Error(t("needAccount"));
+          toast(t("loadingEnable"), "info");
+          await jfetch("/api/v1/accounts/polymarket/enable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
+          await refreshAccount();
+          toast(t("enableOk"), "ok");
+        }catch(e){ toast(`${t("enableFail")}: ${e.message}`, "err"); }
+        finally{ setBusy(btn, false); }
+      };
+
+      document.getElementById("btnDisable").onclick = async ()=>{
+        const btn = document.getElementById("btnDisable");
+        try{
+          setBusy(btn, true);
+          if(!accountId) throw new Error(t("needAccount"));
+          toast(t("loadingDisable"), "info");
+          await jfetch("/api/v1/accounts/polymarket/disable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
+          await refreshAccount();
+          toast(t("disableOk"), "ok");
+        }catch(e){ toast(`${t("disableFail")}: ${e.message}`, "err"); }
+        finally{ setBusy(btn, false); }
+      };
+
+      document.getElementById("btnCancelAll").onclick = async ()=>{
+        const btn = document.getElementById("btnCancelAll");
+        try{
+          setBusy(btn, true);
+          if(!accountId) throw new Error(t("needAccount"));
+          toast(t("loadingCancel"), "info");
+          const out=await jfetch("/api/v1/accounts/polymarket/emergency-cancel-all",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
+          setText("riskOut", out);
+          toast(`${t("cancelOk")} (${Number(out.cancelled || 0)})`, "ok");
+        }catch(e){ toast(`${t("cancelFail")}: ${e.message}`, "err"); }
+        finally{ setBusy(btn, false); }
+      };
+
+      document.getElementById("btnRisk").onclick = async ()=>{
+        const btn = document.getElementById("btnRisk");
+        try{
+          setBusy(btn, true);
+          toast(t("loadingRisk"), "info");
+          const q=accountId?`?account_id=${encodeURIComponent(accountId)}`:"";
+          setText("riskOut", await jfetch("/api/v1/risk/overview"+q));
+          toast(t("riskOk"), "ok");
+        }catch(e){ toast(`${t("riskFail")}: ${e.message}`, "err"); }
+        finally{ setBusy(btn, false); }
+      };
+
+      document.getElementById("btnReplay").onclick = async ()=>{
+        const btn = document.getElementById("btnReplay");
+        try{
+          setBusy(btn, true);
+          toast(t("loadingReplay"), "info");
+          setText("riskOut", await jfetch("/api/v1/replay/summary?days=7"));
+          toast(t("replayOk"), "ok");
+        }catch(e){ toast(`${t("replayFail")}: ${e.message}`, "err"); }
+        finally{ setBusy(btn, false); }
+      };
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        applyPolymarketI18n();
+        document.getElementById("lang-toggle")?.addEventListener("click", () => {
+          setTimeout(() => applyPolymarketI18n(), 0);
         });
-        accountId = out.account_id || "";
-        const status = await refreshAccount();
-        await refreshDiagnostics();
-        toast(`连接成功：${accountId}（钱包连接=${status?.approvals?.wallet_connected ? "是" : "否"}）`, "ok");
-      }catch(e){ toast("连接失败: " + e.message, "err"); }
-      finally{ setBusy(btn, false); }
-    };
-    document.getElementById("btnDerive").onclick = async ()=>{
-      const btn = document.getElementById("btnDerive");
-      try{
-        setBusy(btn, true);
-        if(!accountId) throw new Error("请先连接账户");
-        toast("正在派生交易凭证...", "info");
-        await jfetch("/api/v1/accounts/polymarket/derive-credentials",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
-        const status = await refreshAccount();
-        toast(`派生凭证完成（凭证激活=${status?.approvals?.credentials_active ? "是" : "否"}）`, "ok");
-      }catch(e){ toast(`派生凭证失败：${e.message}`, "err"); }
-      finally{ setBusy(btn, false); }
-    };
-    document.getElementById("btnEnable").onclick = async ()=>{
-      const btn = document.getElementById("btnEnable");
-      try{
-        setBusy(btn, true);
-        if(!accountId) throw new Error("请先连接账户");
-        toast("正在开启自动交易...", "info");
-        await jfetch("/api/v1/accounts/polymarket/enable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
-        const status = await refreshAccount();
-        toast(`自动交易已开启（当前=${Number(status?.limits?.auto_trading||0)===1 ? "开启" : "关闭"}）`, "ok");
-      }catch(e){ toast(`开启自动交易失败：${e.message}`, "err"); }
-      finally{ setBusy(btn, false); }
-    };
-    document.getElementById("btnDisable").onclick = async ()=>{
-      const btn = document.getElementById("btnDisable");
-      try{
-        setBusy(btn, true);
-        if(!accountId) throw new Error("请先连接账户");
-        toast("正在关闭自动交易...", "info");
-        await jfetch("/api/v1/accounts/polymarket/disable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
-        const status = await refreshAccount();
-        toast(`自动交易已关闭（当前=${Number(status?.limits?.auto_trading||0)===1 ? "开启" : "关闭"}）`, "ok");
-      }catch(e){ toast(`关闭自动交易失败：${e.message}`, "err"); }
-      finally{ setBusy(btn, false); }
-    };
-    document.getElementById("btnCancelAll").onclick = async ()=>{
-      const btn = document.getElementById("btnCancelAll");
-      try{
-        setBusy(btn, true);
-        if(!accountId) throw new Error("请先连接账户");
-        toast("正在执行紧急撤单...", "info");
-        const out=await jfetch("/api/v1/accounts/polymarket/emergency-cancel-all",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
-        setText("riskOut", out);
-        toast(`紧急撤单完成，撤销 ${Number(out.cancelled || 0)} 笔`, "ok");
-      }catch(e){ toast(`紧急撤单失败：${e.message}`, "err"); }
-      finally{ setBusy(btn, false); }
-    };
-    document.getElementById("btnRisk").onclick = async ()=>{
-      const btn = document.getElementById("btnRisk");
-      try{
-        setBusy(btn, true);
-        toast("正在加载风险总览...", "info");
-        const q=accountId?`?account_id=${encodeURIComponent(accountId)}`:"";
-        setText("riskOut", await jfetch("/api/v1/risk/overview"+q));
-        toast("风险总览已刷新", "ok");
-      }catch(e){ toast(`读取风险总览失败：${e.message}`, "err"); }
-      finally{ setBusy(btn, false); }
-    };
-    document.getElementById("btnReplay").onclick = async ()=>{
-      const btn = document.getElementById("btnReplay");
-      try{
-        setBusy(btn, true);
-        toast("正在加载执行复盘...", "info");
-        setText("riskOut", await jfetch("/api/v1/replay/summary?days=7"));
-        toast("执行复盘摘要已刷新", "ok");
-      }catch(e){ toast(`读取执行复盘失败：${e.message}`, "err"); }
-      finally{ setBusy(btn, false); }
-    };
-    bootstrapUserAndAccount();
-  </script>
-  <script src="/auth-guard.js?v=20260318pm1"></script>
-</body>
+        toast(t("ready"), "info");
+        await bootstrapUserAndAccount();
+      });
+    </script>
+  </body>
 </html>
