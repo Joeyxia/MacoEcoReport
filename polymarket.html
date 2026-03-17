@@ -19,6 +19,18 @@
     .pm-table th, .pm-table td { border-bottom:1px solid rgba(10,40,40,.12); padding:8px; text-align:left; vertical-align: top; }
     .pm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; color:#425a62; }
     .pm-pill { display:inline-block; border-radius:999px; padding:3px 10px; background:#e8f7f4; color:#0b8170; font-weight:700; font-size:12px; }
+    .pm-toast { margin: 10px 0 14px; border-radius: 10px; padding: 10px 12px; font-size: 14px; border:1px solid rgba(10,40,40,.14); background:#f5fbfa; color:#20505a; display:none; }
+    .pm-toast.ok { display:block; border-color:rgba(12,130,96,.28); background:#eef9f5; color:#0b6f55; }
+    .pm-toast.err { display:block; border-color:rgba(176,40,40,.28); background:#fff4f4; color:#a13030; }
+    .pm-toast.info { display:block; border-color:rgba(10,40,40,.2); background:#f5f7f8; color:#35515a; }
+    .pm-kv { display:grid; grid-template-columns: 180px 1fr; row-gap:8px; column-gap:10px; font-size:14px; color:#1f3d46; margin: 8px 0; }
+    .pm-k { color:#51707a; }
+    .pm-v { font-weight:600; }
+    .pm-tag { display:inline-block; border-radius:999px; padding:2px 8px; font-size:12px; border:1px solid rgba(10,40,40,.16); }
+    .pm-tag.on { color:#0b6f55; border-color:rgba(12,130,96,.35); background:#eef9f5; }
+    .pm-tag.off { color:#7a3d3d; border-color:rgba(176,40,40,.28); background:#fff4f4; }
+    details.pm-raw { margin-top:8px; }
+    details.pm-raw > summary { cursor:pointer; color:#4c636b; font-size:13px; }
     @media (max-width: 900px){ .pm-card.half { grid-column: span 12; } .pm-input { min-width: 100%; } }
   </style>
 </head>
@@ -26,6 +38,7 @@
   <main class="pm-wrap">
     <h1 class="pm-title">Polymarket 量化交易系统（MVP）</h1>
     <p style="color:#4c636b;margin-top:0;">已实现：市场/盘口接入、套利扫描、VWAP仿真、账户接入、自动交易开关、风险总览、模拟执行与审计留痕。</p>
+    <div id="actionToast" class="pm-toast info">准备就绪。</div>
 
     <section class="pm-grid">
       <div class="pm-card half">
@@ -40,7 +53,11 @@
           <button class="pm-btn ghost" id="btnEnable">开启自动交易</button>
           <button class="pm-btn ghost" id="btnDisable">关闭自动交易</button>
         </div>
-        <div id="accountStatus" class="pm-mono"></div>
+        <div id="accountStatusSummary" class="pm-kv"></div>
+        <details class="pm-raw">
+          <summary>查看原始返回（JSON）</summary>
+          <div id="accountStatus" class="pm-mono"></div>
+        </details>
       </div>
 
       <div class="pm-card half">
@@ -81,11 +98,58 @@
     }
 
     function setText(id, obj){ document.getElementById(id).textContent = JSON.stringify(obj, null, 2); }
+    function nowStr(){ return new Date().toLocaleString(); }
+    function toast(msg, type){
+      const el = document.getElementById("actionToast");
+      el.className = `pm-toast ${type || "info"}`;
+      el.textContent = `[${nowStr()}] ${msg}`;
+    }
+    function setBusy(btn, busy, labelBusy){
+      if(!btn) return;
+      if(busy){
+        btn.dataset._txt = btn.textContent;
+        btn.textContent = labelBusy || "处理中...";
+        btn.disabled = true;
+        btn.style.opacity = "0.7";
+      } else {
+        btn.textContent = btn.dataset._txt || btn.textContent;
+        btn.disabled = false;
+        btn.style.opacity = "1";
+      }
+    }
+    function ynTag(v){
+      const on = !!v;
+      const cls = on ? "on" : "off";
+      const txt = on ? "是" : "否";
+      return `<span class="pm-tag ${cls}">${txt}</span>`;
+    }
+    function fmtNum(v){
+      const n = Number(v || 0);
+      return Number.isFinite(n) ? n.toLocaleString() : "--";
+    }
+    function renderAccountSummary(d){
+      const sum = document.getElementById("accountStatusSummary");
+      const bal = (d.balances && d.balances[0]) || {};
+      const connected = d?.approvals?.wallet_connected;
+      const creds = d?.approvals?.credentials_active;
+      const auto = Number(d?.limits?.auto_trading || 0) === 1;
+      sum.innerHTML = `
+        <div class="pm-k">账户 ID</div><div class="pm-v">${d.account_id || "--"}</div>
+        <div class="pm-k">钱包已连接</div><div class="pm-v">${ynTag(connected)}</div>
+        <div class="pm-k">凭证已激活</div><div class="pm-v">${ynTag(creds)}</div>
+        <div class="pm-k">自动交易</div><div class="pm-v">${ynTag(auto)}</div>
+        <div class="pm-k">可用余额</div><div class="pm-v">${fmtNum(bal.available_balance)} ${bal.asset_symbol || "USDC"}</div>
+        <div class="pm-k">账户状态</div><div class="pm-v">${d?.health?.account_status || "--"}</div>
+        <div class="pm-k">同步延迟</div><div class="pm-v">${d?.health?.sync_delay_sec ?? "--"} 秒</div>
+      `;
+    }
 
     async function refreshAccount(){
       if(!accountId) return;
       const d = await jfetch(`/api/v1/accounts/polymarket/status?account_id=${encodeURIComponent(accountId)}`);
+      renderAccountSummary(d);
       setText("accountStatus", d);
+      return d;
     }
 
     async function scan(){
@@ -121,26 +185,113 @@
       });
     }
 
-    document.getElementById("btnSeed").onclick = async ()=>{ try{ alert(JSON.stringify(await jfetch("/api/v1/system/seed-demo"),null,2)); }catch(e){ alert(e.message);} };
-    document.getElementById("btnScan").onclick = async ()=>{ try{ await scan(); }catch(e){ alert(e.message);} };
-    document.getElementById("btnConnect").onclick = async ()=>{
+    document.getElementById("btnSeed").onclick = async ()=>{
+      const btn = document.getElementById("btnSeed");
       try{
+        setBusy(btn, true);
+        toast("正在初始化 Demo 市场...", "info");
+        const out = await jfetch("/api/v1/system/seed-demo");
+        toast(`初始化完成，共 ${Number(out.count || 0)} 个市场`, "ok");
+      }catch(e){ toast(`初始化失败：${e.message}`, "err"); }
+      finally{ setBusy(btn, false); }
+    };
+    document.getElementById("btnScan").onclick = async ()=>{
+      const btn = document.getElementById("btnScan");
+      try{
+        setBusy(btn, true);
+        toast("正在扫描套利机会...", "info");
+        await scan();
+        toast("扫描完成，已刷新机会列表", "ok");
+      }catch(e){ toast(`扫描失败：${e.message}`, "err"); }
+      finally{ setBusy(btn, false); }
+    };
+    document.getElementById("btnConnect").onclick = async ()=>{
+      const btn = document.getElementById("btnConnect");
+      try{
+        setBusy(btn, true);
+        toast("正在连接账户...", "info");
         const signer = document.getElementById("signer").value.trim();
+        if(!signer) throw new Error("请先输入 signer address");
         const funder = document.getElementById("funder").value.trim() || signer;
         const out = await jfetch("/api/v1/accounts/polymarket/connect", {
           method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({ user_id: "demo-user", account_type:"wallet", signer_address: signer, funder_address: funder, signature_type:"eoa" })
         });
         accountId = out.account_id || "";
-        await refreshAccount();
-      }catch(e){ alert("连接失败: " + e.message); }
+        const status = await refreshAccount();
+        toast(`连接成功：${accountId}（钱包连接=${status?.approvals?.wallet_connected ? "是" : "否"}）`, "ok");
+      }catch(e){ toast("连接失败: " + e.message, "err"); }
+      finally{ setBusy(btn, false); }
     };
-    document.getElementById("btnDerive").onclick = async ()=>{ try{ if(!accountId) throw new Error("请先连接账户"); await jfetch("/api/v1/accounts/polymarket/derive-credentials",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})}); await refreshAccount(); }catch(e){ alert(e.message);} };
-    document.getElementById("btnEnable").onclick = async ()=>{ try{ if(!accountId) throw new Error("请先连接账户"); await jfetch("/api/v1/accounts/polymarket/enable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})}); await refreshAccount(); }catch(e){ alert(e.message);} };
-    document.getElementById("btnDisable").onclick = async ()=>{ try{ if(!accountId) throw new Error("请先连接账户"); await jfetch("/api/v1/accounts/polymarket/disable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})}); await refreshAccount(); }catch(e){ alert(e.message);} };
-    document.getElementById("btnCancelAll").onclick = async ()=>{ try{ if(!accountId) throw new Error("请先连接账户"); const out=await jfetch("/api/v1/accounts/polymarket/emergency-cancel-all",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})}); setText("riskOut", out);}catch(e){ alert(e.message);} };
-    document.getElementById("btnRisk").onclick = async ()=>{ try{ const q=accountId?`?account_id=${encodeURIComponent(accountId)}`:""; setText("riskOut", await jfetch("/api/v1/risk/overview"+q)); }catch(e){ alert(e.message);} };
-    document.getElementById("btnReplay").onclick = async ()=>{ try{ setText("riskOut", await jfetch("/api/v1/replay/summary?days=7")); }catch(e){ alert(e.message);} };
+    document.getElementById("btnDerive").onclick = async ()=>{
+      const btn = document.getElementById("btnDerive");
+      try{
+        setBusy(btn, true);
+        if(!accountId) throw new Error("请先连接账户");
+        toast("正在派生交易凭证...", "info");
+        await jfetch("/api/v1/accounts/polymarket/derive-credentials",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
+        const status = await refreshAccount();
+        toast(`派生凭证完成（凭证激活=${status?.approvals?.credentials_active ? "是" : "否"}）`, "ok");
+      }catch(e){ toast(`派生凭证失败：${e.message}`, "err"); }
+      finally{ setBusy(btn, false); }
+    };
+    document.getElementById("btnEnable").onclick = async ()=>{
+      const btn = document.getElementById("btnEnable");
+      try{
+        setBusy(btn, true);
+        if(!accountId) throw new Error("请先连接账户");
+        toast("正在开启自动交易...", "info");
+        await jfetch("/api/v1/accounts/polymarket/enable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
+        const status = await refreshAccount();
+        toast(`自动交易已开启（当前=${Number(status?.limits?.auto_trading||0)===1 ? "开启" : "关闭"}）`, "ok");
+      }catch(e){ toast(`开启自动交易失败：${e.message}`, "err"); }
+      finally{ setBusy(btn, false); }
+    };
+    document.getElementById("btnDisable").onclick = async ()=>{
+      const btn = document.getElementById("btnDisable");
+      try{
+        setBusy(btn, true);
+        if(!accountId) throw new Error("请先连接账户");
+        toast("正在关闭自动交易...", "info");
+        await jfetch("/api/v1/accounts/polymarket/disable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
+        const status = await refreshAccount();
+        toast(`自动交易已关闭（当前=${Number(status?.limits?.auto_trading||0)===1 ? "开启" : "关闭"}）`, "ok");
+      }catch(e){ toast(`关闭自动交易失败：${e.message}`, "err"); }
+      finally{ setBusy(btn, false); }
+    };
+    document.getElementById("btnCancelAll").onclick = async ()=>{
+      const btn = document.getElementById("btnCancelAll");
+      try{
+        setBusy(btn, true);
+        if(!accountId) throw new Error("请先连接账户");
+        toast("正在执行紧急撤单...", "info");
+        const out=await jfetch("/api/v1/accounts/polymarket/emergency-cancel-all",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
+        setText("riskOut", out);
+        toast(`紧急撤单完成，撤销 ${Number(out.cancelled || 0)} 笔`, "ok");
+      }catch(e){ toast(`紧急撤单失败：${e.message}`, "err"); }
+      finally{ setBusy(btn, false); }
+    };
+    document.getElementById("btnRisk").onclick = async ()=>{
+      const btn = document.getElementById("btnRisk");
+      try{
+        setBusy(btn, true);
+        toast("正在加载风险总览...", "info");
+        const q=accountId?`?account_id=${encodeURIComponent(accountId)}`:"";
+        setText("riskOut", await jfetch("/api/v1/risk/overview"+q));
+        toast("风险总览已刷新", "ok");
+      }catch(e){ toast(`读取风险总览失败：${e.message}`, "err"); }
+      finally{ setBusy(btn, false); }
+    };
+    document.getElementById("btnReplay").onclick = async ()=>{
+      const btn = document.getElementById("btnReplay");
+      try{
+        setBusy(btn, true);
+        toast("正在加载执行复盘...", "info");
+        setText("riskOut", await jfetch("/api/v1/replay/summary?days=7"));
+        toast("执行复盘摘要已刷新", "ok");
+      }catch(e){ toast(`读取执行复盘失败：${e.message}`, "err"); }
+      finally{ setBusy(btn, false); }
+    };
   </script>
 </body>
 </html>
