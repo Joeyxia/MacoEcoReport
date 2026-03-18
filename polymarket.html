@@ -141,7 +141,6 @@
         <div class="pm-card">
           <h2 id="pm-scan-title" class="pm-title" style="font-size:18px;">Arbitrage Opportunity Scan</h2>
           <div class="pm-row">
-            <button class="pm-btn" id="btnSeed">Init Demo Market</button>
             <button class="pm-btn" id="btnScan">Scan Opportunities</button>
           </div>
           <table class="pm-table" id="oppTable">
@@ -410,7 +409,6 @@
         document.getElementById("btnRisk").textContent = pmT("riskBtn");
         document.getElementById("btnCancelAll").textContent = pmT("cancelAll");
         document.getElementById("btnReplay").textContent = pmT("replay");
-        document.getElementById("btnSeed").textContent = pmT("seed");
         document.getElementById("btnScan").textContent = pmT("scanBtn");
         document.getElementById("pm-col-market").textContent = pmT("colMarket");
         document.getElementById("pm-col-type").textContent = pmT("colType");
@@ -704,17 +702,6 @@
           };
         });
       }
-
-      document.getElementById("btnSeed").onclick = async ()=>{
-        const btn = document.getElementById("btnSeed");
-        try{
-          setBusy(btn, true);
-          toast(pmT("loadingSeed"), "info");
-          const out = await jfetch("/api/v1/system/seed-demo");
-          toast(`${pmT("seedOk")} (${Number(out.count || 0)})`, "ok");
-        }catch(e){ toast(`${pmT("connectFail")}: ${e.message}`, "err"); }
-        finally{ setBusy(btn, false); }
-      };
 
       document.getElementById("btnScan").onclick = async ()=>{
         const btn = document.getElementById("btnScan");
