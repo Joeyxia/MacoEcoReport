@@ -230,7 +230,7 @@ const i18n = {
     nav_openrouter: "OpenRouter",
     nav_stock_prediction: "股票预测",
     nav_polymarket: "Polymarket",
-    nav_polymarket_pnl: "Polymarket PnL",
+    nav_polymarket_pnl: "Polymarket PnL账本",
     nav_portfolio_watchlist: "组合观察池",
     nav_regime_transmission: "状态与传导",
     nav_intro: "功能介绍",

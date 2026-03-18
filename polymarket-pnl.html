@@ -121,7 +121,7 @@
           <h2 class="pnl-title" id="title_attr" style="font-size:18px;">Strategy Attribution</h2>
           <div class="pnl-table-wrap">
             <table class="pnl-table" id="attrTable">
-              <thead><tr><th>Strategy</th><th class="num">Trades</th><th class="num">Volume</th><th class="num">Realized</th></tr></thead>
+              <thead><tr><th id="h_attr_strategy">Strategy</th><th class="num" id="h_attr_trades">Trades</th><th class="num" id="h_attr_volume">Volume</th><th class="num" id="h_attr_realized">Realized</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -131,7 +131,7 @@
           <h2 class="pnl-title" id="title_recon" style="font-size:18px;">Reconciliation</h2>
           <div class="pnl-table-wrap">
             <table class="pnl-table" id="reconTable">
-              <thead><tr><th>Field</th><th class="num">Value</th></tr></thead>
+              <thead><tr><th id="h_recon_field">Field</th><th class="num" id="h_recon_value">Value</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -149,7 +149,7 @@
             <table class="pnl-table" id="ledgerTable">
               <thead>
                 <tr>
-                  <th>Time</th><th>Type</th><th>Market</th><th>Token</th><th class="num">USDC Δ</th><th class="num">Token Δ</th><th>Execution</th><th>Strategy</th>
+                  <th id="h_ledger_time">Time</th><th id="h_ledger_type">Type</th><th id="h_ledger_market">Market</th><th id="h_ledger_token">Token</th><th class="num" id="h_ledger_usdc_delta">USDC Δ</th><th class="num" id="h_ledger_token_delta">Token Δ</th><th id="h_ledger_execution">Execution</th><th id="h_ledger_strategy">Strategy</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -181,6 +181,21 @@
           rebuildDone: "Rebuild done",
           noData: "No data",
           noLedger: "No ledger entries. Try rebuild or widen filters.",
+          colStrategy: "Strategy",
+          colTrades: "Trades",
+          colVolume: "Volume",
+          colRealized: "Realized",
+          colField: "Field",
+          colValue: "Value",
+          colTime: "Time",
+          colType: "Type",
+          colMarket: "Market",
+          colToken: "Token",
+          colUsdcDelta: "USDC Δ",
+          colTokenDelta: "Token Δ",
+          colExecution: "Execution",
+          colStrategyType: "Strategy",
+          trendSeries: "Total PnL",
           status: "Status",
           internal: "Internal Total PnL",
           positions: "Positions Total PnL",
@@ -205,11 +220,11 @@
           stateError: "ERROR",
           invalidDays: "Days must be between 1 and 3650.",
           invalidThreshold: "Threshold values must be non-negative numbers.",
-          confirmRebuild: "Rebuild ledger now? This action recalculates PnL snapshots."
-          ,trendTitle: "PnL Trend (Daily)"
-          ,thrLabel: "Reconciliation Threshold (abs diff): warn / critical"
-          ,thrApply: "Apply Threshold"
-          ,thrApplied: "Threshold applied"
+          confirmRebuild: "Rebuild ledger now? This action recalculates PnL snapshots.",
+          trendTitle: "PnL Trend (Daily)",
+          thrLabel: "Reconciliation Threshold (abs diff): warn / critical",
+          thrApply: "Apply Threshold",
+          thrApplied: "Threshold applied"
         },
         zh: {
           pageTitle: "Polymarket PnL 与交易账本控制台",
@@ -231,6 +246,21 @@
           rebuildDone: "重建完成",
           noData: "暂无数据",
           noLedger: "暂无账本分录，请先重建或放宽筛选条件。",
+          colStrategy: "策略",
+          colTrades: "交易笔数",
+          colVolume: "成交量",
+          colRealized: "已实现",
+          colField: "字段",
+          colValue: "值",
+          colTime: "时间",
+          colType: "类型",
+          colMarket: "市场",
+          colToken: "代币",
+          colUsdcDelta: "USDC 变化",
+          colTokenDelta: "Token 变化",
+          colExecution: "执行单",
+          colStrategyType: "策略",
+          trendSeries: "总 PnL",
           status: "状态",
           internal: "内部总PnL",
           positions: "持仓口径总PnL",
@@ -255,11 +285,11 @@
           stateError: "错误",
           invalidDays: "天数范围必须在 1 到 3650 之间。",
           invalidThreshold: "阈值必须是非负数字。",
-          confirmRebuild: "现在重建账本吗？该操作会重算PnL快照。"
-          ,trendTitle: "PnL 趋势（日频）"
-          ,thrLabel: "对账阈值（绝对差值）：警告 / 严重"
-          ,thrApply: "应用阈值"
-          ,thrApplied: "阈值已应用"
+          confirmRebuild: "现在重建账本吗？该操作会重算PnL快照。",
+          trendTitle: "PnL 趋势（日频）",
+          thrLabel: "对账阈值（绝对差值）：警告 / 严重",
+          thrApply: "应用阈值",
+          thrApplied: "阈值已应用"
         }
       };
       function lang(){ try { return localStorage.getItem('macro-monitor-lang') === 'zh' ? 'zh' : 'en'; } catch { return 'en'; } }
@@ -307,6 +337,20 @@
         document.getElementById('title_trend').textContent=t('trendTitle');
         document.getElementById('thrLabel').textContent=t('thrLabel');
         document.getElementById('btnApplyThr').textContent=t('thrApply');
+        document.getElementById('h_attr_strategy').textContent=t('colStrategy');
+        document.getElementById('h_attr_trades').textContent=t('colTrades');
+        document.getElementById('h_attr_volume').textContent=t('colVolume');
+        document.getElementById('h_attr_realized').textContent=t('colRealized');
+        document.getElementById('h_recon_field').textContent=t('colField');
+        document.getElementById('h_recon_value').textContent=t('colValue');
+        document.getElementById('h_ledger_time').textContent=t('colTime');
+        document.getElementById('h_ledger_type').textContent=t('colType');
+        document.getElementById('h_ledger_market').textContent=t('colMarket');
+        document.getElementById('h_ledger_token').textContent=t('colToken');
+        document.getElementById('h_ledger_usdc_delta').textContent=t('colUsdcDelta');
+        document.getElementById('h_ledger_token_delta').textContent=t('colTokenDelta');
+        document.getElementById('h_ledger_execution').textContent=t('colExecution');
+        document.getElementById('h_ledger_strategy').textContent=t('colStrategyType');
         document.getElementById('accountId').placeholder=t('placeholderAccount');
         document.getElementById('fMarket').placeholder=t('placeholderMarket');
         document.getElementById('fStrategy').placeholder=t('placeholderStrategy');
@@ -365,7 +409,7 @@
           data: {
             labels,
             datasets: [{
-              label: 'Total PnL',
+              label: t('trendSeries'),
               data: values,
               borderColor: '#0b8170',
               backgroundColor: 'rgba(11,129,112,0.1)',
