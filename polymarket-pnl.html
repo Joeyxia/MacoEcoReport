@@ -8,10 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260319pnl2" />
+    <link rel="stylesheet" href="styles.css?v=20260319pnl3" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260319pnl2" defer></script>
+    <script src="app.js?v=20260319pnl3" defer></script>
     <style>
       .pnl-wrap { width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
       .pnl-grid { display:flex; gap:12px; flex-wrap:wrap; align-items:stretch; }
@@ -287,16 +287,16 @@
           colMarket: "市场",
           colToken: "代币",
           colUsdcDelta: "USDC 变化",
-          colTokenDelta: "Token 变化",
+          colTokenDelta: "代币变化",
           colExecution: "执行单",
           colStrategyType: "策略",
           trendSeries: "总 PnL",
           status: "状态",
           internal: "内部总PnL",
           positions: "持仓口径总PnL",
-          leaderboard: "Leaderboard口径总PnL",
+          leaderboard: "排行榜口径总PnL",
           diffPos: "差异（内部 vs 持仓）",
-          diffLb: "差异（内部 vs Leaderboard）",
+          diffLb: "差异（内部 vs 排行榜）",
           ts: "时间",
           notes: "备注",
           asof: "截至",
@@ -567,11 +567,16 @@
           await refreshAll();
           toast(t('thrApplied'),'ok');
         };
-        document.getElementById('lang-toggle')?.addEventListener('click', async ()=>{
-          setLangSafe(lang() === 'zh' ? 'en' : 'zh');
-          applyI18n();
-          await refreshAll();
-        });
+        const oldToggle = document.getElementById('lang-toggle');
+        if (oldToggle) {
+          const newToggle = oldToggle.cloneNode(true);
+          oldToggle.parentNode.replaceChild(newToggle, oldToggle);
+          newToggle.addEventListener('click', async ()=>{
+            setLangSafe(lang() === 'zh' ? 'en' : 'zh');
+            applyI18n();
+            await refreshAll();
+          });
+        }
         try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('initFail')}: ${e.message}`); toast(`${t('initFail')}: ${e.message}`,'err'); }
       });
     </script>
