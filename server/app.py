@@ -100,6 +100,10 @@ try:
     list_executions as polymarket_list_executions,
     replay_summary as polymarket_replay_summary,
     get_live_market_diagnostics as polymarket_get_live_market_diagnostics,
+    rebuild_pnl_ledger as polymarket_rebuild_pnl_ledger,
+    get_pnl_overview as polymarket_get_pnl_overview,
+    get_pnl_reconciliation as polymarket_get_pnl_reconciliation,
+    list_ledger_entries as polymarket_list_ledger_entries,
   )
   from .regime_service import (
     upsert_regime_snapshot,
@@ -212,6 +216,10 @@ except ImportError:
     list_executions as polymarket_list_executions,
     replay_summary as polymarket_replay_summary,
     get_live_market_diagnostics as polymarket_get_live_market_diagnostics,
+    rebuild_pnl_ledger as polymarket_rebuild_pnl_ledger,
+    get_pnl_overview as polymarket_get_pnl_overview,
+    get_pnl_reconciliation as polymarket_get_pnl_reconciliation,
+    list_ledger_entries as polymarket_list_ledger_entries,
   )
   from regime_service import (
     upsert_regime_snapshot,
@@ -2752,6 +2760,90 @@ def polymarket_replay_summary_api():
   days = int(request.args.get("days") or 7)
   out = polymarket_replay_summary(days=days)
   return jsonify({"ok": True, **out})
+
+
+@app.route("/api/v1/pnl/overview", methods=["GET"])
+def polymarket_pnl_overview_api():
+  user, err = _require_public_user()
+  if err:
+    return err
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(request.args.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
+  try:
+    days = int(request.args.get("days") or 30)
+  except Exception:
+    days = 30
+  out = polymarket_get_pnl_overview(account_id=account_id, days=days)
+  return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/pnl/reconciliation", methods=["GET"])
+def polymarket_pnl_reconciliation_api():
+  user, err = _require_public_user()
+  if err:
+    return err
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(request.args.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
+  out = polymarket_get_pnl_reconciliation(account_id=account_id)
+  return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/ledger/entries", methods=["GET"])
+def polymarket_ledger_entries_api():
+  user, err = _require_public_user()
+  if err:
+    return err
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(request.args.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
+  try:
+    limit = int(request.args.get("limit") or 200)
+  except Exception:
+    limit = 200
+  rows = polymarket_list_ledger_entries(
+    account_id=account_id,
+    start_at=str(request.args.get("start_at") or "").strip(),
+    end_at=str(request.args.get("end_at") or "").strip(),
+    market_id=str(request.args.get("market_id") or "").strip(),
+    strategy_type=str(request.args.get("strategy_type") or "").strip(),
+    limit=limit,
+  )
+  return jsonify({"ok": True, "account_id": account_id, "items": rows, "count": len(rows)})
+
+
+@app.route("/api/v1/pnl/rebuild", methods=["POST"])
+def polymarket_pnl_rebuild_api():
+  user, err = _require_public_user()
+  if err:
+    return err
+  payload = request.get_json(silent=True) or {}
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(payload.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
+  try:
+    lookback_days = int(payload.get("lookback_days") or 365)
+  except Exception:
+    lookback_days = 365
+  out = polymarket_rebuild_pnl_ledger(
+    account_id=account_id,
+    actor=str(user.get("email") or "operator"),
+    lookback_days=lookback_days,
+  )
+  return jsonify(out), (200 if out.get("ok") else 400)
 
 
 @app.route("/api/migrate", methods=["POST", "OPTIONS"])

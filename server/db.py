@@ -618,6 +618,94 @@ def init_db():
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS ledger_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL,
+      execution_id TEXT,
+      execution_leg_index INTEGER,
+      activity_type TEXT NOT NULL,
+      market_id TEXT,
+      token_id TEXT,
+      strategy_type TEXT,
+      usdc_delta REAL DEFAULT 0,
+      token_delta REAL DEFAULT 0,
+      fee_delta REAL DEFAULT 0,
+      rebate_delta REAL DEFAULT 0,
+      reward_delta REAL DEFAULT 0,
+      tx_hash TEXT,
+      fill_id TEXT,
+      occurred_at TEXT NOT NULL,
+      source_tag TEXT DEFAULT 'execution_derived',
+      metadata_json TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_ledger_entries_account_time ON ledger_entries(account_id, occurred_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_ledger_entries_market ON ledger_entries(account_id, market_id, occurred_at DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_ledger_entries_unique_leg
+      ON ledger_entries(account_id, execution_id, execution_leg_index, activity_type);
+
+    CREATE TABLE IF NOT EXISTS position_marks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL,
+      market_id TEXT,
+      token_id TEXT,
+      mark_price REAL,
+      mark_source TEXT DEFAULT 'account_positions',
+      qty REAL DEFAULT 0,
+      unrealized_pnl REAL DEFAULT 0,
+      ts TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_position_marks_account_ts ON position_marks(account_id, ts DESC);
+
+    CREATE TABLE IF NOT EXISTS pnl_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL,
+      ts TEXT NOT NULL,
+      realized_pnl REAL DEFAULT 0,
+      unrealized_pnl REAL DEFAULT 0,
+      fee_total REAL DEFAULT 0,
+      rebate_total REAL DEFAULT 0,
+      reward_total REAL DEFAULT 0,
+      total_pnl REAL DEFAULT 0,
+      calc_version TEXT DEFAULT 'v1',
+      metadata_json TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_pnl_snapshots_account_ts ON pnl_snapshots(account_id, ts DESC);
+
+    CREATE TABLE IF NOT EXISTS reconciliation_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL,
+      ts TEXT NOT NULL,
+      internal_total_pnl REAL DEFAULT 0,
+      positions_total_pnl REAL DEFAULT 0,
+      leaderboard_total_pnl REAL,
+      diff_internal_vs_positions REAL DEFAULT 0,
+      diff_internal_vs_leaderboard REAL,
+      status TEXT DEFAULT 'ok',
+      notes TEXT,
+      metadata_json TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_reconciliation_results_account_ts ON reconciliation_results(account_id, ts DESC);
+
+    CREATE TABLE IF NOT EXISTS strategy_attribution (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL,
+      strategy_id TEXT NOT NULL,
+      strategy_type TEXT,
+      volume REAL DEFAULT 0,
+      realized_pnl REAL DEFAULT 0,
+      unrealized_pnl REAL DEFAULT 0,
+      n_trades INTEGER DEFAULT 0,
+      ts TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_strategy_attr_account_ts ON strategy_attribution(account_id, ts DESC);
+
     CREATE TABLE IF NOT EXISTS regime_snapshots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       as_of_date TEXT NOT NULL,

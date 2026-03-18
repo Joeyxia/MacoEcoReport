@@ -1763,3 +1763,365 @@ def replay_summary(days=7):
     return {"since": since, "groups": rows, "summary": total}
   finally:
     conn.close()
+
+
+def rebuild_pnl_ledger(account_id, actor="system", lookback_days=365):
+  conn = get_conn()
+  try:
+    now = now_iso()
+    since = _fmt(_utc_now() - timedelta(days=max(1, int(lookback_days or 365))))
+    acc = _fetchone(conn, "SELECT id, user_id FROM trading_accounts WHERE id=?", (account_id,))
+    if not acc:
+      return {"ok": False, "error": "account_not_found"}
+
+    # Rebuild derived trade ledger entries from execution_legs.
+    conn.execute(
+      "DELETE FROM ledger_entries WHERE account_id=? AND source_tag='execution_derived'",
+      (account_id,),
+    )
+    legs = _fetchall(
+      conn,
+      """
+      SELECT
+        e.id AS execution_id,
+        e.arb_id,
+        e.created_at AS occurred_at,
+        e.status AS execution_status,
+        e.expected_profit,
+        e.realized_profit,
+        l.leg_index,
+        l.market_id,
+        l.token_id,
+        l.side,
+        l.qty,
+        l.avg_fill_price,
+        l.limit_price
+      FROM executions e
+      LEFT JOIN execution_legs l ON l.execution_id=e.id
+      WHERE e.account_id=? AND e.created_at>=?
+      ORDER BY e.created_at ASC, l.leg_index ASC
+      """,
+      (account_id, since),
+    )
+    inserted = 0
+    for lg in legs:
+      if lg.get("leg_index") is None:
+        continue
+      qty = float(lg.get("qty") or 0.0)
+      px = float(lg.get("avg_fill_price") or lg.get("limit_price") or 0.0)
+      side = str(lg.get("side") or "").upper()
+      if qty <= 0 or px <= 0 or side not in {"BUY", "SELL"}:
+        continue
+      usdc_delta = -(qty * px) if side == "BUY" else (qty * px)
+      token_delta = qty if side == "BUY" else -qty
+      strategy_row = _fetchone(conn, "SELECT strategy_type FROM arbitrage_opportunities WHERE id=?", (str(lg.get("arb_id") or ""),))
+      strategy_type = str((strategy_row or {}).get("strategy_type") or "")
+      fill_id = f"{lg.get('execution_id')}:{lg.get('leg_index')}"
+      activity_type = "TRADE_BUY" if side == "BUY" else "TRADE_SELL"
+      conn.execute(
+        """
+        INSERT INTO ledger_entries(
+          account_id, execution_id, execution_leg_index, activity_type, market_id, token_id, strategy_type,
+          usdc_delta, token_delta, fee_delta, rebate_delta, reward_delta, tx_hash, fill_id, occurred_at, source_tag,
+          metadata_json, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, '', ?, ?, 'execution_derived', ?, ?, ?)
+        """,
+        (
+          account_id,
+          str(lg.get("execution_id") or ""),
+          int(lg.get("leg_index") or 0),
+          activity_type,
+          str(lg.get("market_id") or ""),
+          str(lg.get("token_id") or ""),
+          strategy_type,
+          round(usdc_delta, 8),
+          round(token_delta, 8),
+          fill_id,
+          str(lg.get("occurred_at") or now),
+          json.dumps({
+            "qty": qty,
+            "price": px,
+            "execution_status": str(lg.get("execution_status") or ""),
+            "expected_profit": float(lg.get("expected_profit") or 0.0),
+            "realized_profit": float(lg.get("realized_profit") or 0.0),
+          }, ensure_ascii=False),
+          now,
+          now,
+        ),
+      )
+      inserted += 1
+
+    # Mark snapshot from current account_positions.
+    conn.execute("DELETE FROM position_marks WHERE account_id=? AND ts>=?", (account_id, since))
+    pos_rows = _fetchall(
+      conn,
+      """
+      SELECT market_id, token_id, qty, mark_price, unrealized_pnl, updated_at
+      FROM account_positions
+      WHERE account_id=?
+      """,
+      (account_id,),
+    )
+    for p in pos_rows:
+      conn.execute(
+        """
+        INSERT INTO position_marks(account_id, market_id, token_id, mark_price, mark_source, qty, unrealized_pnl, ts, created_at)
+        VALUES (?, ?, ?, ?, 'account_positions', ?, ?, ?, ?)
+        """,
+        (
+          account_id,
+          str(p.get("market_id") or ""),
+          str(p.get("token_id") or ""),
+          float(p.get("mark_price") or 0.0),
+          float(p.get("qty") or 0.0),
+          float(p.get("unrealized_pnl") or 0.0),
+          now,
+          now,
+        ),
+      )
+
+    # Snapshot totals.
+    ex = _fetchone(
+      conn,
+      """
+      SELECT
+        COALESCE(SUM(CASE WHEN status='filled' THEN realized_profit ELSE 0 END),0) AS realized_exec,
+        COUNT(1) AS n_exec
+      FROM executions
+      WHERE account_id=? AND created_at>=?
+      """,
+      (account_id, since),
+    ) or {}
+    led = _fetchone(
+      conn,
+      """
+      SELECT
+        COALESCE(SUM(fee_delta),0) AS fee_total,
+        COALESCE(SUM(rebate_delta),0) AS rebate_total,
+        COALESCE(SUM(reward_delta),0) AS reward_total
+      FROM ledger_entries
+      WHERE account_id=? AND occurred_at>=?
+      """,
+      (account_id, since),
+    ) or {}
+    pos = _fetchone(
+      conn,
+      "SELECT COALESCE(SUM(unrealized_pnl),0) AS unrealized_total FROM account_positions WHERE account_id=?",
+      (account_id,),
+    ) or {}
+    realized = float(ex.get("realized_exec") or 0.0)
+    fee_total = float(led.get("fee_total") or 0.0)
+    rebate_total = float(led.get("rebate_total") or 0.0)
+    reward_total = float(led.get("reward_total") or 0.0)
+    unrealized = float(pos.get("unrealized_total") or 0.0)
+    total = realized + unrealized + rebate_total + reward_total - abs(fee_total)
+    conn.execute(
+      """
+      INSERT INTO pnl_snapshots(
+        account_id, ts, realized_pnl, unrealized_pnl, fee_total, rebate_total, reward_total, total_pnl, calc_version, metadata_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'v1', ?, ?)
+      """,
+      (
+        account_id,
+        now,
+        round(realized, 8),
+        round(unrealized, 8),
+        round(fee_total, 8),
+        round(rebate_total, 8),
+        round(reward_total, 8),
+        round(total, 8),
+        json.dumps({"source": "rebuild_pnl_ledger", "lookback_days": int(lookback_days)}, ensure_ascii=False),
+        now,
+      ),
+    )
+
+    # Reconciliation.
+    positions_total = realized + unrealized
+    diff_pos = total - positions_total
+    status = "ok" if abs(diff_pos) <= 1.0 else ("warn" if abs(diff_pos) <= 5.0 else "critical")
+    conn.execute(
+      """
+      INSERT INTO reconciliation_results(
+        account_id, ts, internal_total_pnl, positions_total_pnl, leaderboard_total_pnl,
+        diff_internal_vs_positions, diff_internal_vs_leaderboard, status, notes, metadata_json, created_at
+      ) VALUES (?, ?, ?, ?, NULL, ?, NULL, ?, ?, ?, ?)
+      """,
+      (
+        account_id,
+        now,
+        round(total, 8),
+        round(positions_total, 8),
+        round(diff_pos, 8),
+        status,
+        "leaderboard reference not integrated",
+        json.dumps({"threshold_abs_diff": 1.0}, ensure_ascii=False),
+        now,
+      ),
+    )
+
+    # Strategy attribution from executions + opportunity strategy_type.
+    conn.execute("DELETE FROM strategy_attribution WHERE account_id=?", (account_id,))
+    strat_rows = _fetchall(
+      conn,
+      """
+      SELECT
+        COALESCE(o.strategy_type, 'unknown') AS strategy_type,
+        COALESCE(SUM(ABS(e.expected_profit)),0) AS volume,
+        COALESCE(SUM(CASE WHEN e.status='filled' THEN e.realized_profit ELSE 0 END),0) AS realized_pnl,
+        COUNT(1) AS n_trades
+      FROM executions e
+      LEFT JOIN arbitrage_opportunities o ON o.id=e.arb_id
+      WHERE e.account_id=? AND e.created_at>=?
+      GROUP BY COALESCE(o.strategy_type, 'unknown')
+      ORDER BY realized_pnl DESC
+      """,
+      (account_id, since),
+    )
+    for idx, r in enumerate(strat_rows, start=1):
+      st = str(r.get("strategy_type") or "unknown")
+      conn.execute(
+        """
+        INSERT INTO strategy_attribution(
+          account_id, strategy_id, strategy_type, volume, realized_pnl, unrealized_pnl, n_trades, ts, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
+        """,
+        (
+          account_id,
+          f"attr-{account_id}-{idx}",
+          st,
+          float(r.get("volume") or 0.0),
+          float(r.get("realized_pnl") or 0.0),
+          int(r.get("n_trades") or 0),
+          now,
+          now,
+          now,
+        ),
+      )
+
+    _write_audit(conn, actor, "pnl", account_id, "rebuild", "ok", {"ledger_entries": inserted, "strategies": len(strat_rows)})
+    conn.commit()
+    return {
+      "ok": True,
+      "account_id": account_id,
+      "inserted_ledger_entries": inserted,
+      "strategies": len(strat_rows),
+      "snapshot_ts": now,
+    }
+  finally:
+    conn.close()
+
+
+def get_pnl_overview(account_id, days=30):
+  conn = get_conn()
+  try:
+    since = _fmt(_utc_now() - timedelta(days=max(1, int(days or 30))))
+    latest = _fetchone(
+      conn,
+      """
+      SELECT ts, realized_pnl, unrealized_pnl, fee_total, rebate_total, reward_total, total_pnl, calc_version
+      FROM pnl_snapshots
+      WHERE account_id=?
+      ORDER BY ts DESC, id DESC
+      LIMIT 1
+      """,
+      (account_id,),
+    ) or {}
+    if not latest:
+      # soft fallback from executions/positions
+      ex = _fetchone(conn, "SELECT COALESCE(SUM(CASE WHEN status='filled' THEN realized_profit ELSE 0 END),0) AS rp FROM executions WHERE account_id=?", (account_id,)) or {}
+      pos = _fetchone(conn, "SELECT COALESCE(SUM(unrealized_pnl),0) AS up FROM account_positions WHERE account_id=?", (account_id,)) or {}
+      realized = float(ex.get("rp") or 0.0)
+      unrealized = float(pos.get("up") or 0.0)
+      latest = {
+        "ts": now_iso(),
+        "realized_pnl": round(realized, 8),
+        "unrealized_pnl": round(unrealized, 8),
+        "fee_total": 0.0,
+        "rebate_total": 0.0,
+        "reward_total": 0.0,
+        "total_pnl": round(realized + unrealized, 8),
+        "calc_version": "fallback",
+      }
+    series = _fetchall(
+      conn,
+      """
+      SELECT substr(ts, 1, 10) AS d, COALESCE(SUM(total_pnl),0) AS total_pnl
+      FROM pnl_snapshots
+      WHERE account_id=? AND ts>=?
+      GROUP BY substr(ts, 1, 10)
+      ORDER BY d ASC
+      """,
+      (account_id, since),
+    )
+    strat = _fetchall(
+      conn,
+      """
+      SELECT strategy_type, volume, realized_pnl, unrealized_pnl, n_trades, ts
+      FROM strategy_attribution
+      WHERE account_id=?
+      ORDER BY realized_pnl DESC, ts DESC
+      LIMIT 20
+      """,
+      (account_id,),
+    )
+    return {"ok": True, "account_id": account_id, "as_of": latest.get("ts"), "overview": latest, "series": series, "strategy_attribution": strat}
+  finally:
+    conn.close()
+
+
+def get_pnl_reconciliation(account_id):
+  conn = get_conn()
+  try:
+    row = _fetchone(
+      conn,
+      """
+      SELECT ts, internal_total_pnl, positions_total_pnl, leaderboard_total_pnl,
+             diff_internal_vs_positions, diff_internal_vs_leaderboard, status, notes, metadata_json
+      FROM reconciliation_results
+      WHERE account_id=?
+      ORDER BY ts DESC, id DESC
+      LIMIT 1
+      """,
+      (account_id,),
+    )
+    if not row:
+      return {"ok": True, "account_id": account_id, "status": "empty", "message": "no reconciliation snapshot"}
+    return {"ok": True, "account_id": account_id, "reconciliation": row}
+  finally:
+    conn.close()
+
+
+def list_ledger_entries(account_id, start_at="", end_at="", market_id="", strategy_type="", limit=200):
+  conn = get_conn()
+  try:
+    qs = ["account_id=?"]
+    params = [account_id]
+    if start_at:
+      qs.append("occurred_at>=?")
+      params.append(str(start_at))
+    if end_at:
+      qs.append("occurred_at<=?")
+      params.append(str(end_at))
+    if market_id:
+      qs.append("market_id=?")
+      params.append(str(market_id))
+    if strategy_type:
+      qs.append("strategy_type=?")
+      params.append(str(strategy_type))
+    params.append(max(1, min(int(limit or 200), 2000)))
+    where = " AND ".join(qs)
+    rows = _fetchall(
+      conn,
+      f"""
+      SELECT id, account_id, execution_id, execution_leg_index, activity_type, market_id, token_id, strategy_type,
+             usdc_delta, token_delta, fee_delta, rebate_delta, reward_delta, tx_hash, fill_id, occurred_at, source_tag, metadata_json
+      FROM ledger_entries
+      WHERE {where}
+      ORDER BY occurred_at DESC, id DESC
+      LIMIT ?
+      """,
+      tuple(params),
+    )
+    return rows
+  finally:
+    conn.close()

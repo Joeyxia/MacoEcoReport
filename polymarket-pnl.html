@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="macro-api-base" content="https://api.nexo.hk" />
+    <title data-i18n="title_polymarket_pnl">Macro Risk Monitor | Polymarket PnL</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=20260318p1" />
+    <script src="auth-guard.js?v=20260317a1" defer></script>
+    <script src="app.js?v=20260317b2" defer></script>
+    <style>
+      .pnl-wrap { max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; }
+      .pnl-grid { display:grid; gap:12px; grid-template-columns: repeat(12, minmax(0,1fr)); }
+      .pnl-card { grid-column: span 12; background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:14px; padding:14px; }
+      .pnl-card.half { grid-column: span 6; }
+      .pnl-title { margin:0 0 10px; font-size:20px; color:#112b34; font-weight:700; }
+      .pnl-kpis { display:grid; gap:10px; grid-template-columns:repeat(5,minmax(0,1fr)); }
+      .pnl-kpi { border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:10px; background:#fff; }
+      .pnl-k { color:#5a727a; font-size:12px; }
+      .pnl-v { color:#15323b; font-size:28px; font-weight:700; margin-top:4px; }
+      .pnl-sub { color:#5a727a; font-size:12px; margin-top:2px; }
+      .pnl-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+      .pnl-input { border:1px solid rgba(10,40,40,.25); border-radius:10px; padding:10px 12px; min-width:180px; }
+      .pnl-btn { border:1px solid #0b8170; background:#0b8170; color:#fff; border-radius:10px; padding:10px 14px; font-weight:600; cursor:pointer; }
+      .pnl-btn.ghost { background:#fff; color:#0b8170; }
+      .pnl-table-wrap { overflow:auto; max-height:420px; border:1px solid rgba(10,40,40,.12); border-radius:12px; }
+      .pnl-table { width:100%; border-collapse:collapse; font-size:13px; }
+      .pnl-table th, .pnl-table td { border-bottom:1px solid rgba(10,40,40,.12); padding:8px; text-align:left; }
+      .pnl-table th { position:sticky; top:0; background:#f6fbfa; z-index:1; }
+      .pnl-table td.num, .pnl-table th.num { text-align:right; }
+      .pnl-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .pnl-toast { margin:10px 0; border-radius:10px; padding:10px 12px; font-size:14px; border:1px solid rgba(10,40,40,.16); background:#f5f7f8; color:#36525b; display:none; }
+      .pnl-toast.show { display:block; }
+      .pnl-pill { display:inline-block; border:1px solid rgba(10,40,40,.16); border-radius:999px; padding:2px 8px; font-size:12px; }
+      .pnl-pill.ok { color:#0b6f55; border-color:rgba(12,130,96,.35); background:#eef9f5; }
+      .pnl-pill.warn { color:#a06a00; border-color:rgba(197,138,0,.35); background:#fff7e2; }
+      .pnl-pill.critical { color:#a13030; border-color:rgba(176,40,40,.35); background:#fff2f2; }
+      @media (max-width: 980px) {
+        .pnl-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .pnl-card.half { grid-column: span 12; }
+      }
+    </style>
+  </head>
+  <body data-page="polymarket-pnl">
+    <div class="bg-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="index.html" data-i18n="brand_name">Macro Risk Monitor</a>
+      <nav>
+        <a class="nav-link" href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
+        <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
+        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
+        <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
+        <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
+        <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
+        <a class="nav-link" href="portfolio-watchlist.html" data-i18n="nav_portfolio_watchlist">Portfolio Watchlist</a>
+        <a class="nav-link" href="regime-transmission.html" data-i18n="nav_regime_transmission">Regime & Transmission</a>
+        <a class="nav-link" href="stock-prediction.html" data-i18n="nav_stock_prediction">Stock Prediction</a>
+        <a class="nav-link" href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
+        <a class="nav-link active" href="polymarket-pnl.html" data-i18n="nav_polymarket_pnl">Polymarket PnL</a>
+        <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
+        <a class="nav-link" href="about.html" data-i18n="nav_intro">About Nexo</a>
+      </nav>
+      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
+    </header>
+
+    <main class="page pnl-wrap">
+      <section class="pnl-card">
+        <h1 class="pnl-title" id="pageTitle">Polymarket PnL & Ledger Console</h1>
+        <div class="pnl-row">
+          <input id="accountId" class="pnl-input pnl-mono" placeholder="account id (optional)" />
+          <input id="days" class="pnl-input" type="number" min="1" max="3650" value="30" />
+          <button id="btnRefresh" class="pnl-btn">Refresh</button>
+          <button id="btnRebuild" class="pnl-btn ghost">Rebuild Ledger</button>
+        </div>
+        <div id="toast" class="pnl-toast"></div>
+        <div class="pnl-kpis">
+          <div class="pnl-kpi"><div class="pnl-k" id="k_total">Total PnL</div><div class="pnl-v" id="v_total">--</div><div class="pnl-sub" id="s_total">--</div></div>
+          <div class="pnl-kpi"><div class="pnl-k" id="k_realized">Realized</div><div class="pnl-v" id="v_realized">--</div><div class="pnl-sub">USDC</div></div>
+          <div class="pnl-kpi"><div class="pnl-k" id="k_unrealized">Unrealized</div><div class="pnl-v" id="v_unrealized">--</div><div class="pnl-sub">USDC</div></div>
+          <div class="pnl-kpi"><div class="pnl-k" id="k_fee">Fees</div><div class="pnl-v" id="v_fee">--</div><div class="pnl-sub">USDC</div></div>
+          <div class="pnl-kpi"><div class="pnl-k" id="k_recon">Reconciliation</div><div class="pnl-v" id="v_recon">--</div><div class="pnl-sub" id="s_recon">--</div></div>
+        </div>
+      </section>
+
+      <section class="pnl-grid" style="margin-top:12px;">
+        <div class="pnl-card half">
+          <h2 class="pnl-title" id="title_attr" style="font-size:18px;">Strategy Attribution</h2>
+          <div class="pnl-table-wrap">
+            <table class="pnl-table" id="attrTable">
+              <thead><tr><th>Strategy</th><th class="num">Trades</th><th class="num">Volume</th><th class="num">Realized</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="pnl-card half">
+          <h2 class="pnl-title" id="title_recon" style="font-size:18px;">Reconciliation</h2>
+          <div class="pnl-table-wrap">
+            <table class="pnl-table" id="reconTable">
+              <thead><tr><th>Field</th><th class="num">Value</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="pnl-card">
+          <h2 class="pnl-title" id="title_ledger" style="font-size:18px;">Ledger Entries</h2>
+          <div class="pnl-row">
+            <input id="fMarket" class="pnl-input" placeholder="market_id" />
+            <input id="fStrategy" class="pnl-input" placeholder="strategy_type" />
+            <input id="fLimit" class="pnl-input" type="number" min="1" max="2000" value="200" />
+            <button id="btnFilter" class="pnl-btn ghost">Apply Filter</button>
+          </div>
+          <div class="pnl-table-wrap">
+            <table class="pnl-table" id="ledgerTable">
+              <thead>
+                <tr>
+                  <th>Time</th><th>Type</th><th>Market</th><th>Token</th><th class="num">USDC Δ</th><th class="num">Token Δ</th><th>Execution</th><th>Strategy</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const I18N = {
+        en: {
+          pageTitle: "Polymarket PnL & Ledger Console",
+          refresh: "Refresh",
+          rebuild: "Rebuild Ledger",
+          filter: "Apply Filter",
+          total: "Total PnL",
+          realized: "Realized",
+          unrealized: "Unrealized",
+          fee: "Fees",
+          recon: "Reconciliation",
+          attrTitle: "Strategy Attribution",
+          reconTitle: "Reconciliation",
+          ledgerTitle: "Ledger Entries",
+          placeholderAccount: "account id (optional)",
+          placeholderMarket: "market_id",
+          placeholderStrategy: "strategy_type",
+          refreshed: "Refreshed",
+          rebuildDone: "Rebuild done",
+          noData: "No data",
+          noLedger: "No ledger entries. Try rebuild or widen filters.",
+          status: "Status",
+          internal: "Internal Total PnL",
+          positions: "Positions Total PnL",
+          leaderboard: "Leaderboard Total PnL",
+          diffPos: "Diff (Internal vs Positions)",
+          diffLb: "Diff (Internal vs Leaderboard)",
+          ts: "TS",
+          notes: "Notes",
+          asof: "as of",
+          initFail: "Init failed",
+          refreshFail: "Refresh failed",
+          rebuildFail: "Rebuild failed",
+          filterFail: "Filter failed",
+          usdc: "USDC",
+        },
+        zh: {
+          pageTitle: "Polymarket PnL 与交易账本控制台",
+          refresh: "刷新",
+          rebuild: "重建账本",
+          filter: "应用筛选",
+          total: "总 PnL",
+          realized: "已实现",
+          unrealized: "未实现",
+          fee: "手续费",
+          recon: "对账状态",
+          attrTitle: "策略归因",
+          reconTitle: "对账结果",
+          ledgerTitle: "账本分录",
+          placeholderAccount: "账户ID（可选）",
+          placeholderMarket: "市场ID",
+          placeholderStrategy: "策略类型",
+          refreshed: "已刷新",
+          rebuildDone: "重建完成",
+          noData: "暂无数据",
+          noLedger: "暂无账本分录，请先重建或放宽筛选条件。",
+          status: "状态",
+          internal: "内部总PnL",
+          positions: "持仓口径总PnL",
+          leaderboard: "Leaderboard口径总PnL",
+          diffPos: "差异（内部 vs 持仓）",
+          diffLb: "差异（内部 vs Leaderboard）",
+          ts: "时间",
+          notes: "备注",
+          asof: "截至",
+          initFail: "初始化失败",
+          refreshFail: "刷新失败",
+          rebuildFail: "重建失败",
+          filterFail: "筛选失败",
+          usdc: "USDC",
+        }
+      };
+      function lang(){ try { return localStorage.getItem('macro-monitor-lang') === 'zh' ? 'zh' : 'en'; } catch { return 'en'; } }
+      function t(k){ const l=lang(); return (I18N[l] && I18N[l][k]) || I18N.en[k] || k; }
+      function applyI18n(){
+        document.getElementById('pageTitle').textContent=t('pageTitle');
+        document.getElementById('btnRefresh').textContent=t('refresh');
+        document.getElementById('btnRebuild').textContent=t('rebuild');
+        document.getElementById('btnFilter').textContent=t('filter');
+        document.getElementById('k_total').textContent=t('total');
+        document.getElementById('k_realized').textContent=t('realized');
+        document.getElementById('k_unrealized').textContent=t('unrealized');
+        document.getElementById('k_fee').textContent=t('fee');
+        document.getElementById('k_recon').textContent=t('recon');
+        document.getElementById('title_attr').textContent=t('attrTitle');
+        document.getElementById('title_recon').textContent=t('reconTitle');
+        document.getElementById('title_ledger').textContent=t('ledgerTitle');
+        document.getElementById('accountId').placeholder=t('placeholderAccount');
+        document.getElementById('fMarket').placeholder=t('placeholderMarket');
+        document.getElementById('fStrategy').placeholder=t('placeholderStrategy');
+      }
+      function num(v){ const n=Number(v||0); return Number.isFinite(n)? n.toLocaleString(undefined,{maximumFractionDigits:4}):"--"; }
+      function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); }
+      async function jfetch(url,opt){ const r=await fetch(url,opt||{}); const d=await r.json().catch(()=>({ok:false,error:'bad_json'})); if(!r.ok||d.ok===false) throw new Error(d.detail||d.error||('http_'+r.status)); return d; }
+
+      function currentAccountId(){ return String(document.getElementById('accountId').value||'').trim(); }
+      function currentDays(){ return Math.max(1, Number(document.getElementById('days').value||30)); }
+
+      function renderAttr(rows){
+        const tb=document.querySelector('#attrTable tbody'); tb.innerHTML='';
+        if(!rows.length){ tb.innerHTML=`<tr><td colspan="4">${t('noData')}</td></tr>`; return; }
+        for(const r of rows){
+          const tr=document.createElement('tr');
+          tr.innerHTML=`<td>${r.strategy_type||'unknown'}</td><td class="num">${num(r.n_trades)}</td><td class="num">${num(r.volume)}</td><td class="num">${num(r.realized_pnl)}</td>`;
+          tb.appendChild(tr);
+        }
+      }
+
+      function renderRecon(rec){
+        const tb=document.querySelector('#reconTable tbody'); tb.innerHTML='';
+        const rows=[
+          [t('status'), `<span class="pnl-pill ${(rec.status||'').toLowerCase()}">${rec.status||'--'}</span>`],
+          [t('internal'), num(rec.internal_total_pnl)],
+          [t('positions'), num(rec.positions_total_pnl)],
+          [t('leaderboard'), rec.leaderboard_total_pnl==null?'--':num(rec.leaderboard_total_pnl)],
+          [t('diffPos'), num(rec.diff_internal_vs_positions)],
+          [t('diffLb'), rec.diff_internal_vs_leaderboard==null?'--':num(rec.diff_internal_vs_leaderboard)],
+          [t('ts'), rec.ts||'--'],
+          [t('notes'), rec.notes||'--'],
+        ];
+        for(const [k,v] of rows){
+          const tr=document.createElement('tr'); tr.innerHTML=`<td>${k}</td><td class="num">${v}</td>`; tb.appendChild(tr);
+        }
+      }
+
+      function renderLedger(rows){
+        const tb=document.querySelector('#ledgerTable tbody'); tb.innerHTML='';
+        if(!rows.length){ tb.innerHTML=`<tr><td colspan="8">${t('noLedger')}</td></tr>`; return; }
+        for(const r of rows){
+          const tr=document.createElement('tr');
+          tr.innerHTML=`<td>${r.occurred_at||'--'}</td><td>${r.activity_type||'--'}</td><td class="pnl-mono">${r.market_id||'--'}</td><td class="pnl-mono">${r.token_id||'--'}</td><td class="num">${num(r.usdc_delta)}</td><td class="num">${num(r.token_delta)}</td><td class="pnl-mono">${r.execution_id||'--'}</td><td>${r.strategy_type||'--'}</td>`;
+          tb.appendChild(tr);
+        }
+      }
+
+      async function refreshAll(){
+        const aid=currentAccountId();
+        const days=currentDays();
+        const qAid=aid?`&account_id=${encodeURIComponent(aid)}`:'';
+        const ov=await jfetch(`/api/v1/pnl/overview?days=${days}${qAid}`);
+        const rec=await jfetch(`/api/v1/pnl/reconciliation?${aid?`account_id=${encodeURIComponent(aid)}`:''}`);
+        const limit=Math.max(1,Math.min(2000,Number(document.getElementById('fLimit').value||200)));
+        const fMarket=String(document.getElementById('fMarket').value||'').trim();
+        const fStrategy=String(document.getElementById('fStrategy').value||'').trim();
+        const q=new URLSearchParams();
+        if(aid) q.set('account_id',aid);
+        q.set('limit',String(limit));
+        if(fMarket) q.set('market_id',fMarket);
+        if(fStrategy) q.set('strategy_type',fStrategy);
+        const le=await jfetch(`/api/v1/ledger/entries?${q.toString()}`);
+
+        const o=ov.overview||{};
+        document.getElementById('v_total').textContent=num(o.total_pnl);
+        document.getElementById('s_total').textContent=`${t('asof')} ${ov.as_of||'--'}`;
+        document.getElementById('v_realized').textContent=num(o.realized_pnl);
+        document.getElementById('v_unrealized').textContent=num(o.unrealized_pnl);
+        document.getElementById('v_fee').textContent=num(o.fee_total);
+        const r=rec.reconciliation||{};
+        document.getElementById('v_recon').textContent=(r.status||'--').toUpperCase();
+        document.getElementById('s_recon').textContent=`diff=${num(r.diff_internal_vs_positions)}`;
+
+        renderAttr(ov.strategy_attribution||[]);
+        renderRecon(r);
+        renderLedger(le.items||[]);
+        toast(t('refreshed'));
+      }
+
+      async function rebuild(){
+        const aid=currentAccountId();
+        const out=await jfetch('/api/v1/pnl/rebuild',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account_id:aid,lookback_days:365})});
+        toast(`${t('rebuildDone')}: ledger=${out.inserted_ledger_entries||0}`);
+      }
+
+      document.addEventListener('DOMContentLoaded', async ()=>{
+        applyI18n();
+        document.getElementById('btnRefresh').onclick=async()=>{ try{ await refreshAll(); }catch(e){ toast(`${t('refreshFail')}: ${e.message}`);} };
+        document.getElementById('btnFilter').onclick=async()=>{ try{ await refreshAll(); }catch(e){ toast(`${t('filterFail')}: ${e.message}`);} };
+        document.getElementById('btnRebuild').onclick=async()=>{ try{ await rebuild(); await refreshAll(); }catch(e){ toast(`${t('rebuildFail')}: ${e.message}`);} };
+        document.getElementById('lang-toggle')?.addEventListener('click', ()=>setTimeout(()=>applyI18n(),0));
+        try{ await refreshAll(); }catch(e){ toast(`${t('initFail')}: ${e.message}`); }
+      });
+    </script>
+  </body>
+</html>
