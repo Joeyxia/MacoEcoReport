@@ -13,10 +13,11 @@
     <script src="auth-guard.js?v=20260317a1" defer></script>
     <script src="app.js?v=20260317b2" defer></script>
     <style>
-      .pnl-wrap { max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; }
-      .pnl-grid { display:grid; gap:12px; grid-template-columns: repeat(12, minmax(0,1fr)); }
+      .pnl-wrap { width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
+      .pnl-grid { display:grid; gap:12px; grid-template-columns: repeat(2, minmax(0,1fr)); align-items:start; }
       .pnl-card { grid-column: span 12; background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:14px; padding:14px; }
-      .pnl-card.half { grid-column: span 6; }
+      .pnl-card.half { grid-column: span 1; min-width: 0; }
+      .pnl-grid > .pnl-card:not(.half) { grid-column: 1 / -1; min-width: 0; }
       .pnl-status-row { display:grid; gap:10px; grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:10px; }
       .pnl-status { border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:8px 10px; background:#fff; }
       .pnl-title { margin:0 0 10px; font-size:20px; color:#112b34; font-weight:700; }
@@ -31,7 +32,7 @@
       .pnl-btn.ghost { background:#fff; color:#0b8170; }
       .pnl-chart-wrap { border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:10px; height:280px; background:#fff; }
       .pnl-table-wrap { overflow:auto; max-height:420px; border:1px solid rgba(10,40,40,.12); border-radius:12px; }
-      .pnl-table { width:100%; border-collapse:collapse; font-size:13px; }
+      .pnl-table { width:100%; min-width: 760px; border-collapse:collapse; font-size:13px; }
       .pnl-table th, .pnl-table td { border-bottom:1px solid rgba(10,40,40,.12); padding:8px; text-align:left; }
       .pnl-table th { position:sticky; top:0; background:#f6fbfa; z-index:1; }
       .pnl-table td.num, .pnl-table th.num { text-align:right; }
@@ -51,7 +52,8 @@
       .pnl-table tbody tr:hover { background:#f6fbfa; }
       @media (max-width: 980px) {
         .pnl-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
-        .pnl-card.half { grid-column: span 12; }
+        .pnl-grid { grid-template-columns: 1fr; }
+        .pnl-card.half { grid-column: span 1; }
         .pnl-status-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
       }
     </style>
@@ -162,6 +164,20 @@
     <script>
       const I18N = {
         en: {
+          brand_name: "Macro Risk Monitor",
+          nav_dashboard: "Dashboard",
+          nav_daily_report: "Daily Report",
+          nav_indicators: "Indicators",
+          nav_glossary: "Glossary",
+          nav_subscribe: "Subscribe",
+          nav_ai_assistant: "AI Assistant",
+          nav_portfolio_watchlist: "Portfolio Watchlist",
+          nav_regime_transmission: "Regime & Transmission",
+          nav_stock_prediction: "Stock Prediction",
+          nav_polymarket: "Polymarket",
+          nav_polymarket_pnl: "Polymarket PnL",
+          nav_openrouter: "OpenRouter",
+          nav_intro: "About Nexo",
           pageTitle: "Polymarket PnL & Ledger Console",
           refresh: "Refresh",
           rebuild: "Rebuild Ledger",
@@ -227,6 +243,20 @@
           thrApplied: "Threshold applied"
         },
         zh: {
+          brand_name: "宏观风险监测",
+          nav_dashboard: "仪表盘",
+          nav_daily_report: "每日报告",
+          nav_indicators: "指标库",
+          nav_glossary: "术语表",
+          nav_subscribe: "订阅",
+          nav_ai_assistant: "AI 助手",
+          nav_portfolio_watchlist: "组合观察池",
+          nav_regime_transmission: "状态与传导",
+          nav_stock_prediction: "股票预测",
+          nav_polymarket: "Polymarket",
+          nav_polymarket_pnl: "Polymarket PnL账本",
+          nav_openrouter: "OpenRouter",
+          nav_intro: "功能介绍",
           pageTitle: "Polymarket PnL 与交易账本控制台",
           refresh: "刷新",
           rebuild: "重建账本",
@@ -293,6 +323,11 @@
         }
       };
       function lang(){ try { return localStorage.getItem('macro-monitor-lang') === 'zh' ? 'zh' : 'en'; } catch { return 'en'; } }
+      function setLangSafe(next){
+        const v = next === 'zh' ? 'zh' : 'en';
+        try { localStorage.setItem('macro-monitor-lang', v); } catch {}
+        document.documentElement.lang = v;
+      }
       function t(k){ const l=lang(); return (I18N[l] && I18N[l][k]) || I18N.en[k] || k; }
       const THR_WARN_KEY = 'polymarket_pnl_thr_warn';
       const THR_CRIT_KEY = 'polymarket_pnl_thr_crit';
@@ -318,6 +353,13 @@
         return 'ok';
       }
       function applyI18n(){
+        document.querySelectorAll('[data-i18n]').forEach((node)=>{
+          const key = node.getAttribute('data-i18n');
+          const val = t(key);
+          if (val) node.textContent = val;
+        });
+        const toggle = document.getElementById('lang-toggle');
+        if (toggle) toggle.textContent = lang() === 'zh' ? 'EN' : '中文';
         document.getElementById('pageTitle').textContent=t('pageTitle');
         document.getElementById('btnRefresh').textContent=t('refresh');
         document.getElementById('btnRebuild').textContent=t('rebuild');
@@ -498,6 +540,7 @@
       }
 
       document.addEventListener('DOMContentLoaded', async ()=>{
+        setLangSafe(lang());
         applyI18n();
         applyThresholdInputs();
         setPageState(t('stateReady'));
@@ -515,7 +558,11 @@
           await refreshAll();
           toast(t('thrApplied'),'ok');
         };
-        document.getElementById('lang-toggle')?.addEventListener('click', ()=>setTimeout(()=>applyI18n(),0));
+        document.getElementById('lang-toggle')?.addEventListener('click', async ()=>{
+          setLangSafe(lang() === 'zh' ? 'en' : 'zh');
+          applyI18n();
+          await refreshAll();
+        });
         try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('initFail')}: ${e.message}`); toast(`${t('initFail')}: ${e.message}`,'err'); }
       });
     </script>
