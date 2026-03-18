@@ -450,6 +450,17 @@ def _polymarket_auto_engine_loop():
         "last_errors": errors[:20],
         "last_account_stats": account_stats[:50],
       })
+    try:
+      app.logger.info(
+        "polymarket_auto_engine tick=%s scan=%s active_accounts=%s executed=%s errors=%s",
+        tick_at,
+        scan_count,
+        active_accounts,
+        executed_total,
+        len(errors),
+      )
+    except Exception:
+      pass
     sleep_s = max(1, int(cfg["interval_sec"]) - max(0, int((time.time() - started))))
     time.sleep(sleep_s)
 
