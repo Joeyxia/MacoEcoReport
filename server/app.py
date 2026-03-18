@@ -14,6 +14,10 @@ import urllib.error
 from threading import Lock, Thread
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+try:
+  import fcntl
+except Exception:
+  fcntl = None
 
 from flask import Flask, jsonify, request, send_from_directory, redirect, session
 
@@ -283,6 +287,20 @@ _cache_lock = Lock()
 _openai_queue_lock = Lock()
 _openai_next_allowed_at = 0.0
 _stock_train_lock = Lock()
+_polymarket_auto_lock = Lock()
+_polymarket_auto_thread = None
+_polymarket_auto_file_lock = None
+_polymarket_auto_state = {
+  "running": False,
+  "started_at": "",
+  "last_tick_at": "",
+  "last_duration_ms": 0,
+  "last_scan_count": 0,
+  "last_active_accounts": 0,
+  "last_executed": 0,
+  "last_errors": [],
+  "last_account_stats": [],
+}
 PUBLIC_AUTH_EXEMPT_PATHS = {
   "/api/health",
   "/api/auth/register",
@@ -329,6 +347,131 @@ def _start_stock_train_async(ticker: str):
       pass
   th = Thread(target=_runner, daemon=True, name=f"stock-train-{t}")
   th.start()
+
+
+def _polymarket_auto_cfg():
+  return {
+    "enabled": str(os.environ.get("POLYMARKET_AUTO_ENGINE_ENABLED", "true")).strip().lower() in {"1", "true", "yes", "on"},
+    "interval_sec": max(5, int(os.environ.get("POLYMARKET_AUTO_SCAN_INTERVAL_SEC", "30"))),
+    "scan_limit": max(1, min(int(os.environ.get("POLYMARKET_AUTO_SCAN_LIMIT", "30")), 120)),
+    "exec_per_account": max(1, min(int(os.environ.get("POLYMARKET_AUTO_EXEC_PER_ACCOUNT", "1")), 10)),
+    "lock_file": str(os.environ.get("POLYMARKET_AUTO_LOCKFILE", "/tmp/nexo_polymarket_auto_engine.lock")).strip(),
+  }
+
+
+def _try_acquire_polymarket_auto_lock(lock_file: str):
+  global _polymarket_auto_file_lock
+  if _polymarket_auto_file_lock is not None:
+    return True
+  if not fcntl:
+    return True
+  try:
+    fd = open(lock_file, "a+")
+    fcntl.flock(fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    _polymarket_auto_file_lock = fd
+    return True
+  except Exception:
+    return False
+
+
+def _polymarket_auto_engine_loop():
+  cfg = _polymarket_auto_cfg()
+  with _polymarket_auto_lock:
+    _polymarket_auto_state["running"] = True
+    _polymarket_auto_state["started_at"] = now_iso()
+  while True:
+    started = time.time()
+    tick_at = now_iso()
+    scan_count = 0
+    active_accounts = 0
+    executed_total = 0
+    account_stats = []
+    errors = []
+    try:
+      all_accounts = polymarket_list_trading_accounts()
+      auto_accounts = []
+      for acc in all_accounts or []:
+        if str(acc.get("status") or "").strip().lower() != "connected":
+          continue
+        account_id = str(acc.get("id") or "").strip()
+        if not account_id:
+          continue
+        lim = polymarket_get_risk_limits(account_id) or {}
+        if int(lim.get("auto_trading") or 0) != 1:
+          continue
+        auto_accounts.append(account_id)
+      active_accounts = len(auto_accounts)
+      scan_out = polymarket_scan_opportunities(
+        limit=cfg["scan_limit"],
+        include_near_miss=False,
+      )
+      if isinstance(scan_out, dict):
+        scan_items = list(scan_out.get("items") or [])
+      else:
+        scan_items = list(scan_out or [])
+      scan_items.sort(key=lambda x: float((x or {}).get("vwap_profit") or 0.0), reverse=True)
+      scan_count = len(scan_items)
+      for account_id in auto_accounts:
+        executed = 0
+        skipped = 0
+        for opp in scan_items:
+          if executed >= cfg["exec_per_account"]:
+            break
+          opp_id = str((opp or {}).get("id") or "").strip()
+          if not opp_id:
+            continue
+          try:
+            out = polymarket_evaluate_and_execute(account_id, opp_id, actor="auto_engine")
+          except Exception as e:
+            skipped += 1
+            errors.append(f"{account_id}:{opp_id}:{str(e)[:120]}")
+            continue
+          if out.get("ok"):
+            executed += 1
+            executed_total += 1
+          else:
+            skipped += 1
+        account_stats.append({
+          "account_id": account_id,
+          "executed": executed,
+          "skipped": skipped,
+        })
+    except Exception as e:
+      errors.append(str(e)[:200])
+    duration_ms = int((time.time() - started) * 1000)
+    with _polymarket_auto_lock:
+      _polymarket_auto_state.update({
+        "running": True,
+        "last_tick_at": tick_at,
+        "last_duration_ms": duration_ms,
+        "last_scan_count": scan_count,
+        "last_active_accounts": active_accounts,
+        "last_executed": executed_total,
+        "last_errors": errors[:20],
+        "last_account_stats": account_stats[:50],
+      })
+    sleep_s = max(1, int(cfg["interval_sec"]) - max(0, int((time.time() - started))))
+    time.sleep(sleep_s)
+
+
+def _start_polymarket_auto_engine():
+  global _polymarket_auto_thread
+  cfg = _polymarket_auto_cfg()
+  if not cfg["enabled"]:
+    return
+  with _polymarket_auto_lock:
+    if _polymarket_auto_thread and _polymarket_auto_thread.is_alive():
+      return
+    if not _try_acquire_polymarket_auto_lock(cfg["lock_file"]):
+      _polymarket_auto_state["running"] = False
+      _polymarket_auto_state["last_errors"] = [f"lock_not_acquired:{cfg['lock_file']}"]
+      return
+    th = Thread(target=_polymarket_auto_engine_loop, daemon=True, name="polymarket-auto-engine")
+    th.start()
+    _polymarket_auto_thread = th
+
+
+_start_polymarket_auto_engine()
 
 
 @app.errorhandler(413)
@@ -2507,6 +2650,18 @@ def polymarket_live_diagnostics():
     })
   except Exception as e:
     return jsonify({"ok": False, "error": "diagnostics_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/v1/polymarket/auto-engine/status", methods=["GET"])
+def polymarket_auto_engine_status():
+  cfg = _polymarket_auto_cfg()
+  with _polymarket_auto_lock:
+    state = dict(_polymarket_auto_state)
+  state["enabled"] = bool(cfg["enabled"])
+  state["interval_sec"] = int(cfg["interval_sec"])
+  state["scan_limit"] = int(cfg["scan_limit"])
+  state["exec_per_account"] = int(cfg["exec_per_account"])
+  return jsonify({"ok": True, **state})
 
 
 @app.route("/api/v1/opportunities", methods=["GET"])
