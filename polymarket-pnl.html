@@ -8,10 +8,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260319pnl4" />
+    <link rel="stylesheet" href="styles.css?v=20260319pnl5" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260319pnl4" defer></script>
+    <script src="app.js?v=20260319pnl5" defer></script>
+    <script>
+      (function ensureLatestPnlPage(){
+        const v = "20260319pnl5";
+        const u = new URL(window.location.href);
+        if (u.searchParams.get("v") !== v) {
+          u.searchParams.set("v", v);
+          window.location.replace(u.toString());
+        }
+      })();
+    </script>
     <style>
       .page.pnl-wrap { display:block !important; width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
       .pnl-grid { display:grid !important; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; }
@@ -257,11 +267,11 @@
           nav_polymarket_pnl: "Polymarket PnL账本",
           nav_openrouter: "OpenRouter",
           nav_intro: "功能介绍",
-          pageTitle: "Polymarket PnL 与交易账本控制台",
+          pageTitle: "Polymarket 盈亏与交易账本控制台",
           refresh: "刷新",
           rebuild: "重建账本",
           filter: "应用筛选",
-          total: "总 PnL",
+          total: "总盈亏",
           realized: "已实现",
           unrealized: "未实现",
           fee: "手续费",
@@ -290,11 +300,11 @@
           colTokenDelta: "代币变化",
           colExecution: "执行单",
           colStrategyType: "策略",
-          trendSeries: "总 PnL",
+          trendSeries: "总盈亏",
           status: "状态",
-          internal: "内部总PnL",
-          positions: "持仓口径总PnL",
-          leaderboard: "排行榜口径总PnL",
+          internal: "内部口径总盈亏",
+          positions: "持仓口径总盈亏",
+          leaderboard: "排行榜口径总盈亏",
           diffPos: "差异（内部 vs 持仓）",
           diffLb: "差异（内部 vs 排行榜）",
           ts: "时间",
@@ -316,7 +326,7 @@
           invalidDays: "天数范围必须在 1 到 3650 之间。",
           invalidThreshold: "阈值必须是非负数字。",
           confirmRebuild: "现在重建账本吗？该操作会重算PnL快照。",
-          trendTitle: "PnL 趋势（日频）",
+          trendTitle: "盈亏趋势（日频）",
           thrLabel: "对账阈值（绝对差值）：警告 / 严重",
           thrApply: "应用阈值",
           thrApplied: "阈值已应用"
