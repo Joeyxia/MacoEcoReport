@@ -3,6 +3,7 @@ import json
 import math
 import os
 import random
+import hashlib
 from datetime import datetime, timedelta, timezone
 
 try:
@@ -317,7 +318,9 @@ def account_connect(user_id, account_type, signer_address, funder_address, signa
     if live_client.enabled and env_signer and in_signer and in_signer != env_signer:
       return {"ok": False, "error": "signer_mismatch_with_server_key", "expected_signer": env_signer}
 
-    account_id = f"acct-{str(user_id or 'user')}-{abs(hash(str(signer_address or 'na'))) % 1000000}"
+    signer_norm = str(signer_address or "").strip().lower()
+    stable = hashlib.sha1(signer_norm.encode("utf-8")).hexdigest()[:10]
+    account_id = f"acct-{str(user_id or 'user')}-{stable}"
     ts = now_iso()
     conn.execute(
       """
@@ -611,7 +614,33 @@ def list_trading_accounts(user_id=""):
         ORDER BY updated_at DESC
         """,
       )
-    return rows
+    # Deduplicate same signer accounts (legacy random-id bug) and prefer real proxy/api-wallet config.
+    def _rank(r):
+      sig = str(r.get("signature_type") or "").strip().lower()
+      signer = str(r.get("signer_address") or "").strip().lower()
+      funder = str(r.get("funder_address") or "").strip().lower()
+      cred = _fetchone(
+        conn,
+        "SELECT status, key_version, last_verified_at FROM polymarket_api_credentials WHERE account_id=?",
+        (str(r.get("id") or ""),),
+      ) or {}
+      connected = 1 if str(r.get("status") or "") == "connected" else 0
+      is_proxy = 1 if sig in {"proxy", "poly_proxy", "1"} else 0
+      has_api_wallet = 1 if funder and signer and funder != signer else 0
+      live_cred = 1 if str(cred.get("key_version") or "").startswith("live-") else 0
+      active_cred = 1 if str(cred.get("status") or "") == "active" else 0
+      updated = str(r.get("updated_at") or "")
+      return (connected, is_proxy, has_api_wallet, live_cred, active_cred, updated)
+
+    grouped = {}
+    for r in rows:
+      signer = str(r.get("signer_address") or "").strip().lower()
+      key = (str(r.get("user_id") or "").strip().lower(), signer)
+      old = grouped.get(key)
+      if not old or _rank(r) > _rank(old):
+        grouped[key] = r
+    out = sorted(grouped.values(), key=lambda x: str(x.get("updated_at") or ""), reverse=True)
+    return out
   finally:
     conn.close()
 
