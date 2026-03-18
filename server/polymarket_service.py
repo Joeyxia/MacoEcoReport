@@ -687,14 +687,8 @@ def list_trading_accounts(user_id=""):
       updated = str(r.get("updated_at") or "")
       return (connected, is_proxy, has_api_wallet, live_cred, active_cred, updated)
 
-    grouped = {}
-    for r in rows:
-      signer = str(r.get("signer_address") or "").strip().lower()
-      key = (str(r.get("user_id") or "").strip().lower(), signer)
-      old = grouped.get(key)
-      if not old or _rank(r) > _rank(old):
-        grouped[key] = r
-    out = sorted(grouped.values(), key=lambda x: str(x.get("updated_at") or ""), reverse=True)
+    # Keep all user-bound accounts visible for switching; prioritize best configured account first.
+    out = sorted(rows, key=lambda x: _rank(x), reverse=True)
     return out
   finally:
     conn.close()
