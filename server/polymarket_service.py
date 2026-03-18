@@ -922,6 +922,10 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
       cross_min_expected_bps = max(2.0, float(os.environ.get("POLYMARKET_CROSS_MIN_EXPECTED_BPS", "6")))
     except Exception:
       cross_min_expected_bps = 6.0
+    try:
+      cross_near_quota = max(0, int(os.environ.get("POLYMARKET_CROSS_NEAR_QUOTA", "4")))
+    except Exception:
+      cross_near_quota = 4
 
     def _kw(question):
       s = str(question or "").lower()
@@ -1258,9 +1262,24 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
     results.sort(key=lambda x: x.get("vwap_profit", 0), reverse=True)
     if include_near_miss:
       near_miss.sort(key=lambda x: float(x.get("gap_bps") or 0.0))
+      near_limit_n = max(1, min(int(near_limit or 10), 50))
+      cross_nm = [x for x in near_miss if str(x.get("strategy_type") or "").startswith("cross_market_")]
+      non_cross_nm = [x for x in near_miss if not str(x.get("strategy_type") or "").startswith("cross_market_")]
+      q = max(0, min(cross_near_quota, near_limit_n))
+      out_nm = []
+      out_nm.extend(cross_nm[:q])
+      remain = near_limit_n - len(out_nm)
+      out_nm.extend(non_cross_nm[:remain])
+      if len(out_nm) < near_limit_n:
+        used = {id(x) for x in out_nm}
+        for x in cross_nm[q:]:
+          if len(out_nm) >= near_limit_n:
+            break
+          if id(x) not in used:
+            out_nm.append(x)
       return {
         "items": results[: max_results],
-        "near_miss": near_miss[: max(1, min(int(near_limit or 10), 50))],
+        "near_miss": out_nm,
         "meta": {
           "min_pair_depth": min_pair_depth,
           "min_net_edge_bps": min_net_edge_bps,
@@ -1268,6 +1287,7 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
           "adaptive_enabled": adaptive_enabled,
           "adaptive_floor_bps": adaptive_floor_bps,
           "adaptive_cap_bps": adaptive_cap_bps,
+          "cross_near_quota": q,
         },
       }
     return results[: max_results]
