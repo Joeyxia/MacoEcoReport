@@ -4,6 +4,7 @@ import math
 import os
 import random
 import hashlib
+import time
 from datetime import datetime, timedelta, timezone
 
 try:
@@ -789,11 +790,20 @@ def scan_opportunities(limit=50):
     live_client = PolymarketLiveClient()
     markets = []
     live_mode = False
+    start_ts = time.time()
+    try:
+      max_scan_sec = max(2.0, float(os.environ.get("POLYMARKET_SCAN_MAX_SEC", "8")))
+    except Exception:
+      max_scan_sec = 8.0
+    try:
+      scan_market_cap = max(6, min(int(os.environ.get("POLYMARKET_SCAN_MARKET_CAP", "20")), 80))
+    except Exception:
+      scan_market_cap = 20
     if live_client.enabled:
-      lm = live_client.fetch_markets(max_markets=400, max_pages=5)
+      lm = live_client.fetch_markets(max_markets=180, max_pages=3)
       if lm.get("ok"):
-        # Avoid request timeout: scanning every live market can trigger >1000 book calls.
-        markets = _filter_live_markets(lm.get("items") or [])[:60]
+        # Keep scan responsive on public HTTP: bounded market slice + bounded runtime.
+        markets = _filter_live_markets(lm.get("items") or [])[:scan_market_cap]
         live_mode = bool(markets)
     if not markets and not live_client.enabled:
       # fallback for development/demo only when live mode is disabled
@@ -803,6 +813,8 @@ def scan_opportunities(limit=50):
     ts = now_iso()
     max_results = max(1, min(int(limit or 50), 300))
     for m in markets:
+      if (time.time() - start_ts) > max_scan_sec:
+        break
       if live_mode:
         toks = m.get("tokens") or []
         if not isinstance(toks, list) or len(toks) < 2:

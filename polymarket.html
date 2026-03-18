@@ -638,7 +638,15 @@
           await scan();
           await refreshDiagnostics();
           toast(pmT("scanOk"), "ok");
-        }catch(e){ toast(`${pmT("scanFail")}: ${e.message}`, "err"); }
+        }catch(e){
+          const el = document.getElementById("riskOut");
+          if (el) {
+            el.textContent = (pmGetLang() === "zh"
+              ? `扫描失败：${e.message}\n建议：请稍后重试，或先点击“诊断详情”检查 market_error。`
+              : `Scan failed: ${e.message}\nSuggestion: retry in a moment, or open Diagnostics Details to inspect market_error.`);
+          }
+          toast(`${pmT("scanFail")}: ${e.message}`, "err");
+        }
         finally{ setBusy(btn, false); }
       };
 
@@ -713,7 +721,11 @@
           const out=await jfetch("/api/v1/accounts/polymarket/emergency-cancel-all",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
           renderRiskText(out, "op");
           toast(`${pmT("cancelOk")} (${Number(out.cancelled || 0)})`, "ok");
-        }catch(e){ toast(`${pmT("cancelFail")}: ${e.message}`, "err"); }
+        }catch(e){
+          const el = document.getElementById("riskOut");
+          if (el) el.textContent = (pmGetLang() === "zh" ? `紧急撤单失败：${e.message}` : `Emergency cancel failed: ${e.message}`);
+          toast(`${pmT("cancelFail")}: ${e.message}`, "err");
+        }
         finally{ setBusy(btn, false); }
       };
 
@@ -725,7 +737,11 @@
           const q=accountId?`?account_id=${encodeURIComponent(accountId)}`:"";
           renderRiskText(await jfetch("/api/v1/risk/overview"+q), "risk");
           toast(pmT("riskOk"), "ok");
-        }catch(e){ toast(`${pmT("riskFail")}: ${e.message}`, "err"); }
+        }catch(e){
+          const el = document.getElementById("riskOut");
+          if (el) el.textContent = (pmGetLang() === "zh" ? `风控总览加载失败：${e.message}` : `Risk overview failed: ${e.message}`);
+          toast(`${pmT("riskFail")}: ${e.message}`, "err");
+        }
         finally{ setBusy(btn, false); }
       };
 
@@ -736,7 +752,11 @@
           toast(pmT("loadingReplay"), "info");
           renderRiskText(await jfetch("/api/v1/replay/summary?days=7"), "replay");
           toast(pmT("replayOk"), "ok");
-        }catch(e){ toast(`${pmT("replayFail")}: ${e.message}`, "err"); }
+        }catch(e){
+          const el = document.getElementById("riskOut");
+          if (el) el.textContent = (pmGetLang() === "zh" ? `执行复盘加载失败：${e.message}` : `Replay summary failed: ${e.message}`);
+          toast(`${pmT("replayFail")}: ${e.message}`, "err");
+        }
         finally{ setBusy(btn, false); }
       };
 

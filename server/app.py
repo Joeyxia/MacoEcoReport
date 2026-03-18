@@ -2428,7 +2428,11 @@ def polymarket_emergency_cancel():
 
 @app.route("/api/v1/opportunities/scan", methods=["POST", "GET"])
 def polymarket_opportunities_scan():
-  limit = int(request.args.get("limit") or 50)
+  try:
+    limit = int(request.args.get("limit") or 30)
+  except Exception:
+    limit = 30
+  limit = max(1, min(limit, 60))
   try:
     items = polymarket_scan_opportunities(limit=limit)
     return jsonify({"ok": True, "items": items, "count": len(items)})
