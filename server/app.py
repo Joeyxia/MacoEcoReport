@@ -451,13 +451,13 @@ def _polymarket_auto_engine_loop():
         "last_account_stats": account_stats[:50],
       })
     try:
-      app.logger.info(
-        "polymarket_auto_engine tick=%s scan=%s active_accounts=%s executed=%s errors=%s",
-        tick_at,
-        scan_count,
-        active_accounts,
-        executed_total,
-        len(errors),
+      print(
+        (
+          "polymarket_auto_engine "
+          f"tick={tick_at} scan={scan_count} active_accounts={active_accounts} "
+          f"executed={executed_total} errors={len(errors)}"
+        ),
+        flush=True,
       )
     except Exception:
       pass
