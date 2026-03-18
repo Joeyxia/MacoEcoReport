@@ -3386,6 +3386,9 @@ async function init() {
     if (page === "polymarket" && typeof window.applyPolymarketI18n === "function") {
       window.applyPolymarketI18n();
     }
+    if (page === "polymarket-pnl" && typeof window.applyPolymarketPnlI18n === "function") {
+      window.applyPolymarketPnlI18n();
+    }
   });
 
   // Static intro page should not depend on model/db boot sequence.

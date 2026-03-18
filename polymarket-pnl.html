@@ -8,13 +8,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260319pnl5" />
+    <link rel="stylesheet" href="styles.css?v=20260319pnl6" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260319pnl5" defer></script>
+    <script src="app.js?v=20260319pnl6" defer></script>
     <script>
       (function ensureLatestPnlPage(){
-        const v = "20260319pnl5";
+        const v = "20260319pnl6";
         const u = new URL(window.location.href);
         if (u.searchParams.get("v") !== v) {
           u.searchParams.set("v", v);
@@ -87,7 +87,7 @@
         <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
         <a class="nav-link" href="about.html" data-i18n="nav_intro">About Nexo</a>
       </nav>
-      <button id="lang-toggle-pnl" class="btn ghost lang-toggle" type="button">中文</button>
+      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
     </header>
 
     <main class="page pnl-wrap">
@@ -334,18 +334,10 @@
       };
       function lang(){
         try {
-          const v = localStorage.getItem('macro-monitor-lang');
-          if (v === 'zh' || v === 'en') return v;
-        } catch {}
-        const htmlLang = (document.documentElement.lang || '').toLowerCase();
-        if (htmlLang.startsWith('zh')) return 'zh';
-        const navLang = (navigator.language || '').toLowerCase();
-        return navLang.startsWith('zh') ? 'zh' : 'en';
-      }
-      function setLangSafe(next){
-        const v = next === 'zh' ? 'zh' : 'en';
-        try { localStorage.setItem('macro-monitor-lang', v); } catch {}
-        document.documentElement.lang = v;
+          return localStorage.getItem('macro-monitor-lang') === 'zh' ? 'zh' : 'en';
+        } catch {
+          return 'en';
+        }
       }
       function t(k){ const l=lang(); return (I18N[l] && I18N[l][k]) || I18N.en[k] || k; }
       const THR_WARN_KEY = 'polymarket_pnl_thr_warn';
@@ -377,7 +369,7 @@
           const val = t(key);
           if (val) node.textContent = val;
         });
-        const toggle = document.getElementById('lang-toggle-pnl');
+        const toggle = document.getElementById('lang-toggle');
         if (toggle) toggle.textContent = lang() === 'zh' ? 'EN' : '中文';
         document.getElementById('pageTitle').textContent=t('pageTitle');
         document.getElementById('btnRefresh').textContent=t('refresh');
@@ -558,8 +550,8 @@
         toast(`${t('rebuildDone')}: ledger=${out.inserted_ledger_entries||0}`, 'ok');
       }
 
+      window.applyPolymarketPnlI18n = applyI18n;
       document.addEventListener('DOMContentLoaded', async ()=>{
-        setLangSafe(lang());
         applyI18n();
         applyThresholdInputs();
         setPageState(t('stateReady'));
@@ -577,11 +569,6 @@
           await refreshAll();
           toast(t('thrApplied'),'ok');
         };
-        document.getElementById('lang-toggle-pnl')?.addEventListener('click', async ()=>{
-          setLangSafe(lang() === 'zh' ? 'en' : 'zh');
-          applyI18n();
-          await refreshAll();
-        });
         try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('initFail')}: ${e.message}`); toast(`${t('initFail')}: ${e.message}`,'err'); }
       });
     </script>
