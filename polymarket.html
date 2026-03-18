@@ -101,6 +101,11 @@
           <h2 id="pm-account-title" class="pm-title" style="font-size:18px;">Account Access</h2>
           <div id="currentUser" class="pm-mono" style="margin-bottom:8px;"></div>
           <div class="pm-row">
+            <select id="accountSelect" class="pm-input" style="min-width:320px;max-width:520px;">
+              <option value="">--</option>
+            </select>
+          </div>
+          <div class="pm-row">
             <input id="signer" class="pm-input" placeholder="signer address (0x...)" />
             <input id="funder" class="pm-input" placeholder="funder/API wallet address (required in proxy mode)" />
             <select id="sigType" class="pm-input" style="min-width:170px;max-width:220px;">
@@ -110,6 +115,7 @@
           </div>
           <div class="pm-row">
             <button class="pm-btn" id="btnConnect">Connect</button>
+            <button class="pm-btn ghost" id="btnDisconnect">Disconnect</button>
             <button class="pm-btn ghost" id="btnDerive">Derive Credentials</button>
             <button class="pm-btn ghost" id="btnEnable">Enable Auto Trading</button>
             <button class="pm-btn ghost" id="btnDisable">Disable Auto Trading</button>
@@ -170,6 +176,11 @@
           diagSigner: "Signer Match",
           diagMarket: "Live Tradable Markets",
           account: "Account Access",
+          accountSelect: "Bound Accounts",
+          accountSelectEmpty: "No account selected",
+          accountSwitched: "Switched account",
+          disconnect: "Disconnect",
+          disconnected: "Disconnected",
           risk: "Risk & Execution",
           scan: "Arbitrage Opportunity Scan",
           signerPh: "signer address (0x...)",
@@ -203,6 +214,7 @@
           needAccount: "Please connect account first",
           needProxyFunder: "Proxy mode requires funder/API wallet address",
           loadingAccount: "Connecting account...",
+          loadingDisconnect: "Disconnecting account...",
           loadingScan: "Scanning opportunities...",
           loadingSeed: "Initializing demo markets...",
           loadingRisk: "Loading risk overview...",
@@ -222,6 +234,8 @@
           disableOk: "Auto trading disabled",
           cancelOk: "Emergency cancel completed",
           connectOk: "Connected",
+          disconnectOk: "Disconnected",
+          disconnectFail: "Disconnect failed",
           connectFail: "Connect failed",
           scanFail: "Scan failed",
           deriveFail: "Derive credentials failed",
@@ -261,6 +275,11 @@
           diagSigner: "签名匹配",
           diagMarket: "实时可交易市场数量",
           account: "账户接入",
+          accountSelect: "已绑定账户",
+          accountSelectEmpty: "未选择账户",
+          accountSwitched: "已切换账户",
+          disconnect: "断开账户",
+          disconnected: "已断开",
           risk: "风控与执行",
           scan: "套利机会扫描",
           signerPh: "signer 地址（0x...）",
@@ -294,6 +313,7 @@
           needAccount: "请先连接账户",
           needProxyFunder: "proxy 模式需要填写 funder/API wallet 地址",
           loadingAccount: "正在连接账户...",
+          loadingDisconnect: "正在断开账户...",
           loadingScan: "正在扫描套利机会...",
           loadingSeed: "正在初始化 Demo 市场...",
           loadingRisk: "正在加载风险总览...",
@@ -313,6 +333,8 @@
           disableOk: "自动交易已关闭",
           cancelOk: "紧急撤单完成",
           connectOk: "连接成功",
+          disconnectOk: "断开成功",
+          disconnectFail: "断开失败",
           connectFail: "连接失败",
           scanFail: "扫描失败",
           deriveFail: "派生凭证失败",
@@ -362,6 +384,7 @@
         document.getElementById("pm-diag-signer-label").textContent = pmT("diagSigner");
         document.getElementById("pm-diag-market-label").textContent = pmT("diagMarket");
         document.getElementById("pm-account-title").textContent = pmT("account");
+        document.getElementById("accountSelect").setAttribute("aria-label", pmT("accountSelect"));
         document.getElementById("pm-risk-title").textContent = pmT("risk");
         document.getElementById("pm-scan-title").textContent = pmT("scan");
         document.getElementById("signer").placeholder = pmT("signerPh");
@@ -369,6 +392,7 @@
         document.querySelector('#sigType option[value="proxy"]').textContent = pmT("sigProxy");
         document.querySelector('#sigType option[value="eoa"]').textContent = pmT("sigEoa");
         document.getElementById("btnConnect").textContent = pmT("connect");
+        document.getElementById("btnDisconnect").textContent = pmT("disconnect");
         document.getElementById("btnDerive").textContent = pmT("derive");
         document.getElementById("btnEnable").textContent = pmT("enableAuto");
         document.getElementById("btnDisable").textContent = pmT("disableAuto");
@@ -508,6 +532,52 @@
         `;
       }
 
+      function accountOptionLabel(it){
+        const status = String(it?.status || "");
+        const sig = String(it?.signature_type || "eoa").toLowerCase();
+        const signer = String(it?.signer_address || "--");
+        const shortSigner = signer.length > 14 ? `${signer.slice(0,8)}...${signer.slice(-4)}` : signer;
+        const badge = status === "connected" ? "connected" : pmT("disconnected");
+        return `${it?.id || "--"} | ${sig} | ${shortSigner} | ${badge}`;
+      }
+
+      function renderAccountSelect(items, selectedId){
+        const sel = document.getElementById("accountSelect");
+        const list = Array.isArray(items) ? items : [];
+        const selected = selectedId || accountId || "";
+        sel.innerHTML = "";
+        if (!list.length) {
+          const op = document.createElement("option");
+          op.value = "";
+          op.textContent = pmT("accountSelectEmpty");
+          sel.appendChild(op);
+          return;
+        }
+        for (const it of list){
+          const op = document.createElement("option");
+          op.value = String(it.id || "");
+          op.textContent = accountOptionLabel(it);
+          if (op.value === selected) op.selected = true;
+          sel.appendChild(op);
+        }
+      }
+
+      async function loadAccountList(preferredId){
+        const out = await jfetch("/api/v1/accounts/polymarket/list");
+        const items = Array.isArray(out.items) ? out.items : [];
+        const picked = preferredId || accountId || (items[0] && items[0].id) || "";
+        renderAccountSelect(items, picked);
+        accountId = String(picked || "");
+        return items;
+      }
+
+      function clearAccountPanels(){
+        document.getElementById("accountStatusSummary").innerHTML = "";
+        document.getElementById("accountStatus").textContent = "";
+        setDiag("diagBalanceSource", "--");
+        setDiag("diagSignerMatch", "--");
+      }
+
       async function refreshAccount(){
         if(!accountId) return;
         const d = await jfetch(`/api/v1/accounts/polymarket/status?account_id=${encodeURIComponent(accountId)}`);
@@ -566,13 +636,13 @@
           document.getElementById("currentUser").textContent = currentUserEmail ? `${pmT("signedIn")}${currentUserEmail}` : "";
         }catch(_e){ currentUserEmail = ""; }
         try{
-          const out = await jfetch("/api/v1/accounts/polymarket/list");
-          if(Array.isArray(out.items) && out.items.length){
-            accountId = String(out.items[0].id || "");
+          const items = await loadAccountList("");
+          if(Array.isArray(items) && items.length){
             await refreshAccount();
             await refreshDiagnostics();
             toast(`${pmT("loadAccountOk")}: ${accountId}`, "ok");
           } else {
+            clearAccountPanels();
             toast(pmT("noAccount"), "info");
           }
         }catch(e){ toast(`${pmT("connectFail")}: ${e.message}`, "err"); }
@@ -666,6 +736,7 @@
             body: JSON.stringify({ account_type:"wallet", signer_address: signer, funder_address: funder, signature_type: sigType })
           });
           accountId = out.account_id || "";
+          await loadAccountList(accountId);
           await refreshAccount();
           await refreshDiagnostics();
           toast(`${pmT("connectOk")}: ${accountId}`, "ok");
@@ -683,6 +754,26 @@
           await refreshAccount();
           toast(pmT("deriveOk"), "ok");
         }catch(e){ toast(`${pmT("deriveFail")}: ${e.message}`, "err"); }
+        finally{ setBusy(btn, false); }
+      };
+
+      document.getElementById("btnDisconnect").onclick = async ()=>{
+        const btn = document.getElementById("btnDisconnect");
+        try{
+          setBusy(btn, true);
+          if(!accountId) throw new Error(pmT("needAccount"));
+          toast(pmT("loadingDisconnect"), "info");
+          await jfetch("/api/v1/accounts/polymarket/disconnect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
+          const items = await loadAccountList("");
+          if(items.length){
+            await refreshAccount();
+            await refreshDiagnostics();
+          }else{
+            accountId = "";
+            clearAccountPanels();
+          }
+          toast(pmT("disconnectOk"), "ok");
+        }catch(e){ toast(`${pmT("disconnectFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
       };
 
@@ -769,6 +860,18 @@
         document.getElementById("pmDiagModalClose")?.addEventListener("click", closeDiagModal);
         document.getElementById("pmDiagModalMask")?.addEventListener("click", (e) => {
           if (e.target && e.target.id === "pmDiagModalMask") closeDiagModal();
+        });
+        document.getElementById("accountSelect")?.addEventListener("change", async (e) => {
+          const nextId = String(e.target?.value || "");
+          if (!nextId) return;
+          accountId = nextId;
+          try{
+            await refreshAccount();
+            await refreshDiagnostics();
+            toast(`${pmT("accountSwitched")}: ${accountId}`, "ok");
+          }catch(err){
+            toast(`${pmT("connectFail")}: ${err.message}`, "err");
+          }
         });
         toast(pmT("ready"), "info");
         await bootstrapUserAndAccount();

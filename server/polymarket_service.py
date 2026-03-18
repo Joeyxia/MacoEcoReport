@@ -592,6 +592,35 @@ def set_auto_trading(account_id, enabled: bool):
     conn.close()
 
 
+def disconnect_account(account_id, actor="operator"):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    row = _fetchone(conn, "SELECT id, status FROM trading_accounts WHERE id=?", (account_id,))
+    if not row:
+      return {"ok": False, "error": "account_not_found"}
+    conn.execute(
+      "UPDATE trading_accounts SET status='disconnected', updated_at=? WHERE id=?",
+      (ts, account_id),
+    )
+    conn.execute(
+      "UPDATE risk_limits SET auto_trading=0, updated_at=? WHERE account_id=?",
+      (ts, account_id),
+    )
+    conn.execute(
+      """
+      INSERT INTO authorization_logs(account_id, action_type, result, metadata_json, created_at)
+      VALUES (?, 'disconnect_account', 'ok', ?, ?)
+      """,
+      (account_id, json.dumps({"previous_status": row.get("status")}, ensure_ascii=False), ts),
+    )
+    _write_audit(conn, actor, "account", account_id, "disconnect", "ok", {"previous_status": row.get("status")})
+    conn.commit()
+    return {"ok": True, "account_id": account_id, "status": "disconnected"}
+  finally:
+    conn.close()
+
+
 def list_trading_accounts(user_id=""):
   conn = get_conn()
   try:
