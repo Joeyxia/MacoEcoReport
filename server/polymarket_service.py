@@ -938,6 +938,16 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
           continue
         out.append(w)
       return set(out)
+
+    def _hash_like_title(t):
+      s = str(t or "").strip().lower()
+      if not s:
+        return True
+      if s.startswith("0x") and len(s) >= 18:
+        return True
+      if " " not in s and len(s) >= 20:
+        return True
+      return False
     if live_client.enabled:
       lm = live_client.fetch_markets(max_markets=180, max_pages=3)
       if lm.get("ok"):
@@ -1185,8 +1195,9 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
           if a["market_id"] == b["market_id"]:
             continue
           inter = len((a.get("kw") or set()) & (b.get("kw") or set()))
-          if inter < 2:
-            continue
+          if not (_hash_like_title(a.get("market_title")) or _hash_like_title(b.get("market_title"))):
+            if inter < 2:
+              continue
           spread = abs(float(a.get("yes_mid") or 0.0) - float(b.get("yes_mid") or 0.0))
           spread_bps = spread * 10000.0
           if spread_bps < 1:
