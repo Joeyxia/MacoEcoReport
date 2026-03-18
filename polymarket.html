@@ -23,6 +23,9 @@
       .pm-d-item { background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:8px 10px; min-width:220px; }
       .pm-d-k { font-size:12px; color:#5a727a; }
       .pm-d-v { font-size:16px; color:#14303a; font-weight:700; margin-top:2px; }
+      .pm-auto { display:flex; gap:10px; flex-wrap:wrap; margin: 4px 0 12px; }
+      .pm-auto-item { background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:8px 10px; min-width:180px; }
+      .pm-auto-msg { width:100%; background:#f7fbfa; border:1px solid rgba(10,40,40,.14); border-radius:10px; padding:8px 10px; color:#375861; font-size:13px; }
       .pm-modal-mask { position: fixed; inset: 0; background: rgba(10,20,30,.38); z-index: 1200; display: none; align-items: center; justify-content: center; padding: 14px; }
       .pm-modal { width: min(760px, 100%); background:#fff; border:1px solid rgba(10,40,40,.15); border-radius:14px; padding:14px; box-shadow: 0 12px 36px rgba(20,40,56,.2); }
       .pm-modal-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
@@ -93,6 +96,29 @@
         <div class="pm-d-item" style="display:flex;align-items:center;justify-content:center;">
           <button id="pmDiagDetailBtn" class="pm-btn ghost" type="button">Diagnostics Details</button>
         </div>
+      </div>
+      <div id="autoEngineBar" class="pm-auto">
+        <div class="pm-auto-item">
+          <div id="pm-auto-status-label" class="pm-d-k">Auto Engine</div>
+          <div class="pm-d-v" id="autoEngineRunning">--</div>
+        </div>
+        <div class="pm-auto-item">
+          <div id="pm-auto-last-tick-label" class="pm-d-k">Last Tick</div>
+          <div class="pm-d-v" id="autoEngineLastTick">--</div>
+        </div>
+        <div class="pm-auto-item">
+          <div id="pm-auto-scan-label" class="pm-d-k">Last Scan</div>
+          <div class="pm-d-v" id="autoEngineScanCount">--</div>
+        </div>
+        <div class="pm-auto-item">
+          <div id="pm-auto-active-label" class="pm-d-k">Active Accounts</div>
+          <div class="pm-d-v" id="autoEngineActiveAccounts">--</div>
+        </div>
+        <div class="pm-auto-item">
+          <div id="pm-auto-exec-label" class="pm-d-k">Last Executed</div>
+          <div class="pm-d-v" id="autoEngineExecuted">--</div>
+        </div>
+        <div id="autoEngineMessage" class="pm-auto-msg">--</div>
       </div>
       <div id="actionToast" class="pm-toast info">Ready.</div>
 
@@ -293,7 +319,16 @@
           diagMarketError: "Market Error",
           diagBalanceSource: "Balance Source",
           diagSignerMatch: "Signer Match",
-          diagUpdatedAt: "Updated At"
+          diagUpdatedAt: "Updated At",
+          autoEngineStatus: "Auto Engine",
+          autoEngineLastTick: "Last Tick",
+          autoEngineLastScan: "Last Scan",
+          autoEngineActive: "Active Accounts",
+          autoEngineExecuted: "Last Executed",
+          autoEngineRunning: "Running",
+          autoEngineStopped: "Stopped",
+          autoEngineErr: "Engine error",
+          autoEngineIdle: "Auto engine is running. No executable opportunities in latest tick."
         },
         zh: {
           title: "Polymarket 量化交易控制台（MVP）",
@@ -410,7 +445,16 @@
           diagMarketError: "市场错误信息",
           diagBalanceSource: "余额来源",
           diagSignerMatch: "签名匹配",
-          diagUpdatedAt: "更新时间"
+          diagUpdatedAt: "更新时间",
+          autoEngineStatus: "自动引擎",
+          autoEngineLastTick: "最近轮询",
+          autoEngineLastScan: "最近扫描",
+          autoEngineActive: "活跃账户",
+          autoEngineExecuted: "最近执行",
+          autoEngineRunning: "运行中",
+          autoEngineStopped: "已停止",
+          autoEngineErr: "引擎错误",
+          autoEngineIdle: "自动引擎运行中，最近一轮没有可执行机会。"
         }
       };
 
@@ -428,6 +472,11 @@
         document.getElementById("pm-diag-balance-label").textContent = pmT("diagBalance");
         document.getElementById("pm-diag-signer-label").textContent = pmT("diagSigner");
         document.getElementById("pm-diag-market-label").textContent = pmT("diagMarket");
+        document.getElementById("pm-auto-status-label").textContent = pmT("autoEngineStatus");
+        document.getElementById("pm-auto-last-tick-label").textContent = pmT("autoEngineLastTick");
+        document.getElementById("pm-auto-scan-label").textContent = pmT("autoEngineLastScan");
+        document.getElementById("pm-auto-active-label").textContent = pmT("autoEngineActive");
+        document.getElementById("pm-auto-exec-label").textContent = pmT("autoEngineExecuted");
         document.getElementById("pm-account-title").textContent = pmT("account");
         document.getElementById("accountSelect").setAttribute("aria-label", pmT("accountSelect"));
         document.getElementById("btnRenameAccount").textContent = pmT("rename");
@@ -662,6 +711,27 @@
         }
       }
 
+      async function refreshAutoEngineStatus() {
+        try {
+          const d = await jfetch("/api/v1/polymarket/auto-engine/status");
+          setDiag("autoEngineRunning", d.running ? pmT("autoEngineRunning") : pmT("autoEngineStopped"));
+          setDiag("autoEngineLastTick", d.last_tick_at ? String(d.last_tick_at).replace("T", " ").replace("Z", "") : "--");
+          setDiag("autoEngineScanCount", `${Number(d.last_scan_count || 0)}`);
+          setDiag("autoEngineActiveAccounts", `${Number(d.last_active_accounts || 0)}`);
+          setDiag("autoEngineExecuted", `${Number(d.last_executed || 0)}`);
+          const errs = Array.isArray(d.last_errors) ? d.last_errors : [];
+          const msg = errs.length
+            ? `${pmT("autoEngineErr")}: ${errs[0]}`
+            : (Number(d.last_executed || 0) > 0
+              ? `ok: executed ${Number(d.last_executed || 0)} in latest tick`
+              : pmT("autoEngineIdle"));
+          setDiag("autoEngineMessage", msg);
+        } catch (e) {
+          setDiag("autoEngineRunning", pmT("autoEngineStopped"));
+          setDiag("autoEngineMessage", `${pmT("autoEngineErr")}: ${e.message}`);
+        }
+      }
+
       function openDiagModal(){
         const mask = document.getElementById("pmDiagModalMask");
         const body = document.getElementById("pmDiagModalBody");
@@ -698,9 +768,11 @@
           if(Array.isArray(items) && items.length){
             await refreshAccount();
             await refreshDiagnostics();
+            await refreshAutoEngineStatus();
             toast(`${pmT("loadAccountOk")}: ${accountId}`, "ok");
           } else {
             clearAccountPanels();
+            await refreshAutoEngineStatus();
             toast(pmT("noAccount"), "info");
           }
         }catch(e){ toast(`${pmT("connectFail")}: ${e.message}`, "err"); }
@@ -779,6 +851,7 @@
           toast(pmT("loadingScan"), "info");
           await scan();
           await refreshDiagnostics();
+          await refreshAutoEngineStatus();
           toast(pmT("scanOk"), "ok");
         }catch(e){
           const el = document.getElementById("riskOut");
@@ -811,6 +884,7 @@
           await loadAccountList(accountId);
           await refreshAccount();
           await refreshDiagnostics();
+          await refreshAutoEngineStatus();
           toast(`${pmT("connectOk")}: ${accountId}`, "ok");
         }catch(e){ toast(`${pmT("connectFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
@@ -857,6 +931,7 @@
           toast(pmT("loadingEnable"), "info");
           await jfetch("/api/v1/accounts/polymarket/enable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
           await refreshAccount();
+          await refreshAutoEngineStatus();
           toast(pmT("enableOk"), "ok");
         }catch(e){ toast(`${pmT("enableFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
@@ -870,6 +945,7 @@
           toast(pmT("loadingDisable"), "info");
           await jfetch("/api/v1/accounts/polymarket/disable-auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:accountId})});
           await refreshAccount();
+          await refreshAutoEngineStatus();
           toast(pmT("disableOk"), "ok");
         }catch(e){ toast(`${pmT("disableFail")}: ${e.message}`, "err"); }
         finally{ setBusy(btn, false); }
@@ -966,6 +1042,10 @@
         });
         toast(pmT("ready"), "info");
         await bootstrapUserAndAccount();
+        await refreshAutoEngineStatus();
+        setInterval(() => {
+          refreshAutoEngineStatus().catch(() => {});
+        }, 15000);
       });
     </script>
   </body>
