@@ -854,6 +854,18 @@ def scan_opportunities(limit=50):
       scan_market_cap = max(6, min(int(os.environ.get("POLYMARKET_SCAN_MARKET_CAP", "20")), 80))
     except Exception:
       scan_market_cap = 20
+    try:
+      fee_bps_per_leg = max(0.0, float(os.environ.get("POLYMARKET_FEE_BPS_PER_LEG", "20")))
+    except Exception:
+      fee_bps_per_leg = 20.0
+    try:
+      min_net_edge_bps = max(0.0, float(os.environ.get("POLYMARKET_MIN_NET_EDGE_BPS", "10")))
+    except Exception:
+      min_net_edge_bps = 10.0
+    try:
+      min_pair_depth = max(0.0, float(os.environ.get("POLYMARKET_MIN_PAIR_DEPTH", "150")))
+    except Exception:
+      min_pair_depth = 150.0
     if live_client.enabled:
       lm = live_client.fetch_markets(max_markets=180, max_pages=3)
       if lm.get("ok"):
@@ -920,9 +932,27 @@ def scan_opportunities(limit=50):
         ]
       if not strategy_type:
         continue
-      confidence = _clamp(0.5 + theory_profit * 4, 0.5, 0.99)
+      # Require minimum usable depth on both legs.
+      if strategy_type == "single_market_buy_both":
+        d_yes = _calc_depth(yes.get("ask_levels") or [], max_levels=5)
+        d_no = _calc_depth(no.get("ask_levels") or [], max_levels=5)
+        notional_ref = max(0.0, ask_sum)
+      else:
+        d_yes = _calc_depth(yes.get("bid_levels") or [], max_levels=5)
+        d_no = _calc_depth(no.get("bid_levels") or [], max_levels=5)
+        notional_ref = max(0.0, bid_sum)
+      pair_depth = min(d_yes, d_no)
+      if pair_depth < min_pair_depth:
+        continue
+
       sim = estimate_simulation(legs)
-      vwap_profit = round(max(-1, theory_profit - (sim.get("slippage_bps") or 0) / 10000), 6)
+      slippage_bps = float(sim.get("slippage_bps") or 0.0)
+      fee_cost = notional_ref * (fee_bps_per_leg / 10000.0) * 2.0
+      net_profit = round(theory_profit - (slippage_bps / 10000.0) - fee_cost, 6)
+      net_edge_bps = round(net_profit * 10000.0, 2)
+      if net_edge_bps < min_net_edge_bps:
+        continue
+      confidence = _clamp(0.5 + (max(0.0, net_profit) * 8), 0.5, 0.99)
       market_id = str((m.get("condition_id") if live_mode else m.get("id")) or "")
       market_title = str((m.get("question") if live_mode else m.get("title")) or market_id)
       opp_id = f"opp-{market_id}-{int(datetime.now().timestamp())}"
@@ -940,7 +970,7 @@ def scan_opportunities(limit=50):
           updated_at=excluded.updated_at
         """,
         (
-          opp_id, strategy_type, ts, round(theory_profit, 6), vwap_profit, round(confidence, 4),
+          opp_id, strategy_type, ts, round(theory_profit, 6), net_profit, round(confidence, 4),
           json.dumps(legs, ensure_ascii=False), market_id, ts, ts,
         ),
       )
@@ -950,7 +980,16 @@ def scan_opportunities(limit=50):
         "market_title": market_title,
         "strategy_type": strategy_type,
         "theory_profit": round(theory_profit, 6),
-        "vwap_profit": vwap_profit,
+        "vwap_profit": net_profit,
+        "net_profit": net_profit,
+        "net_edge_bps": net_edge_bps,
+        "cost_model": {
+          "fee_bps_per_leg": fee_bps_per_leg,
+          "slippage_bps": round(slippage_bps, 2),
+          "pair_depth": round(pair_depth, 4),
+          "min_pair_depth": min_pair_depth,
+          "min_net_edge_bps": min_net_edge_bps,
+        },
         "confidence": round(confidence, 4),
         "simulation": sim,
         "legs": legs,
