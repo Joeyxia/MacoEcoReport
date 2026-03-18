@@ -859,13 +859,47 @@ def scan_opportunities(limit=50):
     except Exception:
       fee_bps_per_leg = 20.0
     try:
+      fee_bps_maker = max(0.0, float(os.environ.get("POLYMARKET_FEE_BPS_MAKER", "0")))
+    except Exception:
+      fee_bps_maker = 0.0
+    try:
+      fee_bps_taker = max(0.0, float(os.environ.get("POLYMARKET_FEE_BPS_TAKER", "20")))
+    except Exception:
+      fee_bps_taker = 20.0
+    exec_role = str(os.environ.get("POLYMARKET_EXEC_ROLE", "taker") or "taker").strip().lower()
+    fee_bps_exec = fee_bps_maker if exec_role == "maker" else fee_bps_taker
+    try:
       min_net_edge_bps = max(0.0, float(os.environ.get("POLYMARKET_MIN_NET_EDGE_BPS", "10")))
     except Exception:
       min_net_edge_bps = 10.0
     try:
+      min_expected_net_bps = max(0.0, float(os.environ.get("POLYMARKET_MIN_EXPECTED_NET_BPS", "8")))
+    except Exception:
+      min_expected_net_bps = 8.0
+    try:
       min_pair_depth = max(0.0, float(os.environ.get("POLYMARKET_MIN_PAIR_DEPTH", "150")))
     except Exception:
       min_pair_depth = 150.0
+    try:
+      latency_ms = max(0.0, float(os.environ.get("POLYMARKET_EXEC_LATENCY_MS", "800")))
+    except Exception:
+      latency_ms = 800.0
+    try:
+      latency_bps_per_500ms = max(0.0, float(os.environ.get("POLYMARKET_LATENCY_BPS_PER_500MS", "1.5")))
+    except Exception:
+      latency_bps_per_500ms = 1.5
+    try:
+      base_fill_prob = _clamp(float(os.environ.get("POLYMARKET_BASE_FILL_PROB", "0.82")), 0.1, 0.99)
+    except Exception:
+      base_fill_prob = 0.82
+    try:
+      fill_depth_ref = max(1.0, float(os.environ.get("POLYMARKET_FILL_DEPTH_REF", "300")))
+    except Exception:
+      fill_depth_ref = 300.0
+    try:
+      fill_slippage_ref_bps = max(1.0, float(os.environ.get("POLYMARKET_FILL_SLIPPAGE_REF_BPS", "20")))
+    except Exception:
+      fill_slippage_ref_bps = 20.0
     if live_client.enabled:
       lm = live_client.fetch_markets(max_markets=180, max_pages=3)
       if lm.get("ok"):
@@ -947,12 +981,21 @@ def scan_opportunities(limit=50):
 
       sim = estimate_simulation(legs)
       slippage_bps = float(sim.get("slippage_bps") or 0.0)
-      fee_cost = notional_ref * (fee_bps_per_leg / 10000.0) * 2.0
+      effective_fee_bps = fee_bps_exec if fee_bps_exec > 0 else fee_bps_per_leg
+      fee_cost = notional_ref * (effective_fee_bps / 10000.0) * 2.0
       net_profit = round(theory_profit - (slippage_bps / 10000.0) - fee_cost, 6)
       net_edge_bps = round(net_profit * 10000.0, 2)
       if net_edge_bps < min_net_edge_bps:
         continue
-      confidence = _clamp(0.5 + (max(0.0, net_profit) * 8), 0.5, 0.99)
+      depth_factor = _clamp(pair_depth / fill_depth_ref, 0.35, 1.2)
+      slip_factor = _clamp(1.0 - (slippage_bps / fill_slippage_ref_bps) * 0.5, 0.3, 1.0)
+      fill_probability = _clamp(base_fill_prob * depth_factor * slip_factor, 0.1, 0.99)
+      latency_penalty_bps = (latency_ms / 500.0) * latency_bps_per_500ms
+      expected_net_bps = round(net_edge_bps * fill_probability - latency_penalty_bps, 2)
+      if expected_net_bps < min_expected_net_bps:
+        continue
+      expected_net_profit = round(expected_net_bps / 10000.0, 6)
+      confidence = _clamp(0.45 + (max(0.0, expected_net_profit) * 12), 0.45, 0.99)
       market_id = str((m.get("condition_id") if live_mode else m.get("id")) or "")
       market_title = str((m.get("question") if live_mode else m.get("title")) or market_id)
       opp_id = f"opp-{market_id}-{int(datetime.now().timestamp())}"
@@ -970,7 +1013,7 @@ def scan_opportunities(limit=50):
           updated_at=excluded.updated_at
         """,
         (
-          opp_id, strategy_type, ts, round(theory_profit, 6), net_profit, round(confidence, 4),
+          opp_id, strategy_type, ts, round(theory_profit, 6), expected_net_profit, round(confidence, 4),
           json.dumps(legs, ensure_ascii=False), market_id, ts, ts,
         ),
       )
@@ -980,15 +1023,22 @@ def scan_opportunities(limit=50):
         "market_title": market_title,
         "strategy_type": strategy_type,
         "theory_profit": round(theory_profit, 6),
-        "vwap_profit": net_profit,
+        "vwap_profit": expected_net_profit,
         "net_profit": net_profit,
         "net_edge_bps": net_edge_bps,
+        "expected_net_profit": expected_net_profit,
+        "expected_net_bps": expected_net_bps,
+        "fill_probability": round(fill_probability, 4),
         "cost_model": {
-          "fee_bps_per_leg": fee_bps_per_leg,
+          "fee_bps_per_leg": effective_fee_bps,
           "slippage_bps": round(slippage_bps, 2),
+          "latency_penalty_bps": round(latency_penalty_bps, 2),
           "pair_depth": round(pair_depth, 4),
           "min_pair_depth": min_pair_depth,
           "min_net_edge_bps": min_net_edge_bps,
+          "min_expected_net_bps": min_expected_net_bps,
+          "execution_role": exec_role,
+          "base_fill_prob": round(base_fill_prob, 4),
         },
         "confidence": round(confidence, 4),
         "simulation": sim,

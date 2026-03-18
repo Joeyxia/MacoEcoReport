@@ -204,7 +204,7 @@
           colMarket: "Market",
           colType: "Type",
           colTheory: "Theory",
-          colNet: "Net (after costs)",
+          colNet: "Expected Net (after costs/execution)",
           colSource: "Source",
           colAction: "Action",
           ready: "Ready.",
@@ -308,7 +308,7 @@
           colMarket: "市场",
           colType: "策略类型",
           colTheory: "理论收益",
-          colNet: "净收益（含成本）",
+          colNet: "期望净收益（含成本/执行）",
           colSource: "来源",
           colAction: "动作",
           ready: "准备就绪。",
@@ -683,7 +683,7 @@
             <td>${x.market_title || x.market_id}</td>
             <td>${x.strategy_type}</td>
             <td>${Number(x.theory_profit||0).toFixed(4)}</td>
-            <td>${Number((x.net_profit ?? x.vwap_profit) || 0).toFixed(4)}</td>
+            <td>${Number((x.expected_net_profit ?? x.net_profit ?? x.vwap_profit) || 0).toFixed(4)}</td>
             <td>${Number(x.confidence||0).toFixed(2)}</td>
             <td>${x.source || "--"}</td>
             <td><button class="pm-btn ghost" data-id="${x.id}">${pmT("colAction")}</button></td>
