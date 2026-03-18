@@ -3372,6 +3372,16 @@ async function init() {
   const page = document.body.dataset.page;
 
   setupLangToggle(async () => {
+    if (page === "polymarket" && typeof window.applyPolymarketI18n === "function") {
+      window.applyPolymarketI18n();
+      return;
+    }
+    if (page === "polymarket-pnl" && typeof window.applyPolymarketPnlI18n === "function") {
+      await window.applyPolymarketPnlI18n();
+      return;
+    }
+    if (page === "about") return;
+
     const currentModel = await loadCurrentModel();
     if (page === "dashboard") {
       renderDashboard(currentModel);
@@ -3383,17 +3393,11 @@ async function init() {
     if (page === "subscribe") await setupSubscriptionForm();
     if (page === "ai-assistant") await initAiAssistantPage();
     if (page === "openrouter") await renderOpenRouterPage();
-    if (page === "polymarket" && typeof window.applyPolymarketI18n === "function") {
-      window.applyPolymarketI18n();
-    }
-    if (page === "polymarket-pnl" && typeof window.applyPolymarketPnlI18n === "function") {
-      window.applyPolymarketPnlI18n();
-    }
   });
 
   // Static intro page should not depend on model/db boot sequence.
   // This guarantees language toggle always works even if data APIs are slow/unavailable.
-  if (page === "about" || page === "polymarket") return;
+  if (page === "about" || page === "polymarket" || page === "polymarket-pnl") return;
 
   await migrateBrowserDataToServer();
   const model = await ensureModelData(await loadCurrentModel());
