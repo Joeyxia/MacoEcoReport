@@ -876,6 +876,15 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
       min_expected_net_bps = max(0.0, float(os.environ.get("POLYMARKET_MIN_EXPECTED_NET_BPS", "8")))
     except Exception:
       min_expected_net_bps = 8.0
+    adaptive_enabled = str(os.environ.get("POLYMARKET_ADAPTIVE_THRESH_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+    try:
+      adaptive_floor_bps = max(0.0, float(os.environ.get("POLYMARKET_ADAPTIVE_FLOOR_BPS", "1.5")))
+    except Exception:
+      adaptive_floor_bps = 1.5
+    try:
+      adaptive_cap_bps = max(adaptive_floor_bps, float(os.environ.get("POLYMARKET_ADAPTIVE_CAP_BPS", "14")))
+    except Exception:
+      adaptive_cap_bps = 14.0
     try:
       min_pair_depth = max(0.0, float(os.environ.get("POLYMARKET_MIN_PAIR_DEPTH", "150")))
     except Exception:
@@ -977,6 +986,16 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
         d_no = _calc_depth(no.get("bid_levels") or [], max_levels=5)
         notional_ref = max(0.0, bid_sum)
       pair_depth = min(d_yes, d_no)
+      # Microstructure proxies for adaptive thresholding.
+      y_bid = float(yes.get("best_bid") or 0.0)
+      y_ask = float(yes.get("best_ask") or 0.0)
+      n_bid = float(no.get("best_bid") or 0.0)
+      n_ask = float(no.get("best_ask") or 0.0)
+      y_mid = (y_bid + y_ask) / 2.0 if (y_bid > 0 and y_ask > 0) else 0.0
+      n_mid = (n_bid + n_ask) / 2.0 if (n_bid > 0 and n_ask > 0) else 0.0
+      y_spread_bps = ((y_ask - y_bid) / y_mid * 10000.0) if y_mid > 0 else 999.0
+      n_spread_bps = ((n_ask - n_bid) / n_mid * 10000.0) if n_mid > 0 else 999.0
+      pair_spread_bps = (max(0.0, y_spread_bps) + max(0.0, n_spread_bps)) / 2.0
 
       sim = estimate_simulation(legs)
       slippage_bps = float(sim.get("slippage_bps") or 0.0)
@@ -984,6 +1003,13 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
       fee_cost = notional_ref * (effective_fee_bps / 10000.0) * 2.0
       net_profit = round(theory_profit - (slippage_bps / 10000.0) - fee_cost, 6)
       net_edge_bps = round(net_profit * 10000.0, 2)
+      dyn_min_net_bps = min_net_edge_bps
+      dyn_min_expected_bps = min_expected_net_bps
+      if adaptive_enabled:
+        spread_up = max(0.0, (pair_spread_bps - 35.0) / 25.0)  # wider spread => stricter
+        depth_down = max(0.0, (pair_depth / max(min_pair_depth, 1.0)) - 1.0) * 0.8  # deeper book => looser
+        dyn_min_net_bps = _clamp(min_net_edge_bps + spread_up - depth_down, max(1.0, adaptive_floor_bps), adaptive_cap_bps)
+        dyn_min_expected_bps = _clamp(min_expected_net_bps + spread_up - depth_down, adaptive_floor_bps, adaptive_cap_bps)
       depth_factor = _clamp(pair_depth / fill_depth_ref, 0.35, 1.2)
       slip_factor = _clamp(1.0 - (slippage_bps / fill_slippage_ref_bps) * 0.5, 0.3, 1.0)
       fill_probability = _clamp(base_fill_prob * depth_factor * slip_factor, 0.1, 0.99)
@@ -994,9 +1020,9 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
       fail_reason = ""
       if pair_depth < min_pair_depth:
         fail_reason = "depth_too_low"
-      elif net_edge_bps < min_net_edge_bps:
+      elif net_edge_bps < dyn_min_net_bps:
         fail_reason = "net_edge_below_threshold"
-      elif expected_net_bps < min_expected_net_bps:
+      elif expected_net_bps < dyn_min_expected_bps:
         fail_reason = "expected_net_below_threshold"
       if fail_reason:
         if include_near_miss:
@@ -1013,8 +1039,8 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
             "reason": fail_reason,
             "gap_bps": round(
               (min_pair_depth - pair_depth) if fail_reason == "depth_too_low"
-              else (min_net_edge_bps - net_edge_bps) if fail_reason == "net_edge_below_threshold"
-              else (min_expected_net_bps - expected_net_bps),
+              else (dyn_min_net_bps - net_edge_bps) if fail_reason == "net_edge_below_threshold"
+              else (dyn_min_expected_bps - expected_net_bps),
               2
             ),
             "source": "polymarket_live" if live_mode else "demo_seed",
@@ -1059,8 +1085,12 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
           "latency_penalty_bps": round(latency_penalty_bps, 2),
           "pair_depth": round(pair_depth, 4),
           "min_pair_depth": min_pair_depth,
-          "min_net_edge_bps": min_net_edge_bps,
-          "min_expected_net_bps": min_expected_net_bps,
+          "min_net_edge_bps": round(dyn_min_net_bps, 2),
+          "min_expected_net_bps": round(dyn_min_expected_bps, 2),
+          "pair_spread_bps": round(pair_spread_bps, 2),
+          "adaptive_enabled": adaptive_enabled,
+          "adaptive_floor_bps": adaptive_floor_bps,
+          "adaptive_cap_bps": adaptive_cap_bps,
           "execution_role": exec_role,
           "base_fill_prob": round(base_fill_prob, 4),
         },
@@ -1082,6 +1112,9 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
           "min_pair_depth": min_pair_depth,
           "min_net_edge_bps": min_net_edge_bps,
           "min_expected_net_bps": min_expected_net_bps,
+          "adaptive_enabled": adaptive_enabled,
+          "adaptive_floor_bps": adaptive_floor_bps,
+          "adaptive_cap_bps": adaptive_cap_bps,
         },
       }
     return results[: max_results]
