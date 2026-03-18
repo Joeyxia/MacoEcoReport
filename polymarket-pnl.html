@@ -8,16 +8,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260318p1" />
+    <link rel="stylesheet" href="styles.css?v=20260319pnl2" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260317b2" defer></script>
+    <script src="app.js?v=20260319pnl2" defer></script>
     <style>
       .pnl-wrap { width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
-      .pnl-grid { display:grid; gap:12px; grid-template-columns: repeat(2, minmax(0,1fr)); align-items:start; }
-      .pnl-card { grid-column: span 12; background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:14px; padding:14px; }
-      .pnl-card.half { grid-column: span 1; min-width: 0; }
-      .pnl-grid > .pnl-card:not(.half) { grid-column: 1 / -1; min-width: 0; }
+      .pnl-grid { display:flex; gap:12px; flex-wrap:wrap; align-items:stretch; }
+      .pnl-card { width: 100%; background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:14px; padding:14px; box-sizing:border-box; }
+      .pnl-card.half { flex: 1 1 calc(50% - 6px); max-width: calc(50% - 6px); min-width: 0; }
+      .pnl-grid > .pnl-card:not(.half) { flex: 1 1 100%; max-width: 100%; min-width: 0; }
       .pnl-status-row { display:grid; gap:10px; grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:10px; }
       .pnl-status { border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:8px 10px; background:#fff; }
       .pnl-title { margin:0 0 10px; font-size:20px; color:#112b34; font-weight:700; }
@@ -52,8 +52,8 @@
       .pnl-table tbody tr:hover { background:#f6fbfa; }
       @media (max-width: 980px) {
         .pnl-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
-        .pnl-grid { grid-template-columns: 1fr; }
-        .pnl-card.half { grid-column: span 1; }
+        .pnl-grid { display:block; }
+        .pnl-card.half { max-width:100%; margin-bottom:12px; }
         .pnl-status-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
       }
     </style>
@@ -322,7 +322,16 @@
           thrApplied: "阈值已应用"
         }
       };
-      function lang(){ try { return localStorage.getItem('macro-monitor-lang') === 'zh' ? 'zh' : 'en'; } catch { return 'en'; } }
+      function lang(){
+        try {
+          const v = localStorage.getItem('macro-monitor-lang');
+          if (v === 'zh' || v === 'en') return v;
+        } catch {}
+        const htmlLang = (document.documentElement.lang || '').toLowerCase();
+        if (htmlLang.startsWith('zh')) return 'zh';
+        const navLang = (navigator.language || '').toLowerCase();
+        return navLang.startsWith('zh') ? 'zh' : 'en';
+      }
       function setLangSafe(next){
         const v = next === 'zh' ? 'zh' : 'en';
         try { localStorage.setItem('macro-monitor-lang', v); } catch {}
