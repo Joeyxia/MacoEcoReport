@@ -16,6 +16,8 @@
       .pnl-grid { display:grid; gap:12px; grid-template-columns: repeat(12, minmax(0,1fr)); }
       .pnl-card { grid-column: span 12; background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:14px; padding:14px; }
       .pnl-card.half { grid-column: span 6; }
+      .pnl-status-row { display:grid; gap:10px; grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:10px; }
+      .pnl-status { border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:8px 10px; background:#fff; }
       .pnl-title { margin:0 0 10px; font-size:20px; color:#112b34; font-weight:700; }
       .pnl-kpis { display:grid; gap:10px; grid-template-columns:repeat(5,minmax(0,1fr)); }
       .pnl-kpi { border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:10px; background:#fff; }
@@ -34,13 +36,19 @@
       .pnl-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
       .pnl-toast { margin:10px 0; border-radius:10px; padding:10px 12px; font-size:14px; border:1px solid rgba(10,40,40,.16); background:#f5f7f8; color:#36525b; display:none; }
       .pnl-toast.show { display:block; }
+      .pnl-toast.ok { border-color: rgba(12,130,96,.3); background:#eef9f5; color:#0b6f55; }
+      .pnl-toast.err { border-color: rgba(176,40,40,.3); background:#fff3f3; color:#a13030; }
+      .pnl-toast.warn { border-color: rgba(197,138,0,.3); background:#fff7e6; color:#8a6200; }
       .pnl-pill { display:inline-block; border:1px solid rgba(10,40,40,.16); border-radius:999px; padding:2px 8px; font-size:12px; }
       .pnl-pill.ok { color:#0b6f55; border-color:rgba(12,130,96,.35); background:#eef9f5; }
       .pnl-pill.warn { color:#a06a00; border-color:rgba(197,138,0,.35); background:#fff7e2; }
       .pnl-pill.critical { color:#a13030; border-color:rgba(176,40,40,.35); background:#fff2f2; }
+      .pnl-error { margin-top:6px; color:#a13030; font-size:12px; min-height:18px; }
+      .pnl-table tbody tr:hover { background:#f6fbfa; }
       @media (max-width: 980px) {
         .pnl-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
         .pnl-card.half { grid-column: span 12; }
+        .pnl-status-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
       }
     </style>
   </head>
@@ -69,12 +77,19 @@
     <main class="page pnl-wrap">
       <section class="pnl-card">
         <h1 class="pnl-title" id="pageTitle">Polymarket PnL & Ledger Console</h1>
+        <div class="pnl-status-row">
+          <div class="pnl-status"><div class="pnl-k" id="s1k">Page State</div><div class="pnl-v" style="font-size:18px;" id="s1v">READY</div></div>
+          <div class="pnl-status"><div class="pnl-k" id="s2k">Data Scope</div><div class="pnl-v" style="font-size:18px;" id="s2v">30D</div></div>
+          <div class="pnl-status"><div class="pnl-k" id="s3k">Last Refresh</div><div class="pnl-v" style="font-size:18px;" id="s3v">--</div></div>
+          <div class="pnl-status"><div class="pnl-k" id="s4k">Last Event</div><div class="pnl-v" style="font-size:18px;" id="s4v">--</div></div>
+        </div>
         <div class="pnl-row">
           <input id="accountId" class="pnl-input pnl-mono" placeholder="account id (optional)" />
           <input id="days" class="pnl-input" type="number" min="1" max="3650" value="30" />
           <button id="btnRefresh" class="pnl-btn">Refresh</button>
           <button id="btnRebuild" class="pnl-btn ghost">Rebuild Ledger</button>
         </div>
+        <div id="formErr" class="pnl-error"></div>
         <div id="toast" class="pnl-toast"></div>
         <div class="pnl-kpis">
           <div class="pnl-kpi"><div class="pnl-k" id="k_total">Total PnL</div><div class="pnl-v" id="v_total">--</div><div class="pnl-sub" id="s_total">--</div></div>
@@ -164,6 +179,16 @@
           rebuildFail: "Rebuild failed",
           filterFail: "Filter failed",
           usdc: "USDC",
+          pageState: "Page State",
+          dataScope: "Data Scope",
+          lastRefresh: "Last Refresh",
+          lastEvent: "Last Event",
+          stateReady: "READY",
+          stateLoading: "LOADING",
+          statePartial: "PARTIAL",
+          stateError: "ERROR",
+          invalidDays: "Days must be between 1 and 3650.",
+          confirmRebuild: "Rebuild ledger now? This action recalculates PnL snapshots."
         },
         zh: {
           pageTitle: "Polymarket PnL 与交易账本控制台",
@@ -199,6 +224,16 @@
           rebuildFail: "重建失败",
           filterFail: "筛选失败",
           usdc: "USDC",
+          pageState: "页面状态",
+          dataScope: "数据范围",
+          lastRefresh: "最近刷新",
+          lastEvent: "最近事件",
+          stateReady: "就绪",
+          stateLoading: "加载中",
+          statePartial: "部分失败",
+          stateError: "错误",
+          invalidDays: "天数范围必须在 1 到 3650 之间。",
+          confirmRebuild: "现在重建账本吗？该操作会重算PnL快照。"
         }
       };
       function lang(){ try { return localStorage.getItem('macro-monitor-lang') === 'zh' ? 'zh' : 'en'; } catch { return 'en'; } }
@@ -216,12 +251,25 @@
         document.getElementById('title_attr').textContent=t('attrTitle');
         document.getElementById('title_recon').textContent=t('reconTitle');
         document.getElementById('title_ledger').textContent=t('ledgerTitle');
+        document.getElementById('s1k').textContent=t('pageState');
+        document.getElementById('s2k').textContent=t('dataScope');
+        document.getElementById('s3k').textContent=t('lastRefresh');
+        document.getElementById('s4k').textContent=t('lastEvent');
         document.getElementById('accountId').placeholder=t('placeholderAccount');
         document.getElementById('fMarket').placeholder=t('placeholderMarket');
         document.getElementById('fStrategy').placeholder=t('placeholderStrategy');
       }
       function num(v){ const n=Number(v||0); return Number.isFinite(n)? n.toLocaleString(undefined,{maximumFractionDigits:4}):"--"; }
-      function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); }
+      function nowLocal(){ return new Date().toLocaleString(); }
+      function setPageState(v){ document.getElementById('s1v').textContent=v; }
+      function setLastEvent(v){ document.getElementById('s4v').textContent=v; }
+      function clearErr(){ document.getElementById('formErr').textContent=''; }
+      function setErr(msg){ document.getElementById('formErr').textContent=msg||''; }
+      function toast(msg, level='ok'){
+        const el=document.getElementById('toast');
+        el.textContent=msg;
+        el.className='pnl-toast show '+(level||'ok');
+      }
       async function jfetch(url,opt){ const r=await fetch(url,opt||{}); const d=await r.json().catch(()=>({ok:false,error:'bad_json'})); if(!r.ok||d.ok===false) throw new Error(d.detail||d.error||('http_'+r.status)); return d; }
 
       function currentAccountId(){ return String(document.getElementById('accountId').value||'').trim(); }
@@ -265,11 +313,17 @@
       }
 
       async function refreshAll(){
+        clearErr();
+        setPageState(t('stateLoading'));
         const aid=currentAccountId();
         const days=currentDays();
+        if(days < 1 || days > 3650){ setErr(t('invalidDays')); setPageState(t('stateError')); return; }
+        document.getElementById('s2v').textContent=`${days}D`;
         const qAid=aid?`&account_id=${encodeURIComponent(aid)}`:'';
-        const ov=await jfetch(`/api/v1/pnl/overview?days=${days}${qAid}`);
-        const rec=await jfetch(`/api/v1/pnl/reconciliation?${aid?`account_id=${encodeURIComponent(aid)}`:''}`);
+        let ov=null, rec=null, le=null;
+        let partialErr = "";
+        try { ov=await jfetch(`/api/v1/pnl/overview?days=${days}${qAid}`); } catch(e){ partialErr = String(e.message || e); }
+        try { rec=await jfetch(`/api/v1/pnl/reconciliation?${aid?`account_id=${encodeURIComponent(aid)}`:''}`); } catch(e){ partialErr = partialErr || String(e.message || e); }
         const limit=Math.max(1,Math.min(2000,Number(document.getElementById('fLimit').value||200)));
         const fMarket=String(document.getElementById('fMarket').value||'').trim();
         const fStrategy=String(document.getElementById('fStrategy').value||'').trim();
@@ -278,37 +332,52 @@
         q.set('limit',String(limit));
         if(fMarket) q.set('market_id',fMarket);
         if(fStrategy) q.set('strategy_type',fStrategy);
-        const le=await jfetch(`/api/v1/ledger/entries?${q.toString()}`);
+        try { le=await jfetch(`/api/v1/ledger/entries?${q.toString()}`); } catch(e){ partialErr = partialErr || String(e.message || e); }
 
-        const o=ov.overview||{};
+        const o=(ov && ov.overview)||{};
         document.getElementById('v_total').textContent=num(o.total_pnl);
-        document.getElementById('s_total').textContent=`${t('asof')} ${ov.as_of||'--'}`;
+        document.getElementById('s_total').textContent=`${t('asof')} ${ov && ov.as_of ? ov.as_of : '--'}`;
         document.getElementById('v_realized').textContent=num(o.realized_pnl);
         document.getElementById('v_unrealized').textContent=num(o.unrealized_pnl);
         document.getElementById('v_fee').textContent=num(o.fee_total);
-        const r=rec.reconciliation||{};
+        const r=(rec && rec.reconciliation)||{};
         document.getElementById('v_recon').textContent=(r.status||'--').toUpperCase();
         document.getElementById('s_recon').textContent=`diff=${num(r.diff_internal_vs_positions)}`;
 
-        renderAttr(ov.strategy_attribution||[]);
+        renderAttr((ov && ov.strategy_attribution)||[]);
         renderRecon(r);
-        renderLedger(le.items||[]);
-        toast(t('refreshed'));
+        renderLedger((le && le.items)||[]);
+        document.getElementById('s3v').textContent = nowLocal();
+        if (partialErr) {
+          setPageState(t('statePartial'));
+          setLastEvent(partialErr);
+          toast(`${t('refreshed')} (${t('statePartial')})`, 'warn');
+        } else {
+          setPageState(t('stateReady'));
+          setLastEvent(t('refreshed'));
+          toast(t('refreshed'), 'ok');
+        }
       }
 
       async function rebuild(){
+        clearErr();
+        if(!window.confirm(t('confirmRebuild'))){ return; }
         const aid=currentAccountId();
+        setPageState(t('stateLoading'));
         const out=await jfetch('/api/v1/pnl/rebuild',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account_id:aid,lookback_days:365})});
-        toast(`${t('rebuildDone')}: ledger=${out.inserted_ledger_entries||0}`);
+        setLastEvent(`${t('rebuildDone')}: ledger=${out.inserted_ledger_entries||0}`);
+        toast(`${t('rebuildDone')}: ledger=${out.inserted_ledger_entries||0}`, 'ok');
       }
 
       document.addEventListener('DOMContentLoaded', async ()=>{
         applyI18n();
-        document.getElementById('btnRefresh').onclick=async()=>{ try{ await refreshAll(); }catch(e){ toast(`${t('refreshFail')}: ${e.message}`);} };
-        document.getElementById('btnFilter').onclick=async()=>{ try{ await refreshAll(); }catch(e){ toast(`${t('filterFail')}: ${e.message}`);} };
-        document.getElementById('btnRebuild').onclick=async()=>{ try{ await rebuild(); await refreshAll(); }catch(e){ toast(`${t('rebuildFail')}: ${e.message}`);} };
+        setPageState(t('stateReady'));
+        setLastEvent('--');
+        document.getElementById('btnRefresh').onclick=async()=>{ try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('refreshFail')}: ${e.message}`); toast(`${t('refreshFail')}: ${e.message}`,'err');} };
+        document.getElementById('btnFilter').onclick=async()=>{ try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('filterFail')}: ${e.message}`); toast(`${t('filterFail')}: ${e.message}`,'err');} };
+        document.getElementById('btnRebuild').onclick=async()=>{ try{ await rebuild(); await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('rebuildFail')}: ${e.message}`); toast(`${t('rebuildFail')}: ${e.message}`,'err');} };
         document.getElementById('lang-toggle')?.addEventListener('click', ()=>setTimeout(()=>applyI18n(),0));
-        try{ await refreshAll(); }catch(e){ toast(`${t('initFail')}: ${e.message}`); }
+        try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('initFail')}: ${e.message}`); toast(`${t('initFail')}: ${e.message}`,'err'); }
       });
     </script>
   </body>
