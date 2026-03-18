@@ -839,7 +839,7 @@ def _latest_book(conn, asset_id):
   return row
 
 
-def scan_opportunities(limit=50):
+def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
   conn = get_conn()
   try:
     live_client = PolymarketLiveClient()
@@ -911,6 +911,7 @@ def scan_opportunities(limit=50):
       ensure_demo_data()
       markets = _fetchall(conn, "SELECT * FROM markets WHERE status='active' ORDER BY updated_at DESC LIMIT 200")
     results = []
+    near_miss = []
     ts = now_iso()
     max_results = max(1, min(int(limit or 50), 300))
     for m in markets:
@@ -976,8 +977,6 @@ def scan_opportunities(limit=50):
         d_no = _calc_depth(no.get("bid_levels") or [], max_levels=5)
         notional_ref = max(0.0, bid_sum)
       pair_depth = min(d_yes, d_no)
-      if pair_depth < min_pair_depth:
-        continue
 
       sim = estimate_simulation(legs)
       slippage_bps = float(sim.get("slippage_bps") or 0.0)
@@ -985,19 +984,44 @@ def scan_opportunities(limit=50):
       fee_cost = notional_ref * (effective_fee_bps / 10000.0) * 2.0
       net_profit = round(theory_profit - (slippage_bps / 10000.0) - fee_cost, 6)
       net_edge_bps = round(net_profit * 10000.0, 2)
-      if net_edge_bps < min_net_edge_bps:
-        continue
       depth_factor = _clamp(pair_depth / fill_depth_ref, 0.35, 1.2)
       slip_factor = _clamp(1.0 - (slippage_bps / fill_slippage_ref_bps) * 0.5, 0.3, 1.0)
       fill_probability = _clamp(base_fill_prob * depth_factor * slip_factor, 0.1, 0.99)
       latency_penalty_bps = (latency_ms / 500.0) * latency_bps_per_500ms
       expected_net_bps = round(net_edge_bps * fill_probability - latency_penalty_bps, 2)
-      if expected_net_bps < min_expected_net_bps:
+      market_id = str((m.get("condition_id") if live_mode else m.get("id")) or "")
+      market_title = str((m.get("question") if live_mode else m.get("title")) or market_id)
+      fail_reason = ""
+      if pair_depth < min_pair_depth:
+        fail_reason = "depth_too_low"
+      elif net_edge_bps < min_net_edge_bps:
+        fail_reason = "net_edge_below_threshold"
+      elif expected_net_bps < min_expected_net_bps:
+        fail_reason = "expected_net_below_threshold"
+      if fail_reason:
+        if include_near_miss:
+          near_miss.append({
+            "market_id": market_id,
+            "market_title": market_title,
+            "strategy_type": strategy_type,
+            "theory_profit": round(theory_profit, 6),
+            "net_profit": net_profit,
+            "net_edge_bps": net_edge_bps,
+            "expected_net_bps": expected_net_bps,
+            "fill_probability": round(fill_probability, 4),
+            "pair_depth": round(pair_depth, 4),
+            "reason": fail_reason,
+            "gap_bps": round(
+              (min_pair_depth - pair_depth) if fail_reason == "depth_too_low"
+              else (min_net_edge_bps - net_edge_bps) if fail_reason == "net_edge_below_threshold"
+              else (min_expected_net_bps - expected_net_bps),
+              2
+            ),
+            "source": "polymarket_live" if live_mode else "demo_seed",
+          })
         continue
       expected_net_profit = round(expected_net_bps / 10000.0, 6)
       confidence = _clamp(0.45 + (max(0.0, expected_net_profit) * 12), 0.45, 0.99)
-      market_id = str((m.get("condition_id") if live_mode else m.get("id")) or "")
-      market_title = str((m.get("question") if live_mode else m.get("title")) or market_id)
       opp_id = f"opp-{market_id}-{int(datetime.now().timestamp())}"
       conn.execute(
         """
@@ -1049,6 +1073,17 @@ def scan_opportunities(limit=50):
         break
     conn.commit()
     results.sort(key=lambda x: x.get("vwap_profit", 0), reverse=True)
+    if include_near_miss:
+      near_miss.sort(key=lambda x: float(x.get("gap_bps") or 0.0))
+      return {
+        "items": results[: max_results],
+        "near_miss": near_miss[: max(1, min(int(near_limit or 10), 50))],
+        "meta": {
+          "min_pair_depth": min_pair_depth,
+          "min_net_edge_bps": min_net_edge_bps,
+          "min_expected_net_bps": min_expected_net_bps,
+        },
+      }
     return results[: max_results]
   finally:
     conn.close()

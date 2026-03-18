@@ -2471,8 +2471,14 @@ def polymarket_opportunities_scan():
     limit = 30
   limit = max(1, min(limit, 60))
   try:
-    items = polymarket_scan_opportunities(limit=limit)
-    return jsonify({"ok": True, "items": items, "count": len(items)})
+    near_limit = int(request.args.get("near_limit") or 10)
+  except Exception:
+    near_limit = 10
+  try:
+    out = polymarket_scan_opportunities(limit=limit, include_near_miss=True, near_limit=near_limit)
+    items = out.get("items") if isinstance(out, dict) else (out or [])
+    near_miss = out.get("near_miss") if isinstance(out, dict) else []
+    return jsonify({"ok": True, "items": items, "near_miss": near_miss, "count": len(items), "near_count": len(near_miss)})
   except Exception as e:
     return jsonify({"ok": False, "error": "scan_failed", "detail": str(e)[:240]}), 500
 

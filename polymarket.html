@@ -151,6 +151,15 @@
             </thead>
             <tbody></tbody>
           </table>
+          <h3 id="pm-near-title" class="pm-title" style="font-size:16px;margin-top:14px;">Near Miss (close to threshold)</h3>
+          <table class="pm-table" id="nearMissTable">
+            <thead>
+              <tr>
+                <th id="pm-nm-market">Market</th><th id="pm-nm-type">Type</th><th id="pm-nm-exp">Expected bps</th><th id="pm-nm-gap">Gap bps</th><th id="pm-nm-reason">Reason</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </section>
     </main>
@@ -187,6 +196,11 @@
           disconnected: "Disconnected",
           risk: "Risk & Execution",
           scan: "Arbitrage Opportunity Scan",
+          nearTitle: "Near Miss (close to threshold)",
+          nearNone: "No near-miss candidates",
+          nearReasonDepth: "Depth below threshold",
+          nearReasonNet: "Net edge below threshold",
+          nearReasonExpected: "Expected net below threshold",
           signerPh: "signer address (0x...)",
           funderPh: "funder/API wallet address (required in proxy mode)",
           sigProxy: "proxy (recommended)",
@@ -207,6 +221,11 @@
           colNet: "Expected Net (after costs/execution)",
           colSource: "Source",
           colAction: "Action",
+          nmMarket: "Market",
+          nmType: "Type",
+          nmExp: "Expected bps",
+          nmGap: "Gap bps",
+          nmReason: "Reason",
           ready: "Ready.",
           ynYes: "Yes",
           ynNo: "No",
@@ -291,6 +310,11 @@
           disconnected: "已断开",
           risk: "风控与执行",
           scan: "套利机会扫描",
+          nearTitle: "接近阈值（Near Miss）",
+          nearNone: "暂无接近阈值候选",
+          nearReasonDepth: "深度低于阈值",
+          nearReasonNet: "净边际低于阈值",
+          nearReasonExpected: "期望净边际低于阈值",
           signerPh: "signer 地址（0x...）",
           funderPh: "funder/API wallet 地址（proxy 模式必填）",
           sigProxy: "proxy（推荐）",
@@ -311,6 +335,11 @@
           colNet: "期望净收益（含成本/执行）",
           colSource: "来源",
           colAction: "动作",
+          nmMarket: "市场",
+          nmType: "策略类型",
+          nmExp: "期望bps",
+          nmGap: "差距bps",
+          nmReason: "原因",
           ready: "准备就绪。",
           ynYes: "是",
           ynNo: "否",
@@ -398,6 +427,7 @@
         document.getElementById("btnRenameAccount").textContent = pmT("rename");
         document.getElementById("pm-risk-title").textContent = pmT("risk");
         document.getElementById("pm-scan-title").textContent = pmT("scan");
+        document.getElementById("pm-near-title").textContent = pmT("nearTitle");
         document.getElementById("signer").placeholder = pmT("signerPh");
         document.getElementById("funder").placeholder = pmT("funderPh");
         document.querySelector('#sigType option[value="proxy"]').textContent = pmT("sigProxy");
@@ -418,6 +448,11 @@
         document.getElementById("pm-col-vwap").textContent = pmT("colNet");
         document.getElementById("pm-col-source").textContent = pmT("colSource");
         document.getElementById("pm-col-action").textContent = pmT("colAction");
+        document.getElementById("pm-nm-market").textContent = pmT("nmMarket");
+        document.getElementById("pm-nm-type").textContent = pmT("nmType");
+        document.getElementById("pm-nm-exp").textContent = pmT("nmExp");
+        document.getElementById("pm-nm-gap").textContent = pmT("nmGap");
+        document.getElementById("pm-nm-reason").textContent = pmT("nmReason");
         document.getElementById("pmDiagDetailBtn").textContent = pmT("diagDetailBtn");
         document.getElementById("pmDiagModalTitle").textContent = pmT("diagDetailTitle");
         document.getElementById("pmDiagModalClose").textContent = pmT("close");
@@ -666,44 +701,66 @@
       }
 
       async function scan(){
-        const d = await jfetch("/api/v1/opportunities/scan?limit=30");
+        const d = await jfetch("/api/v1/opportunities/scan?limit=30&near_limit=10");
         const tb = document.querySelector("#oppTable tbody");
+        const nmt = document.querySelector("#nearMissTable tbody");
         tb.innerHTML = "";
+        if (nmt) nmt.innerHTML = "";
         const items = d.items || [];
         if(!items.length){
           const tr = document.createElement("tr");
           tr.innerHTML = `<td colspan="8" style="color:#6b7f86;">${pmT("noOpp")}</td>`;
           tb.appendChild(tr);
-          return;
+        } else {
+          for(const x of items){
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td><span class="pm-pill">${x.id}</span></td>
+              <td>${x.market_title || x.market_id}</td>
+              <td>${x.strategy_type}</td>
+              <td>${Number(x.theory_profit||0).toFixed(4)}</td>
+              <td>${Number((x.expected_net_profit ?? x.net_profit ?? x.vwap_profit) || 0).toFixed(4)}</td>
+              <td>${Number(x.confidence||0).toFixed(2)}</td>
+              <td>${x.source || "--"}</td>
+              <td><button class="pm-btn ghost" data-id="${x.id}">${pmT("colAction")}</button></td>
+            `;
+            tb.appendChild(tr);
+          }
+          tb.querySelectorAll("button[data-id]").forEach((b)=>{
+            b.onclick = async ()=>{
+              try{
+                if(!accountId){ alert(pmT("needAccount")); return; }
+                const out = await jfetch(`/api/v1/opportunities/${encodeURIComponent(b.dataset.id)}/execute`, {
+                  method:"POST",
+                  headers:{"Content-Type":"application/json"},
+                  body: JSON.stringify({account_id: accountId, actor: "web-demo"})
+                });
+                alert(`OK: ${out.execution_id || ""} (mode=${out.mode || "unknown"}, status=${out.status || "-"})`);
+                await document.getElementById("btnRisk").click();
+              }catch(e){ alert(`ERROR: ${e.message}`); }
+            };
+          });
         }
-        for(const x of items){
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td><span class="pm-pill">${x.id}</span></td>
-            <td>${x.market_title || x.market_id}</td>
-            <td>${x.strategy_type}</td>
-            <td>${Number(x.theory_profit||0).toFixed(4)}</td>
-            <td>${Number((x.expected_net_profit ?? x.net_profit ?? x.vwap_profit) || 0).toFixed(4)}</td>
-            <td>${Number(x.confidence||0).toFixed(2)}</td>
-            <td>${x.source || "--"}</td>
-            <td><button class="pm-btn ghost" data-id="${x.id}">${pmT("colAction")}</button></td>
-          `;
-          tb.appendChild(tr);
+        if (nmt) {
+          const nm = Array.isArray(d.near_miss) ? d.near_miss : [];
+          if(!nm.length){
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td colspan="5" style="color:#6b7f86;">${pmT("nearNone")}</td>`;
+            nmt.appendChild(tr);
+          } else {
+            const mapReason = (r) => {
+              if (r === "depth_too_low") return pmT("nearReasonDepth");
+              if (r === "net_edge_below_threshold") return pmT("nearReasonNet");
+              if (r === "expected_net_below_threshold") return pmT("nearReasonExpected");
+              return r || "--";
+            };
+            nm.forEach((x) => {
+              const tr = document.createElement("tr");
+              tr.innerHTML = `<td>${x.market_title || x.market_id || "--"}</td><td>${x.strategy_type || "--"}</td><td>${Number(x.expected_net_bps || 0).toFixed(2)}</td><td>${Number(x.gap_bps || 0).toFixed(2)}</td><td>${mapReason(x.reason)}</td>`;
+              nmt.appendChild(tr);
+            });
+          }
         }
-        tb.querySelectorAll("button[data-id]").forEach((b)=>{
-          b.onclick = async ()=>{
-            try{
-              if(!accountId){ alert(pmT("needAccount")); return; }
-              const out = await jfetch(`/api/v1/opportunities/${encodeURIComponent(b.dataset.id)}/execute`, {
-                method:"POST",
-                headers:{"Content-Type":"application/json"},
-                body: JSON.stringify({account_id: accountId, actor: "web-demo"})
-              });
-              alert(`OK: ${out.execution_id || ""} (mode=${out.mode || "unknown"}, status=${out.status || "-"})`);
-              await document.getElementById("btnRisk").click();
-            }catch(e){ alert(`ERROR: ${e.message}`); }
-          };
-        });
       }
 
       document.getElementById("btnScan").onclick = async ()=>{
