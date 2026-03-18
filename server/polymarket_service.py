@@ -960,6 +960,8 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
       strategy_type = None
       theory_profit = 0.0
       legs = []
+      candidate_only = False
+      arb_gap_bps = 0.0
       if ask_sum > 0 and ask_sum < 0.995:
         strategy_type = "single_market_buy_both"
         theory_profit = 1.0 - ask_sum
@@ -974,6 +976,28 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
           {"asset_id": yes["asset_id"], "side": "SELL", "qty": 1, "limit_price": yes.get("best_bid")},
           {"asset_id": no["asset_id"], "side": "SELL", "qty": 1, "limit_price": no.get("best_bid")},
         ]
+      elif include_near_miss:
+        # Extended candidate scan: emit nearest non-arb structures for diagnostics.
+        buy_gap = abs(ask_sum - 0.995) if ask_sum > 0 else 999.0
+        sell_gap = abs(1.005 - bid_sum) if bid_sum > 0 else 999.0
+        if buy_gap <= sell_gap and ask_sum > 0:
+          strategy_type = "single_market_buy_both_candidate"
+          theory_profit = 1.0 - ask_sum
+          arb_gap_bps = max(0.0, ask_sum - 0.995) * 10000.0
+          legs = [
+            {"asset_id": yes["asset_id"], "side": "BUY", "qty": 1, "limit_price": yes.get("best_ask")},
+            {"asset_id": no["asset_id"], "side": "BUY", "qty": 1, "limit_price": no.get("best_ask")},
+          ]
+          candidate_only = True
+        elif bid_sum > 0:
+          strategy_type = "single_market_sell_both_candidate"
+          theory_profit = bid_sum - 1.0
+          arb_gap_bps = max(0.0, 1.005 - bid_sum) * 10000.0
+          legs = [
+            {"asset_id": yes["asset_id"], "side": "SELL", "qty": 1, "limit_price": yes.get("best_bid")},
+            {"asset_id": no["asset_id"], "side": "SELL", "qty": 1, "limit_price": no.get("best_bid")},
+          ]
+          candidate_only = True
       if not strategy_type:
         continue
       # Require minimum usable depth on both legs.
@@ -1018,7 +1042,9 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
       market_id = str((m.get("condition_id") if live_mode else m.get("id")) or "")
       market_title = str((m.get("question") if live_mode else m.get("title")) or market_id)
       fail_reason = ""
-      if pair_depth < min_pair_depth:
+      if candidate_only:
+        fail_reason = "raw_structure_not_arb"
+      elif pair_depth < min_pair_depth:
         fail_reason = "depth_too_low"
       elif net_edge_bps < dyn_min_net_bps:
         fail_reason = "net_edge_below_threshold"
@@ -1038,7 +1064,8 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
             "pair_depth": round(pair_depth, 4),
             "reason": fail_reason,
             "gap_bps": round(
-              (min_pair_depth - pair_depth) if fail_reason == "depth_too_low"
+              arb_gap_bps if fail_reason == "raw_structure_not_arb"
+              else (min_pair_depth - pair_depth) if fail_reason == "depth_too_low"
               else (dyn_min_net_bps - net_edge_bps) if fail_reason == "net_edge_below_threshold"
               else (dyn_min_expected_bps - expected_net_bps),
               2

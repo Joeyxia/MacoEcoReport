@@ -201,6 +201,7 @@
           nearReasonDepth: "Depth below threshold",
           nearReasonNet: "Net edge below threshold",
           nearReasonExpected: "Expected net below threshold",
+          nearReasonRaw: "Not yet an arb structure",
           signerPh: "signer address (0x...)",
           funderPh: "funder/API wallet address (required in proxy mode)",
           sigProxy: "proxy (recommended)",
@@ -315,6 +316,7 @@
           nearReasonDepth: "深度低于阈值",
           nearReasonNet: "净边际低于阈值",
           nearReasonExpected: "期望净边际低于阈值",
+          nearReasonRaw: "尚未形成套利结构",
           signerPh: "signer 地址（0x...）",
           funderPh: "funder/API wallet 地址（proxy 模式必填）",
           sigProxy: "proxy（推荐）",
@@ -749,6 +751,7 @@
             nmt.appendChild(tr);
           } else {
             const mapReason = (r) => {
+              if (r === "raw_structure_not_arb") return pmT("nearReasonRaw");
               if (r === "depth_too_low") return pmT("nearReasonDepth");
               if (r === "net_edge_below_threshold") return pmT("nearReasonNet");
               if (r === "expected_net_below_threshold") return pmT("nearReasonExpected");
