@@ -8,16 +8,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260319pnl3" />
+    <link rel="stylesheet" href="styles.css?v=20260319pnl4" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260319pnl3" defer></script>
+    <script src="app.js?v=20260319pnl4" defer></script>
     <style>
-      .pnl-wrap { width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
-      .pnl-grid { display:flex; gap:12px; flex-wrap:wrap; align-items:stretch; }
+      .page.pnl-wrap { display:block !important; width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
+      .pnl-grid { display:grid !important; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; }
       .pnl-card { width: 100%; background:#fff; border:1px solid rgba(10,40,40,.12); border-radius:14px; padding:14px; box-sizing:border-box; }
-      .pnl-card.half { flex: 1 1 calc(50% - 6px); max-width: calc(50% - 6px); min-width: 0; }
-      .pnl-grid > .pnl-card:not(.half) { flex: 1 1 100%; max-width: 100%; min-width: 0; }
+      .pnl-card.half { grid-column: span 1; min-width: 0; }
+      .pnl-grid > .pnl-card:not(.half) { grid-column: 1 / -1; min-width: 0; }
       .pnl-status-row { display:grid; gap:10px; grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:10px; }
       .pnl-status { border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:8px 10px; background:#fff; }
       .pnl-title { margin:0 0 10px; font-size:20px; color:#112b34; font-weight:700; }
@@ -52,8 +52,8 @@
       .pnl-table tbody tr:hover { background:#f6fbfa; }
       @media (max-width: 980px) {
         .pnl-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
-        .pnl-grid { display:block; }
-        .pnl-card.half { max-width:100%; margin-bottom:12px; }
+        .pnl-grid { grid-template-columns:1fr !important; }
+        .pnl-card.half { grid-column: span 1; }
         .pnl-status-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
       }
     </style>
@@ -77,7 +77,7 @@
         <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
         <a class="nav-link" href="about.html" data-i18n="nav_intro">About Nexo</a>
       </nav>
-      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
+      <button id="lang-toggle-pnl" class="btn ghost lang-toggle" type="button">中文</button>
     </header>
 
     <main class="page pnl-wrap">
@@ -367,7 +367,7 @@
           const val = t(key);
           if (val) node.textContent = val;
         });
-        const toggle = document.getElementById('lang-toggle');
+        const toggle = document.getElementById('lang-toggle-pnl');
         if (toggle) toggle.textContent = lang() === 'zh' ? 'EN' : '中文';
         document.getElementById('pageTitle').textContent=t('pageTitle');
         document.getElementById('btnRefresh').textContent=t('refresh');
@@ -567,16 +567,11 @@
           await refreshAll();
           toast(t('thrApplied'),'ok');
         };
-        const oldToggle = document.getElementById('lang-toggle');
-        if (oldToggle) {
-          const newToggle = oldToggle.cloneNode(true);
-          oldToggle.parentNode.replaceChild(newToggle, oldToggle);
-          newToggle.addEventListener('click', async ()=>{
-            setLangSafe(lang() === 'zh' ? 'en' : 'zh');
-            applyI18n();
-            await refreshAll();
-          });
-        }
+        document.getElementById('lang-toggle-pnl')?.addEventListener('click', async ()=>{
+          setLangSafe(lang() === 'zh' ? 'en' : 'zh');
+          applyI18n();
+          await refreshAll();
+        });
         try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('initFail')}: ${e.message}`); toast(`${t('initFail')}: ${e.message}`,'err'); }
       });
     </script>
