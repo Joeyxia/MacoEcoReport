@@ -81,6 +81,7 @@ try:
     get_account_status as polymarket_get_account_status,
     set_auto_trading as polymarket_set_auto_trading,
     disconnect_account as polymarket_disconnect_account,
+    rename_account as polymarket_rename_account,
     emergency_cancel_all as polymarket_emergency_cancel_all,
     scan_opportunities as polymarket_scan_opportunities,
     get_opportunities as polymarket_get_opportunities,
@@ -192,6 +193,7 @@ except ImportError:
     get_account_status as polymarket_get_account_status,
     set_auto_trading as polymarket_set_auto_trading,
     disconnect_account as polymarket_disconnect_account,
+    rename_account as polymarket_rename_account,
     emergency_cancel_all as polymarket_emergency_cancel_all,
     scan_opportunities as polymarket_scan_opportunities,
     get_opportunities as polymarket_get_opportunities,
@@ -2425,6 +2427,23 @@ def polymarket_disconnect():
   if own_err:
     return own_err
   out = polymarket_disconnect_account(account_id, actor=str(user.get("email") or "operator"))
+  return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/accounts/polymarket/rename", methods=["POST"])
+def polymarket_rename():
+  user, err = _require_public_user()
+  if err:
+    return err
+  payload = request.get_json(silent=True) or {}
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(payload.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
+  display_name = str(payload.get("display_name") or "").strip()
+  out = polymarket_rename_account(account_id, display_name, actor=str(user.get("email") or "operator"))
   return jsonify(out), (200 if out.get("ok") else 400)
 
 

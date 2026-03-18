@@ -104,6 +104,7 @@
             <select id="accountSelect" class="pm-input" style="min-width:320px;max-width:520px;">
               <option value="">--</option>
             </select>
+            <button class="pm-btn ghost" id="btnRenameAccount">Rename</button>
           </div>
           <div class="pm-row">
             <input id="signer" class="pm-input" placeholder="signer address (0x...)" />
@@ -180,6 +181,10 @@
           accountSelectEmpty: "No account selected",
           accountSwitched: "Switched account",
           disconnect: "Disconnect",
+          rename: "Rename",
+          renamePrompt: "Enter account alias (e.g. Account 1 / Main):",
+          renameOk: "Alias updated",
+          renameFail: "Rename failed",
           disconnected: "Disconnected",
           risk: "Risk & Execution",
           scan: "Arbitrage Opportunity Scan",
@@ -279,6 +284,10 @@
           accountSelectEmpty: "未选择账户",
           accountSwitched: "已切换账户",
           disconnect: "断开账户",
+          rename: "重命名",
+          renamePrompt: "请输入账户别名（例如：账户1 / 主账户）：",
+          renameOk: "别名已更新",
+          renameFail: "重命名失败",
           disconnected: "已断开",
           risk: "风控与执行",
           scan: "套利机会扫描",
@@ -385,6 +394,7 @@
         document.getElementById("pm-diag-market-label").textContent = pmT("diagMarket");
         document.getElementById("pm-account-title").textContent = pmT("account");
         document.getElementById("accountSelect").setAttribute("aria-label", pmT("accountSelect"));
+        document.getElementById("btnRenameAccount").textContent = pmT("rename");
         document.getElementById("pm-risk-title").textContent = pmT("risk");
         document.getElementById("pm-scan-title").textContent = pmT("scan");
         document.getElementById("signer").placeholder = pmT("signerPh");
@@ -533,12 +543,13 @@
       }
 
       function accountOptionLabel(it){
+        const alias = String(it?.display_name || "").trim();
         const status = String(it?.status || "");
         const sig = String(it?.signature_type || "eoa").toLowerCase();
         const signer = String(it?.signer_address || "--");
         const shortSigner = signer.length > 14 ? `${signer.slice(0,8)}...${signer.slice(-4)}` : signer;
         const badge = status === "connected" ? "connected" : pmT("disconnected");
-        return `${it?.id || "--"} | ${sig} | ${shortSigner} | ${badge}`;
+        return `${alias || (pmGetLang()==="zh"?"账户":"Account")} | ${sig} | ${shortSigner} | ${badge}`;
       }
 
       function renderAccountSelect(items, selectedId){
@@ -565,9 +576,14 @@
       async function loadAccountList(preferredId){
         const out = await jfetch("/api/v1/accounts/polymarket/list");
         const items = Array.isArray(out.items) ? out.items : [];
-        const picked = preferredId || accountId || (items[0] && items[0].id) || "";
+        const key = `pm:lastAccount:${(currentUserEmail || "default").toLowerCase()}`;
+        let remembered = "";
+        try { remembered = localStorage.getItem(key) || ""; } catch {}
+        const rememberedOk = remembered && items.some((x) => String(x.id || "") === remembered);
+        const picked = preferredId || accountId || (rememberedOk ? remembered : "") || (items[0] && items[0].id) || "";
         renderAccountSelect(items, picked);
         accountId = String(picked || "");
+        try { if (accountId) localStorage.setItem(key, accountId); } catch {}
         return items;
       }
 
@@ -865,12 +881,31 @@
           const nextId = String(e.target?.value || "");
           if (!nextId) return;
           accountId = nextId;
+          try { localStorage.setItem(`pm:lastAccount:${(currentUserEmail || "default").toLowerCase()}`, accountId); } catch {}
           try{
             await refreshAccount();
             await refreshDiagnostics();
             toast(`${pmT("accountSwitched")}: ${accountId}`, "ok");
           }catch(err){
             toast(`${pmT("connectFail")}: ${err.message}`, "err");
+          }
+        });
+        document.getElementById("btnRenameAccount")?.addEventListener("click", async () => {
+          try{
+            if(!accountId) throw new Error(pmT("needAccount"));
+            const name = window.prompt(pmT("renamePrompt"), "");
+            if(name === null) return;
+            const clean = String(name || "").trim();
+            if(!clean) return;
+            await jfetch("/api/v1/accounts/polymarket/rename", {
+              method: "POST",
+              headers: {"Content-Type":"application/json"},
+              body: JSON.stringify({ account_id: accountId, display_name: clean })
+            });
+            await loadAccountList(accountId);
+            toast(pmT("renameOk"), "ok");
+          }catch(err){
+            toast(`${pmT("renameFail")}: ${err.message}`, "err");
           }
         });
         toast(pmT("ready"), "info");

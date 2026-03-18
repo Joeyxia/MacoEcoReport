@@ -480,6 +480,7 @@ def init_db():
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       account_type TEXT,
+      display_name TEXT,
       signer_address TEXT,
       funder_address TEXT,
       signature_type TEXT,
@@ -775,6 +776,7 @@ def init_db():
     "ALTER TABLE risk_limits ADD COLUMN allow_taker INTEGER DEFAULT 0",
     "ALTER TABLE risk_limits ADD COLUMN cancel_stale_after_sec INTEGER DEFAULT 120",
     "ALTER TABLE risk_limits ADD COLUMN paper_mode INTEGER DEFAULT 1",
+    "ALTER TABLE trading_accounts ADD COLUMN display_name TEXT",
   ]:
     try:
       conn.execute(ddl)

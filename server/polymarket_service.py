@@ -323,13 +323,18 @@ def account_connect(user_id, account_type, signer_address, funder_address, signa
     stable = hashlib.sha1(signer_norm.encode("utf-8")).hexdigest()[:10]
     account_id = f"acct-{str(user_id or 'user')}-{stable}"
     ts = now_iso()
+    existing = _fetchone(conn, "SELECT display_name FROM trading_accounts WHERE id=?", (account_id,)) or {}
+    display_name = str(existing.get("display_name") or "").strip()
+    if not display_name:
+      n = int((_fetchone(conn, "SELECT COUNT(1) AS c FROM trading_accounts WHERE user_id=?", (str(user_id or "default"),)) or {}).get("c") or 0) + 1
+      display_name = f"Account {n}"
     conn.execute(
       """
       INSERT OR REPLACE INTO trading_accounts(
-        id, user_id, account_type, signer_address, funder_address, signature_type, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 'connected', ?, ?)
+        id, user_id, account_type, display_name, signer_address, funder_address, signature_type, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'connected', ?, ?)
       """,
-      (account_id, str(user_id or "default"), account_type, signer_address, funder_address, signature_type, ts, ts),
+      (account_id, str(user_id or "default"), account_type, display_name, signer_address, funder_address, signature_type, ts, ts),
     )
     tpl = dict(DEFAULT_RISK_TEMPLATE)
     conn.execute(
@@ -621,6 +626,26 @@ def disconnect_account(account_id, actor="operator"):
     conn.close()
 
 
+def rename_account(account_id, display_name, actor="operator"):
+  conn = get_conn()
+  try:
+    row = _fetchone(conn, "SELECT id FROM trading_accounts WHERE id=?", (account_id,))
+    if not row:
+      return {"ok": False, "error": "account_not_found"}
+    name = str(display_name or "").strip()
+    if not name:
+      return {"ok": False, "error": "display_name_required"}
+    if len(name) > 64:
+      return {"ok": False, "error": "display_name_too_long"}
+    ts = now_iso()
+    conn.execute("UPDATE trading_accounts SET display_name=?, updated_at=? WHERE id=?", (name, ts, account_id))
+    _write_audit(conn, actor, "account", account_id, "rename", "ok", {"display_name": name})
+    conn.commit()
+    return {"ok": True, "account_id": account_id, "display_name": name}
+  finally:
+    conn.close()
+
+
 def list_trading_accounts(user_id=""):
   conn = get_conn()
   try:
@@ -628,7 +653,7 @@ def list_trading_accounts(user_id=""):
       rows = _fetchall(
         conn,
         """
-        SELECT id, user_id, account_type, signer_address, funder_address, signature_type, status, created_at, updated_at
+        SELECT id, user_id, account_type, display_name, signer_address, funder_address, signature_type, status, created_at, updated_at
         FROM trading_accounts
         WHERE user_id=?
         ORDER BY updated_at DESC
@@ -639,7 +664,7 @@ def list_trading_accounts(user_id=""):
       rows = _fetchall(
         conn,
         """
-        SELECT id, user_id, account_type, signer_address, funder_address, signature_type, status, created_at, updated_at
+        SELECT id, user_id, account_type, display_name, signer_address, funder_address, signature_type, status, created_at, updated_at
         FROM trading_accounts
         ORDER BY updated_at DESC
         """,
