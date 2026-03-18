@@ -202,6 +202,8 @@
           nearReasonNet: "Net edge below threshold",
           nearReasonExpected: "Expected net below threshold",
           nearReasonRaw: "Not yet an arb structure",
+          nearReasonCrossSpread: "Cross-market spread below threshold",
+          nearReasonCrossExpected: "Cross-market expected edge below threshold",
           signerPh: "signer address (0x...)",
           funderPh: "funder/API wallet address (required in proxy mode)",
           sigProxy: "proxy (recommended)",
@@ -317,6 +319,8 @@
           nearReasonNet: "净边际低于阈值",
           nearReasonExpected: "期望净边际低于阈值",
           nearReasonRaw: "尚未形成套利结构",
+          nearReasonCrossSpread: "跨市场价差低于阈值",
+          nearReasonCrossExpected: "跨市场期望边际低于阈值",
           signerPh: "signer 地址（0x...）",
           funderPh: "funder/API wallet 地址（proxy 模式必填）",
           sigProxy: "proxy（推荐）",
@@ -752,6 +756,8 @@
           } else {
             const mapReason = (r) => {
               if (r === "raw_structure_not_arb") return pmT("nearReasonRaw");
+              if (r === "cross_spread_below_threshold") return pmT("nearReasonCrossSpread");
+              if (r === "cross_expected_below_threshold") return pmT("nearReasonCrossExpected");
               if (r === "depth_too_low") return pmT("nearReasonDepth");
               if (r === "net_edge_below_threshold") return pmT("nearReasonNet");
               if (r === "expected_net_below_threshold") return pmT("nearReasonExpected");

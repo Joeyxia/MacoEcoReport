@@ -909,6 +909,31 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
       fill_slippage_ref_bps = max(1.0, float(os.environ.get("POLYMARKET_FILL_SLIPPAGE_REF_BPS", "20")))
     except Exception:
       fill_slippage_ref_bps = 20.0
+    cross_enabled = str(os.environ.get("POLYMARKET_CROSS_MARKET_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+    try:
+      cross_pair_cap = max(10, min(int(os.environ.get("POLYMARKET_CROSS_PAIR_CAP", "80")), 300))
+    except Exception:
+      cross_pair_cap = 80
+    try:
+      cross_min_spread_bps = max(5.0, float(os.environ.get("POLYMARKET_CROSS_MIN_SPREAD_BPS", "60")))
+    except Exception:
+      cross_min_spread_bps = 60.0
+    try:
+      cross_min_expected_bps = max(2.0, float(os.environ.get("POLYMARKET_CROSS_MIN_EXPECTED_BPS", "6")))
+    except Exception:
+      cross_min_expected_bps = 6.0
+
+    def _kw(question):
+      s = str(question or "").lower()
+      for ch in ",.:;!?()[]{}\"'`/\\|-_":
+        s = s.replace(ch, " ")
+      stop = {"the", "will", "is", "are", "for", "and", "with", "this", "that", "from", "into", "after", "before", "over", "under", "to", "of", "in", "on", "a", "an"}
+      out = []
+      for w in s.split():
+        if len(w) < 4 or w in stop:
+          continue
+        out.append(w)
+      return set(out)
     if live_client.enabled:
       lm = live_client.fetch_markets(max_markets=180, max_pages=3)
       if lm.get("ok"):
@@ -921,6 +946,7 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
       markets = _fetchall(conn, "SELECT * FROM markets WHERE status='active' ORDER BY updated_at DESC LIMIT 200")
     results = []
     near_miss = []
+    cross_pool = []
     ts = now_iso()
     max_results = max(1, min(int(limit or 50), 300))
     for m in markets:
@@ -955,6 +981,22 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
         no = _latest_book(conn, f"{m['id']}:NO")
       if not yes or not no:
         continue
+      qtxt = str((m.get("question") if live_mode else m.get("title")) or "")
+      y_bid = float(yes.get("best_bid") or 0.0)
+      y_ask = float(yes.get("best_ask") or 0.0)
+      if y_bid > 0 and y_ask > 0:
+        cross_pool.append({
+          "market_id": str((m.get("condition_id") if live_mode else m.get("id")) or ""),
+          "market_title": qtxt,
+          "category": str(m.get("category") or "unknown"),
+          "yes_token": str(yes.get("asset_id") or ""),
+          "yes_bid": y_bid,
+          "yes_ask": y_ask,
+          "yes_mid": (y_bid + y_ask) / 2.0,
+          "yes_depth": _calc_depth(yes.get("bid_levels") or [], max_levels=5),
+          "kw": _kw(qtxt),
+          "source": "polymarket_live" if live_mode else "demo_seed",
+        })
       ask_sum = (float(yes.get("best_ask") or 0) + float(no.get("best_ask") or 0))
       bid_sum = (float(yes.get("best_bid") or 0) + float(no.get("best_bid") or 0))
       strategy_type = None
@@ -1128,6 +1170,90 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
       })
       if len(results) >= max_results:
         break
+    if cross_enabled and len(results) < max_results and len(cross_pool) >= 2:
+      cross_count = 0
+      for i in range(len(cross_pool)):
+        a = cross_pool[i]
+        for j in range(i + 1, len(cross_pool)):
+          if cross_count >= cross_pair_cap or len(results) >= max_results:
+            break
+          b = cross_pool[j]
+          if a["market_id"] == b["market_id"]:
+            continue
+          inter = len((a.get("kw") or set()) & (b.get("kw") or set()))
+          if inter < 2:
+            continue
+          spread = abs(float(a.get("yes_mid") or 0.0) - float(b.get("yes_mid") or 0.0))
+          spread_bps = spread * 10000.0
+          if spread_bps < 1:
+            continue
+          high = a if float(a["yes_mid"]) >= float(b["yes_mid"]) else b
+          low = b if high is a else a
+          # candidate: buy lower-mid YES, sell higher-mid YES
+          sim_slip = max(0.0, (100.0 / max(1.0, float(low.get("yes_depth") or 1.0))) * 8.0)
+          fee_bps = (fee_bps_exec if fee_bps_exec > 0 else fee_bps_per_leg) * 2.0
+          net_edge_bps = spread_bps - fee_bps - sim_slip
+          fill_prob = _clamp(base_fill_prob * _clamp(min(float(low.get("yes_depth") or 0.0), float(high.get("yes_depth") or 0.0)) / fill_depth_ref, 0.35, 1.1), 0.1, 0.95)
+          expected_bps = net_edge_bps * fill_prob - ((latency_ms / 500.0) * latency_bps_per_500ms)
+          cross_id = f"opp-xm-{low['market_id'][:8]}-{high['market_id'][:8]}-{int(datetime.now().timestamp())}"
+          legs = [
+            {"asset_id": low["yes_token"], "side": "BUY", "qty": 1, "limit_price": low["yes_ask"]},
+            {"asset_id": high["yes_token"], "side": "SELL", "qty": 1, "limit_price": high["yes_bid"]},
+          ]
+          title = f"{low['market_title']}  <->  {high['market_title']}"
+          if spread_bps >= cross_min_spread_bps and expected_bps >= cross_min_expected_bps:
+            expected_net_profit = round(expected_bps / 10000.0, 6)
+            confidence = _clamp(0.42 + max(0.0, expected_net_profit) * 10, 0.42, 0.92)
+            conn.execute(
+              """
+              INSERT INTO arbitrage_opportunities(
+                id, strategy_type, discovered_at, theory_profit, vwap_profit, confidence, legs_json, status, market_id, created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET
+                theory_profit=excluded.theory_profit,
+                vwap_profit=excluded.vwap_profit,
+                confidence=excluded.confidence,
+                legs_json=excluded.legs_json,
+                status='open',
+                updated_at=excluded.updated_at
+              """,
+              (
+                cross_id, "cross_market_yes_spread", ts, round(spread, 6), expected_net_profit, round(confidence, 4),
+                json.dumps(legs, ensure_ascii=False), f"{low['market_id']}|{high['market_id']}", ts, ts,
+              ),
+            )
+            results.append({
+              "id": cross_id,
+              "market_id": f"{low['market_id']}|{high['market_id']}",
+              "market_title": title,
+              "strategy_type": "cross_market_yes_spread",
+              "theory_profit": round(spread, 6),
+              "vwap_profit": round(expected_bps / 10000.0, 6),
+              "net_profit": round(net_edge_bps / 10000.0, 6),
+              "expected_net_profit": round(expected_bps / 10000.0, 6),
+              "expected_net_bps": round(expected_bps, 2),
+              "fill_probability": round(fill_prob, 4),
+              "confidence": round(confidence, 4),
+              "legs": legs,
+              "source": low.get("source") or "polymarket_live",
+            })
+          elif include_near_miss:
+            reason = "cross_spread_below_threshold" if spread_bps < cross_min_spread_bps else "cross_expected_below_threshold"
+            gap = (cross_min_spread_bps - spread_bps) if reason == "cross_spread_below_threshold" else (cross_min_expected_bps - expected_bps)
+            near_miss.append({
+              "market_id": f"{low['market_id']}|{high['market_id']}",
+              "market_title": title,
+              "strategy_type": "cross_market_yes_spread_candidate",
+              "theory_profit": round(spread, 6),
+              "expected_net_bps": round(expected_bps, 2),
+              "fill_probability": round(fill_prob, 4),
+              "reason": reason,
+              "gap_bps": round(max(0.0, gap), 2),
+              "source": low.get("source") or "polymarket_live",
+            })
+          cross_count += 1
+        if cross_count >= cross_pair_cap or len(results) >= max_results:
+          break
     conn.commit()
     results.sort(key=lambda x: x.get("vwap_profit", 0), reverse=True)
     if include_near_miss:
