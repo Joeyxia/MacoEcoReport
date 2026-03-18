@@ -8,10 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260319pnl8" />
+    <link rel="stylesheet" href="styles.css?v=20260319pnl9" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260319pnl8" defer></script>
+    <script src="app.js?v=20260319pnl9" defer></script>
     <style>
       .page.pnl-wrap { display:block !important; width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
       .pnl-grid { display:grid !important; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; }
@@ -539,6 +539,7 @@
         try { await refreshAll(); } catch {}
       };
       document.addEventListener('DOMContentLoaded', async ()=>{
+        await new Promise((resolve) => setTimeout(resolve, 0));
         applyI18n();
         applyThresholdInputs();
         setPageState(t('stateReady'));
@@ -556,6 +557,11 @@
           await refreshAll();
           toast(t('thrApplied'),'ok');
         };
+        document.getElementById('lang-toggle')?.addEventListener('click', () => {
+          setTimeout(() => {
+            window.applyPolymarketPnlI18n?.();
+          }, 0);
+        });
         try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('initFail')}: ${e.message}`); toast(`${t('initFail')}: ${e.message}`,'err'); }
       });
     </script>
