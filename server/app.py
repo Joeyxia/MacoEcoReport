@@ -955,6 +955,84 @@ def _fetch_openrouter_rankings(view: str = "week", category: str = "all"):
   }
 
 
+def _fetch_polymarket_trader_leaderboard(
+  category: str = "OVERALL",
+  time_period: str = "ALL",
+  order_by: str = "PNL",
+  limit: int = 15,
+  offset: int = 0,
+  user: str = "",
+  user_name: str = "",
+):
+  allowed_category = {"OVERALL", "POLITICS", "SPORTS", "CRYPTO", "CULTURE", "MENTIONS", "WEATHER", "ECONOMICS", "TECH", "FINANCE"}
+  allowed_time = {"DAY", "WEEK", "MONTH", "ALL"}
+  allowed_order = {"PNL", "VOL"}
+  c = str(category or "OVERALL").strip().upper()
+  t = str(time_period or "ALL").strip().upper()
+  o = str(order_by or "PNL").strip().upper()
+  c = c if c in allowed_category else "OVERALL"
+  t = t if t in allowed_time else "ALL"
+  o = o if o in allowed_order else "PNL"
+  lim = max(1, min(int(limit or 15), 50))
+  off = max(0, min(int(offset or 0), 1000))
+  q = {
+    "category": c,
+    "timePeriod": t,
+    "orderBy": o,
+    "limit": lim,
+    "offset": off,
+  }
+  if user:
+    q["user"] = str(user).strip()
+  if user_name:
+    q["userName"] = str(user_name).strip()
+  url = f"https://data-api.polymarket.com/v1/leaderboard?{urllib.parse.urlencode(q)}"
+  req = urllib.request.Request(
+    url,
+    headers={
+      "User-Agent": "Mozilla/5.0 (NexoMacroMonitor; +https://nexo.hk)",
+      "Accept": "application/json",
+    },
+    method="GET",
+  )
+  with urllib.request.urlopen(req, timeout=20) as resp:
+    raw = resp.read().decode("utf-8", errors="ignore")
+  payload = json.loads(raw or "[]")
+  items = payload if isinstance(payload, list) else []
+  normalized = []
+  for idx, row in enumerate(items):
+    if not isinstance(row, dict):
+      continue
+    wallet = str(row.get("proxyWallet") or "").strip()
+    if not re.match(r"^0x[a-fA-F0-9]{40}$", wallet):
+      continue
+    rank_raw = row.get("rank")
+    try:
+      rank = int(str(rank_raw).strip())
+    except Exception:
+      rank = idx + 1
+    normalized.append({
+      "rank": rank,
+      "proxyWallet": wallet,
+      "userName": str(row.get("userName") or "").strip(),
+      "vol": float(row.get("vol") or 0.0),
+      "pnl": float(row.get("pnl") or 0.0),
+      "xUsername": str(row.get("xUsername") or "").strip(),
+      "verifiedBadge": bool(row.get("verifiedBadge")),
+      "profileImage": str(row.get("profileImage") or "").strip(),
+    })
+  return {
+    "ok": True,
+    "sourceUrl": url,
+    "items": normalized,
+    "count": len(normalized),
+    "category": c,
+    "timePeriod": t,
+    "orderBy": o,
+    "fetchedAt": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+  }
+
+
 def _should_autotrack_token() -> bool:
   path = request.path or ""
   if request.method == "OPTIONS":
@@ -2669,6 +2747,98 @@ def polymarket_live_diagnostics():
     })
   except Exception as e:
     return jsonify({"ok": False, "error": "diagnostics_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/v1/polymarket/leaderboard/top", methods=["GET"])
+def polymarket_leaderboard_top():
+  user, err = _require_public_user()
+  if err:
+    return err
+  try:
+    limit = int(request.args.get("limit") or 15)
+  except Exception:
+    limit = 15
+  category = str(request.args.get("category") or "OVERALL").strip()
+  time_period = str(request.args.get("timePeriod") or "ALL").strip()
+  order_by = str(request.args.get("orderBy") or "PNL").strip()
+  try:
+    out = _fetch_polymarket_trader_leaderboard(
+      category=category,
+      time_period=time_period,
+      order_by=order_by,
+      limit=max(1, min(limit, 15)),
+      offset=0,
+    )
+    return jsonify(out)
+  except Exception as e:
+    return jsonify({"ok": False, "error": "leaderboard_fetch_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/v1/polymarket/account/public-summary", methods=["GET"])
+def polymarket_public_account_summary():
+  user, err = _require_public_user()
+  if err:
+    return err
+  wallet = str(request.args.get("wallet") or "").strip()
+  if not re.match(r"^0x[a-fA-F0-9]{40}$", wallet):
+    return jsonify({"ok": False, "error": "invalid_wallet"}), 400
+  try:
+    out = _fetch_polymarket_trader_leaderboard(
+      category=str(request.args.get("category") or "OVERALL").strip(),
+      time_period=str(request.args.get("timePeriod") or "ALL").strip(),
+      order_by=str(request.args.get("orderBy") or "PNL").strip(),
+      limit=1,
+      offset=0,
+      user=wallet,
+    )
+    items = out.get("items") or []
+    if not items:
+      return jsonify({"ok": False, "error": "wallet_not_found_in_leaderboard"}), 404
+    row = items[0]
+    ts = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    pnl = float(row.get("pnl") or 0.0)
+    vol = float(row.get("vol") or 0.0)
+    payload = {
+      "ok": True,
+      "mode": "public_leaderboard",
+      "account_id": wallet,
+      "as_of": ts,
+      "overview": {
+        "ts": ts,
+        "realized_pnl": pnl,
+        "unrealized_pnl": 0.0,
+        "fee_total": 0.0,
+        "rebate_total": 0.0,
+        "reward_total": 0.0,
+        "total_pnl": pnl,
+        "calc_version": "leaderboard_public",
+      },
+      "series": [],
+      "strategy_attribution": [
+        {
+          "strategy_type": "public_leaderboard",
+          "volume": vol,
+          "realized_pnl": pnl,
+          "unrealized_pnl": 0.0,
+          "n_trades": 0,
+          "ts": ts,
+        }
+      ],
+      "reconciliation": {
+        "ts": ts,
+        "internal_total_pnl": pnl,
+        "positions_total_pnl": pnl,
+        "leaderboard_total_pnl": pnl,
+        "diff_internal_vs_positions": 0.0,
+        "diff_internal_vs_leaderboard": 0.0,
+        "status": "public",
+        "notes": f"rank={int(row.get('rank') or 0)}, user={row.get('userName') or '--'}",
+      },
+      "leaderboard_row": row,
+    }
+    return jsonify(payload)
+  except Exception as e:
+    return jsonify({"ok": False, "error": "public_summary_failed", "detail": str(e)[:240]}), 500
 
 
 @app.route("/api/v1/polymarket/auto-engine/status", methods=["GET"])

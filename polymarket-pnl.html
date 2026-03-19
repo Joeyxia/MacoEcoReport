@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="styles.css?v=20260319pnl13" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260319pnl16" defer></script>
+    <script src="app.js?v=20260319pnl17" defer></script>
     <style>
       .page.pnl-wrap { display:block !important; width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
       .pnl-grid { display:grid !important; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; }
@@ -90,6 +90,7 @@
           <div class="pnl-status"><div class="pnl-k" id="s4k">Last Event</div><div class="pnl-v" style="font-size:18px;" id="s4v">--</div></div>
         </div>
         <div class="pnl-row">
+          <select id="accountIdSelect" class="pnl-input"></select>
           <input id="accountId" class="pnl-input pnl-mono" placeholder="account id (optional)" />
           <input id="days" class="pnl-input" type="number" min="1" max="3650" value="30" />
           <button id="btnRefresh" class="pnl-btn">Refresh</button>
@@ -211,6 +212,16 @@
           colTokenDelta: "Token Δ",
           colExecution: "Execution",
           colStrategyType: "Strategy",
+          accountSelectManual: "My Connected Account",
+          accountSelectTopPrefix: "Top",
+          accountSelectTopSuffix: "Accounts by PnL",
+          accountTopLabel: "Top",
+          accountUnknown: "Trader",
+          leaderboardLoaded: "Leaderboard accounts loaded",
+          leaderboardLoadFailed: "Failed to load leaderboard accounts",
+          publicLoaded: "Loaded public leaderboard account",
+          publicNoRebuild: "Public leaderboard account does not support rebuild",
+          noLedgerPublic: "No internal ledger entries for public account. This view shows leaderboard summary only.",
           trendSeries: "Total PnL",
           status: "Status",
           internal: "Internal Total PnL",
@@ -290,6 +301,16 @@
           colTokenDelta: "代币变化",
           colExecution: "执行单",
           colStrategyType: "策略",
+          accountSelectManual: "我的已连接账户",
+          accountSelectTopPrefix: "按盈亏排名前",
+          accountSelectTopSuffix: "账户",
+          accountTopLabel: "排名",
+          accountUnknown: "交易员",
+          leaderboardLoaded: "已加载排行榜账户",
+          leaderboardLoadFailed: "排行榜账户加载失败",
+          publicLoaded: "已加载公开排行榜账户",
+          publicNoRebuild: "公开排行榜账户不支持重建账本",
+          noLedgerPublic: "该公开账户无内部账本分录，此页面仅展示排行榜汇总信息。",
           trendSeries: "总盈亏",
           status: "状态",
           internal: "内部口径总盈亏",
@@ -354,6 +375,8 @@
       const THR_CRIT_KEY = 'polymarket_pnl_thr_crit';
       let pnlTrendChart = null;
       let refreshInFlight = false;
+      let topAccounts = [];
+      let publicModeActive = false;
       function getThresholds(){
         let warn = Number(localStorage.getItem(THR_WARN_KEY) || 1.0);
         let crit = Number(localStorage.getItem(THR_CRIT_KEY) || 5.0);
@@ -446,8 +469,65 @@
         }
       }
 
-      function currentAccountId(){ return String(document.getElementById('accountId').value||'').trim(); }
+      function selectedAccountSelectValue(){
+        const sel = document.getElementById('accountIdSelect');
+        return String(sel?.value || 'manual').trim();
+      }
+      function isPublicWalletMode(){
+        return selectedAccountSelectValue().startsWith('wallet:');
+      }
+      function currentAccountId(){
+        if (isPublicWalletMode()) return selectedAccountSelectValue().slice(7);
+        return String(document.getElementById('accountId').value||'').trim();
+      }
       function currentDays(){ return Math.max(1, Number(document.getElementById('days').value||30)); }
+      function formatTopAccountOption(item){
+        const rank = Number(item?.rank || 0) || 0;
+        const wallet = String(item?.proxyWallet || '').trim();
+        const name = String(item?.userName || item?.xUsername || '').trim() || tr('accountUnknown');
+        const pnl = Number(item?.pnl || 0);
+        const shortWallet = wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : '--';
+        if (lang() === 'zh') return `${tr('accountTopLabel')} #${rank} · ${name} · PnL ${num(pnl)} · ${shortWallet}`;
+        return `#${rank} ${name} · PnL ${num(pnl)} · ${shortWallet}`;
+      }
+      function renderAccountSelect(){
+        const sel = document.getElementById('accountIdSelect');
+        if (!sel) return;
+        const prev = String(sel.value || 'manual');
+        const title = `${tr('accountSelectTopPrefix')} 15 ${tr('accountSelectTopSuffix')}`;
+        const opts = [`<option value="manual">${tr('accountSelectManual')}</option>`];
+        if (topAccounts.length) {
+          opts.push(`<option value="__header__" disabled>── ${title} ──</option>`);
+          for (const item of topAccounts) {
+            const wallet = String(item?.proxyWallet || '').trim();
+            if (!wallet) continue;
+            opts.push(`<option value="wallet:${wallet}">${formatTopAccountOption(item)}</option>`);
+          }
+        }
+        sel.innerHTML = opts.join('');
+        if (prev && Array.from(sel.options).some((o) => o.value === prev)) sel.value = prev;
+        updateAccountInputState();
+      }
+      async function loadTopAccounts(){
+        try{
+          const out = await jfetch('/api/v1/polymarket/leaderboard/top?limit=15&timePeriod=ALL&orderBy=PNL');
+          topAccounts = Array.isArray(out?.items) ? out.items : [];
+          renderAccountSelect();
+          toast(tr('leaderboardLoaded'), 'ok');
+        } catch(e){
+          topAccounts = [];
+          renderAccountSelect();
+          setLastEvent(`${tr('leaderboardLoadFailed')}: ${e.message || e}`);
+        }
+      }
+      function updateAccountInputState(){
+        const input = document.getElementById('accountId');
+        if (!input) return;
+        const isPublic = isPublicWalletMode();
+        publicModeActive = isPublic;
+        input.disabled = isPublic;
+        if (isPublic) input.value = currentAccountId();
+      }
 
       function renderAttr(rows){
         const tb=document.querySelector('#attrTable tbody'); tb.innerHTML='';
@@ -517,7 +597,7 @@
 
       function renderLedger(rows){
         const tb=document.querySelector('#ledgerTable tbody'); tb.innerHTML='';
-        if(!rows.length){ tb.innerHTML=`<tr><td colspan="8">${tr('noLedger')}</td></tr>`; return; }
+        if(!rows.length){ tb.innerHTML=`<tr><td colspan="8">${publicModeActive ? tr('noLedgerPublic') : tr('noLedger')}</td></tr>`; return; }
         for(const r of rows){
           const tr=document.createElement('tr');
           tr.innerHTML=`<td>${r.occurred_at||'--'}</td><td>${r.activity_type||'--'}</td><td class="pnl-mono">${r.market_id||'--'}</td><td class="pnl-mono">${r.token_id||'--'}</td><td class="num">${num(r.usdc_delta)}</td><td class="num">${num(r.token_delta)}</td><td class="pnl-mono">${r.execution_id||'--'}</td><td>${r.strategy_type||'--'}</td>`;
@@ -535,6 +615,27 @@
           const days=currentDays();
           if(days < 1 || days > 3650){ setErr(tr('invalidDays')); setPageState(tr('stateError')); return; }
           document.getElementById('s2v').textContent=`${days}D`;
+          if (isPublicWalletMode()) {
+            const pub = await jfetch(`/api/v1/polymarket/account/public-summary?wallet=${encodeURIComponent(aid)}&timePeriod=ALL&orderBy=PNL`);
+            const o=(pub && pub.overview)||{};
+            document.getElementById('v_total').textContent=num(o.total_pnl);
+            document.getElementById('s_total').textContent=`${tr('asof')} ${pub && pub.as_of ? pub.as_of : '--'}`;
+            document.getElementById('v_realized').textContent=num(o.realized_pnl);
+            document.getElementById('v_unrealized').textContent=num(o.unrealized_pnl);
+            document.getElementById('v_fee').textContent=num(o.fee_total);
+            const r=(pub && pub.reconciliation)||{};
+            document.getElementById('v_recon').textContent=(r.status||'--').toUpperCase();
+            document.getElementById('s_recon').textContent=`diff=${num(r.diff_internal_vs_positions)}`;
+            renderAttr((pub && pub.strategy_attribution)||[]);
+            renderRecon(r);
+            renderLedger([]);
+            renderTrend((pub && pub.series) || []);
+            document.getElementById('s3v').textContent = nowLocal();
+            setPageState(tr('stateReady'));
+            setLastEvent(tr('publicLoaded'));
+            toast(tr('publicLoaded'), 'ok');
+            return;
+          }
           const qAid=aid?`&account_id=${encodeURIComponent(aid)}`:'';
           let ov=null, rec=null, le=null;
           let partialErr = "";
@@ -583,6 +684,11 @@
 
       async function rebuild(){
         clearErr();
+        if (isPublicWalletMode()) {
+          setErr(tr('publicNoRebuild'));
+          toast(tr('publicNoRebuild'), 'warn');
+          return;
+        }
         if(!window.confirm(tr('confirmRebuild'))){ return; }
         const aid=currentAccountId();
         setPageState(tr('stateLoading'));
@@ -599,6 +705,7 @@
         await new Promise((resolve) => setTimeout(resolve, 0));
         applyPnlI18n();
         applyThresholdInputs();
+        renderAccountSelect();
         setPageState(tr('stateReady'));
         setLastEvent('--');
         document.getElementById('btnRefresh').onclick=async()=>{ try{ await refreshAll(); }catch(e){ setPageState(tr('stateError')); setErr(`${tr('refreshFail')}: ${e.message}`); toast(`${tr('refreshFail')}: ${e.message}`,'err');} };
@@ -614,6 +721,11 @@
           await refreshAll();
           toast(tr('thrApplied'),'ok');
         };
+        document.getElementById('accountIdSelect')?.addEventListener('change', async () => {
+          updateAccountInputState();
+          try { await refreshAll(); } catch {}
+        });
+        await loadTopAccounts();
         // Use the global app.js language toggle callback only.
         // Avoid observing/nav-rewriting loops that can spike the main thread.
         try{ await refreshAll(); }catch(e){ setPageState(tr('stateError')); setErr(`${tr('initFail')}: ${e.message}`); toast(`${tr('initFail')}: ${e.message}`,'err'); }
