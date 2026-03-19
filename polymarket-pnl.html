@@ -646,14 +646,17 @@
         if (isPublic) input.value = currentAccountId();
       }
       function renderTopIntelLeaderboard(rows){
+        const sec = document.getElementById('topIntelSection');
         const tb = document.querySelector('#topIntelLeaderboardTable tbody');
         if (!tb) return;
         tb.innerHTML = '';
         const list = Array.isArray(rows) ? rows : [];
         if (!list.length) {
+          if (sec) sec.style.display = 'none';
           tb.innerHTML = `<tr><td colspan="6">${tr('topIntelNoData')}</td></tr>`;
           return;
         }
+        if (sec) sec.style.display = 'block';
         for (const r of list) {
           const rank = Number(r?.rank || 0) || '--';
           const name = String(r?.username || r?.userName || '--');
