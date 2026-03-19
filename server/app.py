@@ -59,6 +59,8 @@ try:
     create_user_account,
     get_user_account,
     touch_user_login,
+    save_polymarket_top_trader_snapshot,
+    get_latest_polymarket_top_trader_snapshot,
   )
   from .mailer import send_email
   from .stock_service import (
@@ -175,6 +177,8 @@ except ImportError:
     create_user_account,
     get_user_account,
     touch_user_login,
+    save_polymarket_top_trader_snapshot,
+    get_latest_polymarket_top_trader_snapshot,
   )
   from mailer import send_email
   from stock_service import (
@@ -308,6 +312,16 @@ _polymarket_auto_state = {
   "last_executed": 0,
   "last_errors": [],
   "last_account_stats": [],
+}
+_polymarket_top_lock = Lock()
+_polymarket_top_thread = None
+_polymarket_top_state = {
+  "running": False,
+  "started_at": "",
+  "last_tick_at": "",
+  "last_duration_ms": 0,
+  "last_success_count": 0,
+  "last_errors": [],
 }
 PUBLIC_AUTH_EXEMPT_PATHS = {
   "/api/health",
@@ -1067,6 +1081,329 @@ def _infer_market_bucket(title: str = "", event_slug: str = "", slug: str = ""):
   if any(k in text for k in ["tesla", "apple", "stock", "earnings", "market cap"]):
     return "equities"
   return "other"
+
+
+def _build_polymarket_public_summary(
+  wallet: str,
+  category: str = "OVERALL",
+  time_period: str = "ALL",
+  order_by: str = "PNL",
+  leaderboard_row=None,
+):
+  out = None
+  if isinstance(leaderboard_row, dict) and str(leaderboard_row.get("proxyWallet") or "").strip():
+    row = dict(leaderboard_row)
+  else:
+    out = _fetch_polymarket_trader_leaderboard(
+      category=category,
+      time_period=time_period,
+      order_by=order_by,
+      limit=1,
+      offset=0,
+      user=wallet,
+    )
+    items = out.get("items") or []
+    if not items:
+      raise ValueError("wallet_not_found_in_leaderboard")
+    row = items[0]
+
+  ts = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+  pnl = float(row.get("pnl") or 0.0)
+  vol = float(row.get("vol") or 0.0)
+
+  wallet_q = urllib.parse.quote(wallet)
+  profile, profile_err = _safe_fetch_json_url(f"https://gamma-api.polymarket.com/public-profile?address={wallet_q}")
+  if isinstance(profile, dict) and (profile.get("error") or profile.get("type")):
+    profile_err = str(profile.get("error") or profile.get("type") or "profile_not_found")
+    profile = {}
+  current_positions, cur_pos_err = _safe_fetch_json_url(
+    f"https://data-api.polymarket.com/positions?user={wallet_q}&size=200&offset=0"
+  )
+  closed_positions, closed_pos_err = _safe_fetch_json_url(
+    f"https://data-api.polymarket.com/closed-positions?user={wallet_q}&size=200&offset=0"
+  )
+  activities, act_err = _safe_fetch_json_url(
+    f"https://data-api.polymarket.com/activity?user={wallet_q}&limit=200&offset=0"
+  )
+  trades, trades_err = _safe_fetch_json_url(
+    f"https://data-api.polymarket.com/trades?user={wallet_q}&limit=200&offset=0"
+  )
+  traded_total, traded_total_err = _safe_fetch_json_url(
+    f"https://data-api.polymarket.com/traded?user={wallet_q}"
+  )
+  value_snapshot, value_snapshot_err = _safe_fetch_json_url(
+    f"https://data-api.polymarket.com/value?user={wallet_q}"
+  )
+
+  cur_rows = current_positions if isinstance(current_positions, list) else []
+  closed_rows = closed_positions if isinstance(closed_positions, list) else []
+  act_rows = activities if isinstance(activities, list) else []
+  trade_rows = trades if isinstance(trades, list) else []
+
+  bucket_counts = {}
+  for r in (cur_rows + closed_rows):
+    if not isinstance(r, dict):
+      continue
+    b = _infer_market_bucket(
+      str(r.get("title") or ""),
+      str(r.get("eventSlug") or ""),
+      str(r.get("slug") or ""),
+    )
+    bucket_counts[b] = bucket_counts.get(b, 0) + 1
+  bucket_ranked = sorted(bucket_counts.items(), key=lambda it: (-it[1], it[0]))
+
+  total_position_value = 0.0
+  top_markets = []
+  for r in cur_rows:
+    if not isinstance(r, dict):
+      continue
+    v = float(r.get("currentValue") or r.get("size") or 0.0)
+    total_position_value += max(0.0, v)
+    top_markets.append(
+      {
+        "title": str(r.get("title") or r.get("question") or r.get("slug") or "--"),
+        "value": round(v, 6),
+        "pnl": float(r.get("cashPnl") or r.get("pnl") or 0.0),
+        "bucket": _infer_market_bucket(
+          str(r.get("title") or ""),
+          str(r.get("eventSlug") or ""),
+          str(r.get("slug") or ""),
+        ),
+      }
+    )
+  top_markets = sorted(top_markets, key=lambda it: (-float(it.get("value") or 0.0), -float(it.get("pnl") or 0.0)))[:10]
+
+  hhi = 0.0
+  if total_position_value > 0:
+    for m in top_markets:
+      w = max(0.0, float(m.get("value") or 0.0)) / total_position_value
+      hhi += w * w
+
+  def _extract_ts(x):
+    if not isinstance(x, dict):
+      return ""
+    return str(
+      x.get("timestamp")
+      or x.get("createdAt")
+      or x.get("updatedAt")
+      or x.get("lastUpdated")
+      or x.get("time")
+      or ""
+    ).strip()
+
+  last_active = ""
+  for r in (act_rows + trade_rows + closed_rows):
+    ts0 = _extract_ts(r)
+    if ts0 and ts0 > last_active:
+      last_active = ts0
+
+  buy_n = 0
+  sell_n = 0
+  for r in trade_rows:
+    if not isinstance(r, dict):
+      continue
+    side = str(r.get("side") or r.get("type") or "").upper()
+    if "BUY" in side:
+      buy_n += 1
+    elif "SELL" in side:
+      sell_n += 1
+  side_bias = "balanced"
+  if buy_n > sell_n * 1.2:
+    side_bias = "buy-heavy"
+  elif sell_n > buy_n * 1.2:
+    side_bias = "sell-heavy"
+
+  realized_from_closed = 0.0
+  by_day = {}
+  for r in closed_rows:
+    if not isinstance(r, dict):
+      continue
+    rp = float(r.get("realizedPnl") or r.get("pnl") or r.get("cashPnl") or 0.0)
+    realized_from_closed += rp
+    day = str(_extract_ts(r) or "")[:10]
+    if day:
+      by_day[day] = by_day.get(day, 0.0) + rp
+  cum = 0.0
+  series = []
+  for d in sorted(by_day.keys()):
+    cum += float(by_day[d] or 0.0)
+    series.append({"d": d, "total_pnl": round(cum, 6)})
+
+  data_sources = {
+    "leaderboard": {"ok": True, "error": ""},
+    "profile": {"ok": not bool(profile_err), "error": profile_err},
+    "current_positions": {"ok": not bool(cur_pos_err), "error": cur_pos_err},
+    "closed_positions": {"ok": not bool(closed_pos_err), "error": closed_pos_err},
+    "activity": {"ok": not bool(act_err), "error": act_err},
+    "trades": {"ok": not bool(trades_err), "error": trades_err},
+    "markets_traded": {"ok": not bool(traded_total_err), "error": traded_total_err},
+    "value_snapshot": {"ok": not bool(value_snapshot_err), "error": value_snapshot_err},
+  }
+
+  payload = {
+    "ok": True,
+    "mode": "public_leaderboard",
+    "account_id": wallet,
+    "as_of": ts,
+    "overview": {
+      "ts": ts,
+      "realized_pnl": realized_from_closed if abs(realized_from_closed) > 1e-9 else pnl,
+      "unrealized_pnl": float((value_snapshot or {}).get("unrealizedPnl") or 0.0) if isinstance(value_snapshot, dict) else 0.0,
+      "fee_total": 0.0,
+      "rebate_total": 0.0,
+      "reward_total": 0.0,
+      "total_pnl": pnl,
+      "calc_version": "leaderboard_public_v3",
+    },
+    "series": series,
+    "strategy_attribution": [
+      {
+        "strategy_type": "public_leaderboard",
+        "volume": float((value_snapshot or {}).get("volume") or vol) if isinstance(value_snapshot, dict) else vol,
+        "realized_pnl": pnl,
+        "unrealized_pnl": 0.0,
+        "n_trades": int((value_snapshot or {}).get("tradesCount") or len(trade_rows)) if isinstance(value_snapshot, dict) else len(trade_rows),
+        "ts": ts,
+      }
+    ],
+    "reconciliation": {
+      "ts": ts,
+      "internal_total_pnl": pnl,
+      "positions_total_pnl": pnl,
+      "leaderboard_total_pnl": pnl,
+      "diff_internal_vs_positions": 0.0,
+      "diff_internal_vs_leaderboard": 0.0,
+      "status": "public",
+      "notes": f"rank={int(row.get('rank') or 0)}, user={row.get('userName') or '--'}",
+    },
+    "leaderboard_row": row,
+    "profile": profile if isinstance(profile, dict) else {},
+    "current_positions": cur_rows[:100],
+    "closed_positions": closed_rows[:100],
+    "activities": act_rows[:100],
+    "trades": trade_rows[:100],
+    "traded_total": traded_total if isinstance(traded_total, dict) else {},
+    "value_snapshot": value_snapshot if isinstance(value_snapshot, dict) else {},
+    "accounting_snapshot_url": f"https://data-api.polymarket.com/v1/accounting/snapshot?user={wallet}",
+    "data_sources": data_sources,
+    "intelligence": {
+      "last_active": last_active,
+      "position_count": len(cur_rows),
+      "closed_position_count": len(closed_rows),
+      "activity_count": len(act_rows),
+      "trade_count": len(trade_rows),
+      "buy_count": buy_n,
+      "sell_count": sell_n,
+      "side_bias": side_bias,
+      "total_position_value": round(total_position_value, 6),
+      "market_concentration_hhi": round(hhi, 6),
+      "bucket_distribution": [{"bucket": k, "count": v} for k, v in bucket_ranked],
+      "top_markets": top_markets,
+    },
+  }
+  return payload
+
+
+def _polymarket_top_cfg():
+  return {
+    "enabled": str(os.environ.get("POLY_TOP_TRADERS_ENABLED", "true")).strip().lower() in {"1", "true", "yes", "on"},
+    "interval_sec": max(120, int(os.environ.get("POLY_TOP_TRADERS_INTERVAL_SEC", "900"))),
+    "limit": max(1, min(int(os.environ.get("POLY_TOP_TRADERS_LIMIT", "10")), 15)),
+    "time_period": str(os.environ.get("POLY_TOP_TRADERS_TIME_PERIOD", "ALL")).strip().upper(),
+    "order_by": str(os.environ.get("POLY_TOP_TRADERS_ORDER_BY", "PNL")).strip().upper(),
+  }
+
+
+def _polymarket_top_sync_once():
+  cfg = _polymarket_top_cfg()
+  lb = _fetch_polymarket_trader_leaderboard(
+    category="OVERALL",
+    time_period=cfg["time_period"],
+    order_by=cfg["order_by"],
+    limit=cfg["limit"],
+    offset=0,
+  )
+  rows = lb.get("items") or []
+  fetched_at = str(lb.get("fetchedAt") or now_iso())
+  run_tag = fetched_at
+  out_items = []
+  errors = []
+  for row in rows:
+    wallet = str(row.get("proxyWallet") or "").strip()
+    if not wallet:
+      continue
+    try:
+      summary = _build_polymarket_public_summary(
+        wallet=wallet,
+        category="OVERALL",
+        time_period=cfg["time_period"],
+        order_by=cfg["order_by"],
+        leaderboard_row=row,
+      )
+      out_items.append(
+        {
+          "rank": int(row.get("rank") or 0),
+          "wallet": wallet,
+          "username": str(row.get("userName") or ""),
+          "pnl": float(row.get("pnl") or 0.0),
+          "vol": float(row.get("vol") or 0.0),
+          "summary": summary,
+          "data_sources": summary.get("data_sources") or {},
+        }
+      )
+    except Exception as e:
+      errors.append(f"{wallet}:{str(e)[:120]}")
+  save_polymarket_top_trader_snapshot(
+    run_tag=run_tag,
+    items=out_items,
+    order_by=cfg["order_by"],
+    time_period=cfg["time_period"],
+    fetched_at=fetched_at,
+  )
+  return {"ok": True, "fetched_at": fetched_at, "run_tag": run_tag, "count": len(out_items), "errors": errors}
+
+
+def _polymarket_top_loop():
+  cfg = _polymarket_top_cfg()
+  with _polymarket_top_lock:
+    _polymarket_top_state["running"] = True
+    _polymarket_top_state["started_at"] = now_iso()
+  while True:
+    tick = now_iso()
+    started = time.time()
+    errors = []
+    count = 0
+    try:
+      out = _polymarket_top_sync_once()
+      count = int(out.get("count") or 0)
+      errors = list(out.get("errors") or [])[:30]
+    except Exception as e:
+      errors = [str(e)[:200]]
+    with _polymarket_top_lock:
+      _polymarket_top_state.update(
+        {
+          "running": True,
+          "last_tick_at": tick,
+          "last_duration_ms": int((time.time() - started) * 1000),
+          "last_success_count": count,
+          "last_errors": errors,
+        }
+      )
+    sleep_s = max(10, int(cfg["interval_sec"]) - max(0, int(time.time() - started)))
+    time.sleep(sleep_s)
+
+
+def _start_polymarket_top_sync():
+  global _polymarket_top_thread
+  cfg = _polymarket_top_cfg()
+  if not cfg["enabled"]:
+    return
+  with _polymarket_top_lock:
+    if _polymarket_top_thread and _polymarket_top_thread.is_alive():
+      return
+    th = Thread(target=_polymarket_top_loop, daemon=True, name="polymarket-top-sync")
+    th.start()
+    _polymarket_top_thread = th
 
 
 def _should_autotrack_token() -> bool:
@@ -2810,6 +3147,51 @@ def polymarket_leaderboard_top():
     return jsonify({"ok": False, "error": "leaderboard_fetch_failed", "detail": str(e)[:240]}), 500
 
 
+@app.route("/api/v1/polymarket/top-traders/intel", methods=["GET"])
+def polymarket_top_traders_intel():
+  user, err = _require_public_user()
+  if err:
+    return err
+  _ = user
+  refresh = str(request.args.get("refresh") or "").strip().lower() in {"1", "true", "yes", "on"}
+  try:
+    limit = int(request.args.get("limit") or 10)
+  except Exception:
+    limit = 10
+  if refresh:
+    try:
+      _polymarket_top_sync_once()
+    except Exception as e:
+      return jsonify({"ok": False, "error": "top_sync_failed", "detail": str(e)[:240]}), 500
+  out = get_latest_polymarket_top_trader_snapshot(limit=limit)
+  return jsonify(out)
+
+
+@app.route("/api/v1/polymarket/top-traders/status", methods=["GET"])
+def polymarket_top_traders_status():
+  user, err = _require_public_user()
+  if err:
+    return err
+  _ = user
+  cfg = _polymarket_top_cfg()
+  with _polymarket_top_lock:
+    state = dict(_polymarket_top_state)
+  return jsonify({"ok": True, **state, **cfg})
+
+
+@app.route("/api/v1/polymarket/top-traders/sync", methods=["POST"])
+def polymarket_top_traders_sync():
+  user, err = _require_public_user()
+  if err:
+    return err
+  _ = user
+  try:
+    out = _polymarket_top_sync_once()
+    return jsonify(out)
+  except Exception as e:
+    return jsonify({"ok": False, "error": "top_sync_failed", "detail": str(e)[:240]}), 500
+
+
 @app.route("/api/v1/polymarket/account/public-summary", methods=["GET"])
 def polymarket_public_account_summary():
   user, err = _require_public_user()
@@ -2819,207 +3201,12 @@ def polymarket_public_account_summary():
   if not re.match(r"^0x[a-fA-F0-9]{40}$", wallet):
     return jsonify({"ok": False, "error": "invalid_wallet"}), 400
   try:
-    out = _fetch_polymarket_trader_leaderboard(
+    payload = _build_polymarket_public_summary(
+      wallet=wallet,
       category=str(request.args.get("category") or "OVERALL").strip(),
       time_period=str(request.args.get("timePeriod") or "ALL").strip(),
       order_by=str(request.args.get("orderBy") or "PNL").strip(),
-      limit=1,
-      offset=0,
-      user=wallet,
     )
-    items = out.get("items") or []
-    if not items:
-      return jsonify({"ok": False, "error": "wallet_not_found_in_leaderboard"}), 404
-    row = items[0]
-    ts = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-    pnl = float(row.get("pnl") or 0.0)
-    vol = float(row.get("vol") or 0.0)
-
-    profile, profile_err = _safe_fetch_json_url(f"https://gamma-api.polymarket.com/public-profile?address={urllib.parse.quote(wallet)}")
-    current_positions, cur_pos_err = _safe_fetch_json_url(
-      f"https://data-api.polymarket.com/positions?user={urllib.parse.quote(wallet)}&size=200&offset=0"
-    )
-    closed_positions, closed_pos_err = _safe_fetch_json_url(
-      f"https://data-api.polymarket.com/closed-positions?user={urllib.parse.quote(wallet)}&size=200&offset=0"
-    )
-    activities, act_err = _safe_fetch_json_url(
-      f"https://data-api.polymarket.com/activity?user={urllib.parse.quote(wallet)}&limit=200&offset=0"
-    )
-    trades, trades_err = _safe_fetch_json_url(
-      f"https://data-api.polymarket.com/trades?user={urllib.parse.quote(wallet)}&limit=200&offset=0"
-    )
-    traded_total, traded_total_err = _safe_fetch_json_url(
-      f"https://data-api.polymarket.com/traded?user={urllib.parse.quote(wallet)}"
-    )
-    value_snapshot, value_snapshot_err = _safe_fetch_json_url(
-      f"https://data-api.polymarket.com/value?user={urllib.parse.quote(wallet)}"
-    )
-
-    cur_rows = current_positions if isinstance(current_positions, list) else []
-    closed_rows = closed_positions if isinstance(closed_positions, list) else []
-    act_rows = activities if isinstance(activities, list) else []
-    trade_rows = trades if isinstance(trades, list) else []
-
-    bucket_counts = {}
-    for r in (cur_rows + closed_rows):
-      if not isinstance(r, dict):
-        continue
-      b = _infer_market_bucket(
-        str(r.get("title") or ""),
-        str(r.get("eventSlug") or ""),
-        str(r.get("slug") or ""),
-      )
-      bucket_counts[b] = bucket_counts.get(b, 0) + 1
-    bucket_ranked = sorted(bucket_counts.items(), key=lambda it: (-it[1], it[0]))
-
-    total_position_value = 0.0
-    top_markets = []
-    for r in cur_rows:
-      if not isinstance(r, dict):
-        continue
-      v = float(r.get("currentValue") or r.get("size") or 0.0)
-      total_position_value += max(0.0, v)
-      top_markets.append(
-        {
-          "title": str(r.get("title") or r.get("question") or r.get("slug") or "--"),
-          "value": round(v, 6),
-          "pnl": float(r.get("cashPnl") or r.get("pnl") or 0.0),
-          "bucket": _infer_market_bucket(
-            str(r.get("title") or ""),
-            str(r.get("eventSlug") or ""),
-            str(r.get("slug") or ""),
-          ),
-        }
-      )
-    top_markets = sorted(top_markets, key=lambda it: (-float(it.get("value") or 0.0), -float(it.get("pnl") or 0.0)))[:10]
-
-    hhi = 0.0
-    if total_position_value > 0:
-      for m in top_markets:
-        w = max(0.0, float(m.get("value") or 0.0)) / total_position_value
-        hhi += w * w
-
-    def _extract_ts(x):
-      if not isinstance(x, dict):
-        return ""
-      return str(
-        x.get("timestamp")
-        or x.get("createdAt")
-        or x.get("updatedAt")
-        or x.get("lastUpdated")
-        or x.get("time")
-        or ""
-      ).strip()
-
-    last_active = ""
-    for r in (act_rows + trade_rows + closed_rows):
-      ts0 = _extract_ts(r)
-      if ts0 and ts0 > last_active:
-        last_active = ts0
-
-    buy_n = 0
-    sell_n = 0
-    for r in trade_rows:
-      if not isinstance(r, dict):
-        continue
-      side = str(r.get("side") or r.get("type") or "").upper()
-      if "BUY" in side:
-        buy_n += 1
-      elif "SELL" in side:
-        sell_n += 1
-    side_bias = "balanced"
-    if buy_n > sell_n * 1.2:
-      side_bias = "buy-heavy"
-    elif sell_n > buy_n * 1.2:
-      side_bias = "sell-heavy"
-
-    realized_from_closed = 0.0
-    by_day = {}
-    for r in closed_rows:
-      if not isinstance(r, dict):
-        continue
-      rp = float(r.get("realizedPnl") or r.get("pnl") or r.get("cashPnl") or 0.0)
-      realized_from_closed += rp
-      day = str(_extract_ts(r) or "")[:10]
-      if day:
-        by_day[day] = by_day.get(day, 0.0) + rp
-    cum = 0.0
-    series = []
-    for d in sorted(by_day.keys()):
-      cum += float(by_day[d] or 0.0)
-      series.append({"d": d, "total_pnl": round(cum, 6)})
-
-    data_sources = {
-      "profile": {"ok": not bool(profile_err), "error": profile_err},
-      "current_positions": {"ok": not bool(cur_pos_err), "error": cur_pos_err},
-      "closed_positions": {"ok": not bool(closed_pos_err), "error": closed_pos_err},
-      "activity": {"ok": not bool(act_err), "error": act_err},
-      "trades": {"ok": not bool(trades_err), "error": trades_err},
-      "markets_traded": {"ok": not bool(traded_total_err), "error": traded_total_err},
-      "value_snapshot": {"ok": not bool(value_snapshot_err), "error": value_snapshot_err},
-    }
-
-    payload = {
-      "ok": True,
-      "mode": "public_leaderboard",
-      "account_id": wallet,
-      "as_of": ts,
-      "overview": {
-        "ts": ts,
-        "realized_pnl": realized_from_closed if abs(realized_from_closed) > 1e-9 else pnl,
-        "unrealized_pnl": float((value_snapshot or {}).get("unrealizedPnl") or 0.0) if isinstance(value_snapshot, dict) else 0.0,
-        "fee_total": 0.0,
-        "rebate_total": 0.0,
-        "reward_total": 0.0,
-        "total_pnl": pnl,
-        "calc_version": "leaderboard_public_v2",
-      },
-      "series": series,
-      "strategy_attribution": [
-        {
-          "strategy_type": "public_leaderboard",
-          "volume": float((value_snapshot or {}).get("volume") or vol) if isinstance(value_snapshot, dict) else vol,
-          "realized_pnl": pnl,
-          "unrealized_pnl": 0.0,
-          "n_trades": int((value_snapshot or {}).get("tradesCount") or len(trade_rows)) if isinstance(value_snapshot, dict) else len(trade_rows),
-          "ts": ts,
-        }
-      ],
-      "reconciliation": {
-        "ts": ts,
-        "internal_total_pnl": pnl,
-        "positions_total_pnl": pnl,
-        "leaderboard_total_pnl": pnl,
-        "diff_internal_vs_positions": 0.0,
-        "diff_internal_vs_leaderboard": 0.0,
-        "status": "public",
-        "notes": f"rank={int(row.get('rank') or 0)}, user={row.get('userName') or '--'}",
-      },
-      "leaderboard_row": row,
-      "profile": profile if isinstance(profile, dict) else {},
-      "current_positions": cur_rows[:100],
-      "closed_positions": closed_rows[:100],
-      "activities": act_rows[:100],
-      "trades": trade_rows[:100],
-      "traded_total": traded_total if isinstance(traded_total, dict) else {},
-      "value_snapshot": value_snapshot if isinstance(value_snapshot, dict) else {},
-      "accounting_snapshot_url": f"https://data-api.polymarket.com/v1/accounting/snapshot?user={wallet}",
-      "data_sources": data_sources,
-      "intelligence": {
-        "last_active": last_active,
-        "position_count": len(cur_rows),
-        "closed_position_count": len(closed_rows),
-        "activity_count": len(act_rows),
-        "trade_count": len(trade_rows),
-        "buy_count": buy_n,
-        "sell_count": sell_n,
-        "side_bias": side_bias,
-        "total_position_value": round(total_position_value, 6),
-        "market_concentration_hhi": round(hhi, 6),
-        "bucket_distribution": [{"bucket": k, "count": v} for k, v in bucket_ranked],
-        "top_markets": top_markets,
-      },
-    }
     return jsonify(payload)
   except Exception as e:
     return jsonify({"ok": False, "error": "public_summary_failed", "detail": str(e)[:240]}), 500
@@ -3251,6 +3438,9 @@ def static_files(path):
   if target.is_file():
     return send_from_directory(str(ROOT), path)
   return send_from_directory(str(ROOT), "index.html")
+
+
+_start_polymarket_top_sync()
 
 
 def main():

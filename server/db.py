@@ -706,6 +706,25 @@ def init_db():
     );
     CREATE INDEX IF NOT EXISTS idx_strategy_attr_account_ts ON strategy_attribution(account_id, ts DESC);
 
+    CREATE TABLE IF NOT EXISTS polymarket_top_trader_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_tag TEXT NOT NULL,
+      rank_num INTEGER,
+      wallet TEXT NOT NULL,
+      username TEXT,
+      pnl REAL DEFAULT 0,
+      vol REAL DEFAULT 0,
+      order_by TEXT,
+      time_period TEXT,
+      fetched_at TEXT NOT NULL,
+      summary_json TEXT,
+      data_sources_json TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_poly_top_trader_run_rank ON polymarket_top_trader_snapshots(run_tag, rank_num);
+    CREATE INDEX IF NOT EXISTS idx_poly_top_trader_wallet_time ON polymarket_top_trader_snapshots(wallet, fetched_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_poly_top_trader_fetch_time ON polymarket_top_trader_snapshots(fetched_at DESC);
+
     CREATE TABLE IF NOT EXISTS regime_snapshots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       as_of_date TEXT NOT NULL,
@@ -1966,3 +1985,120 @@ def get_monitor_totals_all_time():
     "firstPageVisit": str((page_row["first_page_visit"] if page_row else "") or ""),
     "firstTokenLog": str((token_row["first_token_log"] if token_row else "") or ""),
   }
+
+
+def save_polymarket_top_trader_snapshot(
+  run_tag: str,
+  items,
+  order_by: str = "PNL",
+  time_period: str = "ALL",
+  fetched_at: str = "",
+):
+  now = now_iso()
+  rtag = str(run_tag or "").strip() or now
+  ts = str(fetched_at or "").strip() or now
+  rows = items if isinstance(items, list) else []
+  conn = get_conn()
+  conn.execute("DELETE FROM polymarket_top_trader_snapshots WHERE run_tag = ?", (rtag,))
+  for idx, item in enumerate(rows, start=1):
+    if not isinstance(item, dict):
+      continue
+    wallet = str(item.get("wallet") or item.get("proxyWallet") or "").strip()
+    if not wallet:
+      continue
+    rank_num = item.get("rank")
+    try:
+      rank_num = int(rank_num)
+    except Exception:
+      rank_num = idx
+    conn.execute(
+      """
+      INSERT INTO polymarket_top_trader_snapshots
+      (run_tag, rank_num, wallet, username, pnl, vol, order_by, time_period, fetched_at, summary_json, data_sources_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      """,
+      (
+        rtag,
+        rank_num,
+        wallet,
+        str(item.get("username") or item.get("userName") or ""),
+        float(item.get("pnl") or 0.0),
+        float(item.get("vol") or 0.0),
+        str(order_by or "PNL").upper(),
+        str(time_period or "ALL").upper(),
+        ts,
+        json.dumps(item.get("summary") or {}, ensure_ascii=False),
+        json.dumps(item.get("data_sources") or {}, ensure_ascii=False),
+        now,
+      ),
+    )
+  conn.execute(
+    """
+    DELETE FROM polymarket_top_trader_snapshots
+    WHERE run_tag NOT IN (
+      SELECT run_tag
+      FROM polymarket_top_trader_snapshots
+      GROUP BY run_tag
+      ORDER BY MAX(fetched_at) DESC
+      LIMIT 72
+    )
+    """
+  )
+  conn.commit()
+  conn.close()
+  return {"ok": True, "run_tag": rtag, "count": len(rows), "fetched_at": ts}
+
+
+def get_latest_polymarket_top_trader_snapshot(limit: int = 10):
+  lim = max(1, min(int(limit or 10), 50))
+  conn = get_conn()
+  row = conn.execute(
+    """
+    SELECT run_tag, MAX(fetched_at) AS fetched_at
+    FROM polymarket_top_trader_snapshots
+    GROUP BY run_tag
+    ORDER BY fetched_at DESC
+    LIMIT 1
+    """
+  ).fetchone()
+  if not row:
+    conn.close()
+    return {"ok": True, "run_tag": "", "fetched_at": "", "items": []}
+  run_tag = str(row["run_tag"] or "")
+  fetched_at = str(row["fetched_at"] or "")
+  rows = conn.execute(
+    """
+    SELECT rank_num, wallet, username, pnl, vol, order_by, time_period, fetched_at, summary_json, data_sources_json
+    FROM polymarket_top_trader_snapshots
+    WHERE run_tag = ?
+    ORDER BY rank_num ASC
+    LIMIT ?
+    """,
+    (run_tag, lim),
+  ).fetchall()
+  conn.close()
+  items = []
+  for r in rows:
+    try:
+      summary = json.loads(r["summary_json"] or "{}")
+    except Exception:
+      summary = {}
+    try:
+      data_sources = json.loads(r["data_sources_json"] or "{}")
+    except Exception:
+      data_sources = {}
+    items.append(
+      {
+        "rank": int(r["rank_num"] or 0),
+        "wallet": str(r["wallet"] or ""),
+        "username": str(r["username"] or ""),
+        "pnl": float(r["pnl"] or 0.0),
+        "vol": float(r["vol"] or 0.0),
+        "order_by": str(r["order_by"] or ""),
+        "time_period": str(r["time_period"] or ""),
+        "fetched_at": str(r["fetched_at"] or ""),
+        "summary": summary,
+        "data_sources": data_sources,
+      }
+    )
+  return {"ok": True, "run_tag": run_tag, "fetched_at": fetched_at, "items": items}

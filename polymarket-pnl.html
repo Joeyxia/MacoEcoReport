@@ -164,6 +164,12 @@
       <section class="pnl-card" id="topIntelSection" style="margin-top:12px;display:none;">
         <h2 class="pnl-title" id="title_top_intel" style="font-size:18px;">Top Traders Intelligence</h2>
         <div id="topIntelSummary" class="pnl-sub" style="margin-bottom:10px;"></div>
+        <div class="pnl-table-wrap" style="margin-bottom:12px;">
+          <table class="pnl-table" id="topIntelLeaderboardTable">
+            <thead><tr><th id="h_top_rank">Rank</th><th id="h_top_user">User</th><th id="h_top_wallet">Wallet</th><th class="num" id="h_top_pnl">PnL</th><th class="num" id="h_top_vol">Volume</th><th id="h_top_updated">Updated</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
         <div id="topIntelBlocks" class="pnl-grid"></div>
       </section>
     </main>
@@ -258,6 +264,7 @@
           topIntelItem: "Item",
           topIntelError: "Error",
           topIntelDownload: "Accounting Snapshot CSV",
+          topIntelUpdated: "Top intel updated",
           trendSeries: "Total PnL",
           status: "Status",
           internal: "Internal Total PnL",
@@ -377,6 +384,7 @@
           topIntelItem: "项目",
           topIntelError: "错误",
           topIntelDownload: "会计快照CSV",
+          topIntelUpdated: "头部情报已更新",
           trendSeries: "总盈亏",
           status: "状态",
           internal: "内部口径总盈亏",
@@ -442,6 +450,7 @@
       let pnlTrendChart = null;
       let refreshInFlight = false;
       let topAccounts = [];
+      let topIntelByWallet = {};
       let publicModeActive = false;
       let latestPublicSummary = null;
       function esc(v){
@@ -518,6 +527,19 @@
         document.getElementById('fStrategy').placeholder=tr('placeholderStrategy');
         const ti = document.getElementById('title_top_intel');
         if (ti) ti.textContent = tr('topIntelTitle');
+        const hRank = document.getElementById('h_top_rank');
+        const hUser = document.getElementById('h_top_user');
+        const hWallet = document.getElementById('h_top_wallet');
+        const hPnl = document.getElementById('h_top_pnl');
+        const hVol = document.getElementById('h_top_vol');
+        const hUpdated = document.getElementById('h_top_updated');
+        if (hRank) hRank.textContent = tr('topIntelRank');
+        if (hUser) hUser.textContent = tr('topIntelName');
+        if (hWallet) hWallet.textContent = tr('topIntelWallet');
+        if (hPnl) hPnl.textContent = tr('topIntelPnl');
+        if (hVol) hVol.textContent = tr('topIntelVol');
+        if (hUpdated) hUpdated.textContent = tr('lastRefresh');
+        if (topAccounts.length) renderTopIntelLeaderboard(topAccounts);
         if (publicModeActive && latestPublicSummary) renderTopTraderIntel(latestPublicSummary);
       }
       function num(v){ const n=Number(v||0); return Number.isFinite(n)? n.toLocaleString(undefined,{maximumFractionDigits:4}):"--"; }
@@ -561,8 +583,8 @@
       function currentDays(){ return Math.max(1, Number(document.getElementById('days').value||30)); }
       function formatTopAccountOption(item){
         const rank = Number(item?.rank || 0) || 0;
-        const wallet = String(item?.proxyWallet || '').trim();
-        const name = String(item?.userName || item?.xUsername || '').trim() || tr('accountUnknown');
+        const wallet = String(item?.proxyWallet || item?.wallet || '').trim();
+        const name = String(item?.userName || item?.username || item?.xUsername || '').trim() || tr('accountUnknown');
         const pnl = Number(item?.pnl || 0);
         const shortWallet = wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : '--';
         if (lang() === 'zh') return `${tr('accountTopLabel')} #${rank} · ${name} · PnL ${num(pnl)} · ${shortWallet}`;
@@ -577,7 +599,7 @@
         if (topAccounts.length) {
           opts.push(`<option value="__header__" disabled>── ${title} ──</option>`);
           for (const item of topAccounts) {
-            const wallet = String(item?.proxyWallet || '').trim();
+            const wallet = String(item?.proxyWallet || item?.wallet || '').trim();
             if (!wallet) continue;
             opts.push(`<option value="wallet:${wallet}">${formatTopAccountOption(item)}</option>`);
           }
@@ -588,12 +610,29 @@
       }
       async function loadTopAccounts(){
         try{
-          const out = await jfetch('/api/v1/polymarket/leaderboard/top?limit=15&timePeriod=ALL&orderBy=PNL');
-          topAccounts = Array.isArray(out?.items) ? out.items : [];
+          const intel = await jfetch('/api/v1/polymarket/top-traders/intel?limit=15');
+          const items = Array.isArray(intel?.items) ? intel.items : [];
+          topIntelByWallet = {};
+          for (const it of items) {
+            const wallet = String(it?.wallet || '').toLowerCase();
+            if (wallet) topIntelByWallet[wallet] = it?.summary || null;
+          }
+          topAccounts = items.map((it) => ({
+            rank: it.rank,
+            proxyWallet: it.wallet,
+            userName: it.username,
+            pnl: it.pnl,
+            vol: it.vol,
+            fetched_at: it.fetched_at,
+          }));
+          renderTopIntelLeaderboard(items);
           renderAccountSelect();
+          setLastEvent(`${tr('topIntelUpdated')}: ${intel?.fetched_at || '--'}`);
           toast(tr('leaderboardLoaded'), 'ok');
         } catch(e){
+          topIntelByWallet = {};
           topAccounts = [];
+          renderTopIntelLeaderboard([]);
           renderAccountSelect();
           setLastEvent(`${tr('leaderboardLoadFailed')}: ${e.message || e}`);
         }
@@ -605,6 +644,26 @@
         publicModeActive = isPublic;
         input.disabled = isPublic;
         if (isPublic) input.value = currentAccountId();
+      }
+      function renderTopIntelLeaderboard(rows){
+        const tb = document.querySelector('#topIntelLeaderboardTable tbody');
+        if (!tb) return;
+        tb.innerHTML = '';
+        const list = Array.isArray(rows) ? rows : [];
+        if (!list.length) {
+          tb.innerHTML = `<tr><td colspan="6">${tr('topIntelNoData')}</td></tr>`;
+          return;
+        }
+        for (const r of list) {
+          const rank = Number(r?.rank || 0) || '--';
+          const name = String(r?.username || r?.userName || '--');
+          const wallet = String(r?.wallet || r?.proxyWallet || '--');
+          const shortWallet = wallet !== '--' ? `${wallet.slice(0, 8)}...${wallet.slice(-6)}` : '--';
+          const ts = String(r?.fetched_at || '');
+          const trEl = document.createElement('tr');
+          trEl.innerHTML = `<td>${rank}</td><td>${esc(name)}</td><td class="pnl-mono">${esc(shortWallet)}</td><td class="num">${num(r?.pnl)}</td><td class="num">${num(r?.vol)}</td><td>${esc(ts || '--')}</td>`;
+          tb.appendChild(trEl);
+        }
       }
 
       function renderAttr(rows){
@@ -764,7 +823,8 @@
           if(days < 1 || days > 3650){ setErr(tr('invalidDays')); setPageState(tr('stateError')); return; }
           document.getElementById('s2v').textContent=`${days}D`;
           if (isPublicWalletMode()) {
-            const pub = await jfetch(`/api/v1/polymarket/account/public-summary?wallet=${encodeURIComponent(aid)}&timePeriod=ALL&orderBy=PNL`);
+            const cachedPub = topIntelByWallet[String(aid || '').toLowerCase()] || null;
+            const pub = cachedPub || await jfetch(`/api/v1/polymarket/account/public-summary?wallet=${encodeURIComponent(aid)}&timePeriod=ALL&orderBy=PNL`);
             const o=(pub && pub.overview)||{};
             document.getElementById('v_total').textContent=num(o.total_pnl);
             document.getElementById('s_total').textContent=`${tr('asof')} ${pub && pub.as_of ? pub.as_of : '--'}`;
