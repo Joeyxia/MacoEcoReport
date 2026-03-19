@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="styles.css?v=20260319pnl13" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260319pnl14" defer></script>
+    <script src="app.js?v=20260319pnl15" defer></script>
     <style>
       .page.pnl-wrap { display:block !important; width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
       .pnl-grid { display:grid !important; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; }
@@ -338,7 +338,7 @@
         if (fromNav) return fromNav;
         try { return localStorage.getItem('macro-monitor-lang') === 'zh' ? 'zh' : 'en'; } catch { return 'en'; }
       }
-      function t(k){ const l=lang(); return (I18N[l] && I18N[l][k]) || I18N.en[k] || k; }
+      function tr(k){ const l=lang(); return (I18N[l] && I18N[l][k]) || I18N.en[k] || k; }
       const THR_WARN_KEY = 'polymarket_pnl_thr_warn';
       const THR_CRIT_KEY = 'polymarket_pnl_thr_crit';
       let pnlTrendChart = null;
@@ -366,47 +366,47 @@
       function applyPnlI18n(){
         document.querySelectorAll('[data-i18n]').forEach((node)=>{
           const key = node.getAttribute('data-i18n');
-          const val = t(key);
+          const val = tr(key);
           if (val) node.textContent = val;
         });
         const toggle = document.getElementById('lang-toggle');
         if (toggle) toggle.textContent = lang() === 'zh' ? 'EN' : '中文';
-        document.getElementById('pageTitle').textContent=t('pageTitle');
-        document.getElementById('btnRefresh').textContent=t('refresh');
-        document.getElementById('btnRebuild').textContent=t('rebuild');
-        document.getElementById('btnFilter').textContent=t('filter');
-        document.getElementById('k_total').textContent=t('total');
-        document.getElementById('k_realized').textContent=t('realized');
-        document.getElementById('k_unrealized').textContent=t('unrealized');
-        document.getElementById('k_fee').textContent=t('fee');
-        document.getElementById('k_recon').textContent=t('recon');
-        document.getElementById('title_attr').textContent=t('attrTitle');
-        document.getElementById('title_recon').textContent=t('reconTitle');
-        document.getElementById('title_ledger').textContent=t('ledgerTitle');
-        document.getElementById('s1k').textContent=t('pageState');
-        document.getElementById('s2k').textContent=t('dataScope');
-        document.getElementById('s3k').textContent=t('lastRefresh');
-        document.getElementById('s4k').textContent=t('lastEvent');
-        document.getElementById('title_trend').textContent=t('trendTitle');
-        document.getElementById('thrLabel').textContent=t('thrLabel');
-        document.getElementById('btnApplyThr').textContent=t('thrApply');
-        document.getElementById('h_attr_strategy').textContent=t('colStrategy');
-        document.getElementById('h_attr_trades').textContent=t('colTrades');
-        document.getElementById('h_attr_volume').textContent=t('colVolume');
-        document.getElementById('h_attr_realized').textContent=t('colRealized');
-        document.getElementById('h_recon_field').textContent=t('colField');
-        document.getElementById('h_recon_value').textContent=t('colValue');
-        document.getElementById('h_ledger_time').textContent=t('colTime');
-        document.getElementById('h_ledger_type').textContent=t('colType');
-        document.getElementById('h_ledger_market').textContent=t('colMarket');
-        document.getElementById('h_ledger_token').textContent=t('colToken');
-        document.getElementById('h_ledger_usdc_delta').textContent=t('colUsdcDelta');
-        document.getElementById('h_ledger_token_delta').textContent=t('colTokenDelta');
-        document.getElementById('h_ledger_execution').textContent=t('colExecution');
-        document.getElementById('h_ledger_strategy').textContent=t('colStrategyType');
-        document.getElementById('accountId').placeholder=t('placeholderAccount');
-        document.getElementById('fMarket').placeholder=t('placeholderMarket');
-        document.getElementById('fStrategy').placeholder=t('placeholderStrategy');
+        document.getElementById('pageTitle').textContent=tr('pageTitle');
+        document.getElementById('btnRefresh').textContent=tr('refresh');
+        document.getElementById('btnRebuild').textContent=tr('rebuild');
+        document.getElementById('btnFilter').textContent=tr('filter');
+        document.getElementById('k_total').textContent=tr('total');
+        document.getElementById('k_realized').textContent=tr('realized');
+        document.getElementById('k_unrealized').textContent=tr('unrealized');
+        document.getElementById('k_fee').textContent=tr('fee');
+        document.getElementById('k_recon').textContent=tr('recon');
+        document.getElementById('title_attr').textContent=tr('attrTitle');
+        document.getElementById('title_recon').textContent=tr('reconTitle');
+        document.getElementById('title_ledger').textContent=tr('ledgerTitle');
+        document.getElementById('s1k').textContent=tr('pageState');
+        document.getElementById('s2k').textContent=tr('dataScope');
+        document.getElementById('s3k').textContent=tr('lastRefresh');
+        document.getElementById('s4k').textContent=tr('lastEvent');
+        document.getElementById('title_trend').textContent=tr('trendTitle');
+        document.getElementById('thrLabel').textContent=tr('thrLabel');
+        document.getElementById('btnApplyThr').textContent=tr('thrApply');
+        document.getElementById('h_attr_strategy').textContent=tr('colStrategy');
+        document.getElementById('h_attr_trades').textContent=tr('colTrades');
+        document.getElementById('h_attr_volume').textContent=tr('colVolume');
+        document.getElementById('h_attr_realized').textContent=tr('colRealized');
+        document.getElementById('h_recon_field').textContent=tr('colField');
+        document.getElementById('h_recon_value').textContent=tr('colValue');
+        document.getElementById('h_ledger_time').textContent=tr('colTime');
+        document.getElementById('h_ledger_type').textContent=tr('colType');
+        document.getElementById('h_ledger_market').textContent=tr('colMarket');
+        document.getElementById('h_ledger_token').textContent=tr('colToken');
+        document.getElementById('h_ledger_usdc_delta').textContent=tr('colUsdcDelta');
+        document.getElementById('h_ledger_token_delta').textContent=tr('colTokenDelta');
+        document.getElementById('h_ledger_execution').textContent=tr('colExecution');
+        document.getElementById('h_ledger_strategy').textContent=tr('colStrategyType');
+        document.getElementById('accountId').placeholder=tr('placeholderAccount');
+        document.getElementById('fMarket').placeholder=tr('placeholderMarket');
+        document.getElementById('fStrategy').placeholder=tr('placeholderStrategy');
       }
       function num(v){ const n=Number(v||0); return Number.isFinite(n)? n.toLocaleString(undefined,{maximumFractionDigits:4}):"--"; }
       function nowLocal(){ return new Date().toLocaleString(); }
@@ -440,7 +440,7 @@
 
       function renderAttr(rows){
         const tb=document.querySelector('#attrTable tbody'); tb.innerHTML='';
-        if(!rows.length){ tb.innerHTML=`<tr><td colspan="4">${t('noData')}</td></tr>`; return; }
+        if(!rows.length){ tb.innerHTML=`<tr><td colspan="4">${tr('noData')}</td></tr>`; return; }
         for(const r of rows){
           const tr=document.createElement('tr');
           tr.innerHTML=`<td>${r.strategy_type||'unknown'}</td><td class="num">${num(r.n_trades)}</td><td class="num">${num(r.volume)}</td><td class="num">${num(r.realized_pnl)}</td>`;
@@ -452,14 +452,14 @@
         const tb=document.querySelector('#reconTable tbody'); tb.innerHTML='';
         const st = classifyDiff(rec.diff_internal_vs_positions);
         const rows=[
-          [t('status'), `<span class="pnl-pill ${st}">${(rec.status||'--').toUpperCase()}</span>`],
-          [t('internal'), num(rec.internal_total_pnl)],
-          [t('positions'), num(rec.positions_total_pnl)],
-          [t('leaderboard'), rec.leaderboard_total_pnl==null?'--':num(rec.leaderboard_total_pnl)],
-          [t('diffPos'), num(rec.diff_internal_vs_positions)],
-          [t('diffLb'), rec.diff_internal_vs_leaderboard==null?'--':num(rec.diff_internal_vs_leaderboard)],
-          [t('ts'), rec.ts||'--'],
-          [t('notes'), rec.notes||'--'],
+          [tr('status'), `<span class="pnl-pill ${st}">${(rec.status||'--').toUpperCase()}</span>`],
+          [tr('internal'), num(rec.internal_total_pnl)],
+          [tr('positions'), num(rec.positions_total_pnl)],
+          [tr('leaderboard'), rec.leaderboard_total_pnl==null?'--':num(rec.leaderboard_total_pnl)],
+          [tr('diffPos'), num(rec.diff_internal_vs_positions)],
+          [tr('diffLb'), rec.diff_internal_vs_leaderboard==null?'--':num(rec.diff_internal_vs_leaderboard)],
+          [tr('ts'), rec.ts||'--'],
+          [tr('notes'), rec.notes||'--'],
         ];
         for(const [k,v] of rows){
           const tr=document.createElement('tr'); tr.innerHTML=`<td>${k}</td><td class="num">${v}</td>`; tb.appendChild(tr);
@@ -481,7 +481,7 @@
             data: {
               labels,
               datasets: [{
-                label: t('trendSeries'),
+                label: tr('trendSeries'),
                 data: values,
                 borderColor: '#0b8170',
                 backgroundColor: 'rgba(11,129,112,0.1)',
@@ -500,13 +500,13 @@
           });
         } catch (e) {
           const wrap = ctx.parentElement;
-          if (wrap) wrap.innerHTML = `<div class="pnl-sub">${t('initFail')}: chart_disabled</div>`;
+          if (wrap) wrap.innerHTML = `<div class="pnl-sub">${tr('initFail')}: chart_disabled</div>`;
         }
       }
 
       function renderLedger(rows){
         const tb=document.querySelector('#ledgerTable tbody'); tb.innerHTML='';
-        if(!rows.length){ tb.innerHTML=`<tr><td colspan="8">${t('noLedger')}</td></tr>`; return; }
+        if(!rows.length){ tb.innerHTML=`<tr><td colspan="8">${tr('noLedger')}</td></tr>`; return; }
         for(const r of rows){
           const tr=document.createElement('tr');
           tr.innerHTML=`<td>${r.occurred_at||'--'}</td><td>${r.activity_type||'--'}</td><td class="pnl-mono">${r.market_id||'--'}</td><td class="pnl-mono">${r.token_id||'--'}</td><td class="num">${num(r.usdc_delta)}</td><td class="num">${num(r.token_delta)}</td><td class="pnl-mono">${r.execution_id||'--'}</td><td>${r.strategy_type||'--'}</td>`;
@@ -518,11 +518,11 @@
         if (refreshInFlight) return;
         refreshInFlight = true;
         clearErr();
-        setPageState(t('stateLoading'));
+        setPageState(tr('stateLoading'));
         try {
           const aid=currentAccountId();
           const days=currentDays();
-          if(days < 1 || days > 3650){ setErr(t('invalidDays')); setPageState(t('stateError')); return; }
+          if(days < 1 || days > 3650){ setErr(tr('invalidDays')); setPageState(tr('stateError')); return; }
           document.getElementById('s2v').textContent=`${days}D`;
           const qAid=aid?`&account_id=${encodeURIComponent(aid)}`:'';
           let ov=null, rec=null, le=null;
@@ -541,7 +541,7 @@
 
           const o=(ov && ov.overview)||{};
           document.getElementById('v_total').textContent=num(o.total_pnl);
-          document.getElementById('s_total').textContent=`${t('asof')} ${ov && ov.as_of ? ov.as_of : '--'}`;
+          document.getElementById('s_total').textContent=`${tr('asof')} ${ov && ov.as_of ? ov.as_of : '--'}`;
           document.getElementById('v_realized').textContent=num(o.realized_pnl);
           document.getElementById('v_unrealized').textContent=num(o.unrealized_pnl);
           document.getElementById('v_fee').textContent=num(o.fee_total);
@@ -557,13 +557,13 @@
           renderTrend((ov && ov.series) || []);
           document.getElementById('s3v').textContent = nowLocal();
           if (partialErr) {
-            setPageState(t('statePartial'));
+            setPageState(tr('statePartial'));
             setLastEvent(partialErr);
-            toast(`${t('refreshed')} (${t('statePartial')})`, 'warn');
+            toast(`${tr('refreshed')} (${tr('statePartial')})`, 'warn');
           } else {
-            setPageState(t('stateReady'));
-            setLastEvent(t('refreshed'));
-            toast(t('refreshed'), 'ok');
+            setPageState(tr('stateReady'));
+            setLastEvent(tr('refreshed'));
+            toast(tr('refreshed'), 'ok');
           }
         } finally {
           refreshInFlight = false;
@@ -572,12 +572,12 @@
 
       async function rebuild(){
         clearErr();
-        if(!window.confirm(t('confirmRebuild'))){ return; }
+        if(!window.confirm(tr('confirmRebuild'))){ return; }
         const aid=currentAccountId();
-        setPageState(t('stateLoading'));
+        setPageState(tr('stateLoading'));
         const out=await jfetch('/api/v1/pnl/rebuild',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account_id:aid,lookback_days:365})});
-        setLastEvent(`${t('rebuildDone')}: ledger=${out.inserted_ledger_entries||0}`);
-        toast(`${t('rebuildDone')}: ledger=${out.inserted_ledger_entries||0}`, 'ok');
+        setLastEvent(`${tr('rebuildDone')}: ledger=${out.inserted_ledger_entries||0}`);
+        toast(`${tr('rebuildDone')}: ledger=${out.inserted_ledger_entries||0}`, 'ok');
       }
 
       window.applyPolymarketPnlI18n = async function(){
@@ -588,24 +588,24 @@
         await new Promise((resolve) => setTimeout(resolve, 0));
         applyPnlI18n();
         applyThresholdInputs();
-        setPageState(t('stateReady'));
+        setPageState(tr('stateReady'));
         setLastEvent('--');
-        document.getElementById('btnRefresh').onclick=async()=>{ try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('refreshFail')}: ${e.message}`); toast(`${t('refreshFail')}: ${e.message}`,'err');} };
-        document.getElementById('btnFilter').onclick=async()=>{ try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('filterFail')}: ${e.message}`); toast(`${t('filterFail')}: ${e.message}`,'err');} };
-        document.getElementById('btnRebuild').onclick=async()=>{ try{ await rebuild(); await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('rebuildFail')}: ${e.message}`); toast(`${t('rebuildFail')}: ${e.message}`,'err');} };
+        document.getElementById('btnRefresh').onclick=async()=>{ try{ await refreshAll(); }catch(e){ setPageState(tr('stateError')); setErr(`${tr('refreshFail')}: ${e.message}`); toast(`${tr('refreshFail')}: ${e.message}`,'err');} };
+        document.getElementById('btnFilter').onclick=async()=>{ try{ await refreshAll(); }catch(e){ setPageState(tr('stateError')); setErr(`${tr('filterFail')}: ${e.message}`); toast(`${tr('filterFail')}: ${e.message}`,'err');} };
+        document.getElementById('btnRebuild').onclick=async()=>{ try{ await rebuild(); await refreshAll(); }catch(e){ setPageState(tr('stateError')); setErr(`${tr('rebuildFail')}: ${e.message}`); toast(`${tr('rebuildFail')}: ${e.message}`,'err');} };
         document.getElementById('btnApplyThr').onclick=async()=>{
           const w = Number(document.getElementById('thrWarn').value || 1.0);
           const c = Number(document.getElementById('thrCrit').value || 5.0);
-          if (!Number.isFinite(w) || !Number.isFinite(c) || w < 0 || c < 0) { setErr(t('invalidThreshold')); return; }
+          if (!Number.isFinite(w) || !Number.isFinite(c) || w < 0 || c < 0) { setErr(tr('invalidThreshold')); return; }
           localStorage.setItem(THR_WARN_KEY, String(Math.min(w,c)));
           localStorage.setItem(THR_CRIT_KEY, String(Math.max(w,c)));
           applyThresholdInputs();
           await refreshAll();
-          toast(t('thrApplied'),'ok');
+          toast(tr('thrApplied'),'ok');
         };
         // Use the global app.js language toggle callback only.
         // Avoid observing/nav-rewriting loops that can spike the main thread.
-        try{ await refreshAll(); }catch(e){ setPageState(t('stateError')); setErr(`${t('initFail')}: ${e.message}`); toast(`${t('initFail')}: ${e.message}`,'err'); }
+        try{ await refreshAll(); }catch(e){ setPageState(tr('stateError')); setErr(`${tr('initFail')}: ${e.message}`); toast(`${tr('initFail')}: ${e.message}`,'err'); }
       });
     </script>
   </body>
