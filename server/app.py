@@ -315,6 +315,7 @@ _polymarket_auto_state = {
 }
 _polymarket_top_lock = Lock()
 _polymarket_top_thread = None
+_polymarket_top_file_lock = None
 _polymarket_top_state = {
   "running": False,
   "started_at": "",
@@ -391,6 +392,21 @@ def _try_acquire_polymarket_auto_lock(lock_file: str):
     fd = open(lock_file, "a+")
     fcntl.flock(fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     _polymarket_auto_file_lock = fd
+    return True
+  except Exception:
+    return False
+
+
+def _try_acquire_polymarket_top_lock(lock_file: str):
+  global _polymarket_top_file_lock
+  if _polymarket_top_file_lock is not None:
+    return True
+  if not fcntl:
+    return True
+  try:
+    fd = os.open(lock_file, os.O_CREAT | os.O_RDWR, 0o644)
+    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    _polymarket_top_file_lock = fd
     return True
   except Exception:
     return False
@@ -1311,6 +1327,7 @@ def _polymarket_top_cfg():
     "limit": max(1, min(int(os.environ.get("POLY_TOP_TRADERS_LIMIT", "10")), 15)),
     "time_period": str(os.environ.get("POLY_TOP_TRADERS_TIME_PERIOD", "ALL")).strip().upper(),
     "order_by": str(os.environ.get("POLY_TOP_TRADERS_ORDER_BY", "PNL")).strip().upper(),
+    "lock_file": str(os.environ.get("POLY_TOP_TRADERS_LOCKFILE", "/tmp/nexo_polymarket_top_sync.lock")).strip(),
   }
 
 
@@ -1400,6 +1417,10 @@ def _start_polymarket_top_sync():
     return
   with _polymarket_top_lock:
     if _polymarket_top_thread and _polymarket_top_thread.is_alive():
+      return
+    if not _try_acquire_polymarket_top_lock(cfg["lock_file"]):
+      _polymarket_top_state["running"] = False
+      _polymarket_top_state["last_errors"] = [f"lock_not_acquired:{cfg['lock_file']}"]
       return
     th = Thread(target=_polymarket_top_loop, daemon=True, name="polymarket-top-sync")
     th.start()
