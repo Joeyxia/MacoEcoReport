@@ -363,7 +363,7 @@
         if (d >= warn) return 'warn';
         return 'ok';
       }
-      function applyI18n(){
+      function applyPnlI18n(){
         document.querySelectorAll('[data-i18n]').forEach((node)=>{
           const key = node.getAttribute('data-i18n');
           const val = t(key);
@@ -581,12 +581,12 @@
       }
 
       window.applyPolymarketPnlI18n = async function(){
-        applyI18n();
+        applyPnlI18n();
         try { await refreshAll(); } catch {}
       };
       document.addEventListener('DOMContentLoaded', async ()=>{
         await new Promise((resolve) => setTimeout(resolve, 0));
-        applyI18n();
+        applyPnlI18n();
         applyThresholdInputs();
         setPageState(t('stateReady'));
         setLastEvent('--');
