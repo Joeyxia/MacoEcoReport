@@ -1033,6 +1033,42 @@ def _fetch_polymarket_trader_leaderboard(
   }
 
 
+def _fetch_json_url(url: str, timeout: int = 20):
+  req = urllib.request.Request(
+    str(url),
+    headers={
+      "User-Agent": "Mozilla/5.0 (NexoMacroMonitor; +https://nexo.hk)",
+      "Accept": "application/json",
+    },
+    method="GET",
+  )
+  with urllib.request.urlopen(req, timeout=max(5, int(timeout))) as resp:
+    raw = resp.read().decode("utf-8", errors="ignore")
+  return json.loads(raw or "null")
+
+
+def _safe_fetch_json_url(url: str, timeout: int = 20):
+  try:
+    return _fetch_json_url(url, timeout=timeout), ""
+  except Exception as e:
+    return None, str(e)[:200]
+
+
+def _infer_market_bucket(title: str = "", event_slug: str = "", slug: str = ""):
+  text = f"{title} {event_slug} {slug}".lower()
+  if any(k in text for k in ["election", "senate", "house", "president", "trump", "biden", "vote", "politic"]):
+    return "politics"
+  if any(k in text for k in ["nba", "nfl", "mlb", "soccer", "sport", "champion", "match", "game"]):
+    return "sports"
+  if any(k in text for k in ["btc", "bitcoin", "eth", "crypto", "solana"]):
+    return "crypto"
+  if any(k in text for k in ["fed", "cpi", "inflation", "rate", "gdp", "recession", "econom"]):
+    return "macro"
+  if any(k in text for k in ["tesla", "apple", "stock", "earnings", "market cap"]):
+    return "equities"
+  return "other"
+
+
 def _should_autotrack_token() -> bool:
   path = request.path or ""
   if request.method == "OPTIONS":
@@ -2798,6 +2834,131 @@ def polymarket_public_account_summary():
     ts = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     pnl = float(row.get("pnl") or 0.0)
     vol = float(row.get("vol") or 0.0)
+
+    profile, profile_err = _safe_fetch_json_url(f"https://gamma-api.polymarket.com/public-profile?address={urllib.parse.quote(wallet)}")
+    current_positions, cur_pos_err = _safe_fetch_json_url(
+      f"https://data-api.polymarket.com/positions?user={urllib.parse.quote(wallet)}&size=200&offset=0"
+    )
+    closed_positions, closed_pos_err = _safe_fetch_json_url(
+      f"https://data-api.polymarket.com/closed-positions?user={urllib.parse.quote(wallet)}&size=200&offset=0"
+    )
+    activities, act_err = _safe_fetch_json_url(
+      f"https://data-api.polymarket.com/activity?user={urllib.parse.quote(wallet)}&limit=200&offset=0"
+    )
+    trades, trades_err = _safe_fetch_json_url(
+      f"https://data-api.polymarket.com/trades?user={urllib.parse.quote(wallet)}&limit=200&offset=0"
+    )
+    traded_total, traded_total_err = _safe_fetch_json_url(
+      f"https://data-api.polymarket.com/traded?user={urllib.parse.quote(wallet)}"
+    )
+    value_snapshot, value_snapshot_err = _safe_fetch_json_url(
+      f"https://data-api.polymarket.com/value?user={urllib.parse.quote(wallet)}"
+    )
+
+    cur_rows = current_positions if isinstance(current_positions, list) else []
+    closed_rows = closed_positions if isinstance(closed_positions, list) else []
+    act_rows = activities if isinstance(activities, list) else []
+    trade_rows = trades if isinstance(trades, list) else []
+
+    bucket_counts = {}
+    for r in (cur_rows + closed_rows):
+      if not isinstance(r, dict):
+        continue
+      b = _infer_market_bucket(
+        str(r.get("title") or ""),
+        str(r.get("eventSlug") or ""),
+        str(r.get("slug") or ""),
+      )
+      bucket_counts[b] = bucket_counts.get(b, 0) + 1
+    bucket_ranked = sorted(bucket_counts.items(), key=lambda it: (-it[1], it[0]))
+
+    total_position_value = 0.0
+    top_markets = []
+    for r in cur_rows:
+      if not isinstance(r, dict):
+        continue
+      v = float(r.get("currentValue") or r.get("size") or 0.0)
+      total_position_value += max(0.0, v)
+      top_markets.append(
+        {
+          "title": str(r.get("title") or r.get("question") or r.get("slug") or "--"),
+          "value": round(v, 6),
+          "pnl": float(r.get("cashPnl") or r.get("pnl") or 0.0),
+          "bucket": _infer_market_bucket(
+            str(r.get("title") or ""),
+            str(r.get("eventSlug") or ""),
+            str(r.get("slug") or ""),
+          ),
+        }
+      )
+    top_markets = sorted(top_markets, key=lambda it: (-float(it.get("value") or 0.0), -float(it.get("pnl") or 0.0)))[:10]
+
+    hhi = 0.0
+    if total_position_value > 0:
+      for m in top_markets:
+        w = max(0.0, float(m.get("value") or 0.0)) / total_position_value
+        hhi += w * w
+
+    def _extract_ts(x):
+      if not isinstance(x, dict):
+        return ""
+      return str(
+        x.get("timestamp")
+        or x.get("createdAt")
+        or x.get("updatedAt")
+        or x.get("lastUpdated")
+        or x.get("time")
+        or ""
+      ).strip()
+
+    last_active = ""
+    for r in (act_rows + trade_rows + closed_rows):
+      ts0 = _extract_ts(r)
+      if ts0 and ts0 > last_active:
+        last_active = ts0
+
+    buy_n = 0
+    sell_n = 0
+    for r in trade_rows:
+      if not isinstance(r, dict):
+        continue
+      side = str(r.get("side") or r.get("type") or "").upper()
+      if "BUY" in side:
+        buy_n += 1
+      elif "SELL" in side:
+        sell_n += 1
+    side_bias = "balanced"
+    if buy_n > sell_n * 1.2:
+      side_bias = "buy-heavy"
+    elif sell_n > buy_n * 1.2:
+      side_bias = "sell-heavy"
+
+    realized_from_closed = 0.0
+    by_day = {}
+    for r in closed_rows:
+      if not isinstance(r, dict):
+        continue
+      rp = float(r.get("realizedPnl") or r.get("pnl") or r.get("cashPnl") or 0.0)
+      realized_from_closed += rp
+      day = str(_extract_ts(r) or "")[:10]
+      if day:
+        by_day[day] = by_day.get(day, 0.0) + rp
+    cum = 0.0
+    series = []
+    for d in sorted(by_day.keys()):
+      cum += float(by_day[d] or 0.0)
+      series.append({"d": d, "total_pnl": round(cum, 6)})
+
+    data_sources = {
+      "profile": {"ok": not bool(profile_err), "error": profile_err},
+      "current_positions": {"ok": not bool(cur_pos_err), "error": cur_pos_err},
+      "closed_positions": {"ok": not bool(closed_pos_err), "error": closed_pos_err},
+      "activity": {"ok": not bool(act_err), "error": act_err},
+      "trades": {"ok": not bool(trades_err), "error": trades_err},
+      "markets_traded": {"ok": not bool(traded_total_err), "error": traded_total_err},
+      "value_snapshot": {"ok": not bool(value_snapshot_err), "error": value_snapshot_err},
+    }
+
     payload = {
       "ok": True,
       "mode": "public_leaderboard",
@@ -2805,22 +2966,22 @@ def polymarket_public_account_summary():
       "as_of": ts,
       "overview": {
         "ts": ts,
-        "realized_pnl": pnl,
-        "unrealized_pnl": 0.0,
+        "realized_pnl": realized_from_closed if abs(realized_from_closed) > 1e-9 else pnl,
+        "unrealized_pnl": float((value_snapshot or {}).get("unrealizedPnl") or 0.0) if isinstance(value_snapshot, dict) else 0.0,
         "fee_total": 0.0,
         "rebate_total": 0.0,
         "reward_total": 0.0,
         "total_pnl": pnl,
-        "calc_version": "leaderboard_public",
+        "calc_version": "leaderboard_public_v2",
       },
-      "series": [],
+      "series": series,
       "strategy_attribution": [
         {
           "strategy_type": "public_leaderboard",
-          "volume": vol,
+          "volume": float((value_snapshot or {}).get("volume") or vol) if isinstance(value_snapshot, dict) else vol,
           "realized_pnl": pnl,
           "unrealized_pnl": 0.0,
-          "n_trades": 0,
+          "n_trades": int((value_snapshot or {}).get("tradesCount") or len(trade_rows)) if isinstance(value_snapshot, dict) else len(trade_rows),
           "ts": ts,
         }
       ],
@@ -2835,6 +2996,29 @@ def polymarket_public_account_summary():
         "notes": f"rank={int(row.get('rank') or 0)}, user={row.get('userName') or '--'}",
       },
       "leaderboard_row": row,
+      "profile": profile if isinstance(profile, dict) else {},
+      "current_positions": cur_rows[:100],
+      "closed_positions": closed_rows[:100],
+      "activities": act_rows[:100],
+      "trades": trade_rows[:100],
+      "traded_total": traded_total if isinstance(traded_total, dict) else {},
+      "value_snapshot": value_snapshot if isinstance(value_snapshot, dict) else {},
+      "accounting_snapshot_url": f"https://data-api.polymarket.com/v1/accounting/snapshot?user={wallet}",
+      "data_sources": data_sources,
+      "intelligence": {
+        "last_active": last_active,
+        "position_count": len(cur_rows),
+        "closed_position_count": len(closed_rows),
+        "activity_count": len(act_rows),
+        "trade_count": len(trade_rows),
+        "buy_count": buy_n,
+        "sell_count": sell_n,
+        "side_bias": side_bias,
+        "total_position_value": round(total_position_value, 6),
+        "market_concentration_hhi": round(hhi, 6),
+        "bucket_distribution": [{"bucket": k, "count": v} for k, v in bucket_ranked],
+        "top_markets": top_markets,
+      },
     }
     return jsonify(payload)
   except Exception as e:

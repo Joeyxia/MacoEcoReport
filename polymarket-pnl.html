@@ -160,6 +160,12 @@
           </div>
         </div>
       </section>
+
+      <section class="pnl-card" id="topIntelSection" style="margin-top:12px;display:none;">
+        <h2 class="pnl-title" id="title_top_intel" style="font-size:18px;">Top Traders Intelligence</h2>
+        <div id="topIntelSummary" class="pnl-sub" style="margin-bottom:10px;"></div>
+        <div id="topIntelBlocks" class="pnl-grid"></div>
+      </section>
     </main>
 
     <script>
@@ -222,6 +228,36 @@
           publicLoaded: "Loaded public leaderboard account",
           publicNoRebuild: "Public leaderboard account does not support rebuild",
           noLedgerPublic: "No internal ledger entries for public account. This view shows leaderboard summary only.",
+          topIntelTitle: "Top Traders Intelligence",
+          topIntelNoData: "No top-trader intelligence data loaded.",
+          topIntelProfile: "Public Profile",
+          topIntelBehavior: "Behavior Snapshot",
+          topIntelPositions: "Current Positions (Top 10 by Value)",
+          topIntelClosed: "Closed Positions (Recent 10)",
+          topIntelActivity: "Activity / Trades (Recent 10)",
+          topIntelSource: "Data Source Health",
+          topIntelName: "Name",
+          topIntelWallet: "Wallet",
+          topIntelRank: "Rank",
+          topIntelPnl: "PnL",
+          topIntelVol: "Volume",
+          topIntelLastActive: "Last Active",
+          topIntelPosCount: "Current Positions",
+          topIntelClosedCount: "Closed Positions",
+          topIntelActivityCount: "Activity Count",
+          topIntelTradeCount: "Trade Count",
+          topIntelSideBias: "Side Bias",
+          topIntelConcentration: "Concentration (HHI)",
+          topIntelBuckets: "Preferred Buckets",
+          topIntelTitleCol: "Title",
+          topIntelValueCol: "Value",
+          topIntelPnlCol: "PnL",
+          topIntelBucketCol: "Bucket",
+          topIntelTime: "Time",
+          topIntelStatus: "Status",
+          topIntelItem: "Item",
+          topIntelError: "Error",
+          topIntelDownload: "Accounting Snapshot CSV",
           trendSeries: "Total PnL",
           status: "Status",
           internal: "Internal Total PnL",
@@ -311,6 +347,36 @@
           publicLoaded: "已加载公开排行榜账户",
           publicNoRebuild: "公开排行榜账户不支持重建账本",
           noLedgerPublic: "该公开账户无内部账本分录，此页面仅展示排行榜汇总信息。",
+          topIntelTitle: "头部交易员情报",
+          topIntelNoData: "尚未加载头部交易员情报数据。",
+          topIntelProfile: "公开档案",
+          topIntelBehavior: "行为快照",
+          topIntelPositions: "当前持仓（按价值前10）",
+          topIntelClosed: "已平仓（最近10条）",
+          topIntelActivity: "活动/交易（最近10条）",
+          topIntelSource: "数据源健康度",
+          topIntelName: "名称",
+          topIntelWallet: "钱包",
+          topIntelRank: "排名",
+          topIntelPnl: "盈亏",
+          topIntelVol: "成交量",
+          topIntelLastActive: "最近活跃",
+          topIntelPosCount: "当前持仓数",
+          topIntelClosedCount: "已平仓数",
+          topIntelActivityCount: "活动条数",
+          topIntelTradeCount: "交易条数",
+          topIntelSideBias: "方向偏好",
+          topIntelConcentration: "集中度(HHI)",
+          topIntelBuckets: "偏好市场桶",
+          topIntelTitleCol: "标题",
+          topIntelValueCol: "价值",
+          topIntelPnlCol: "盈亏",
+          topIntelBucketCol: "分类",
+          topIntelTime: "时间",
+          topIntelStatus: "状态",
+          topIntelItem: "项目",
+          topIntelError: "错误",
+          topIntelDownload: "会计快照CSV",
           trendSeries: "总盈亏",
           status: "状态",
           internal: "内部口径总盈亏",
@@ -377,6 +443,15 @@
       let refreshInFlight = false;
       let topAccounts = [];
       let publicModeActive = false;
+      let latestPublicSummary = null;
+      function esc(v){
+        return String(v ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
       function getThresholds(){
         let warn = Number(localStorage.getItem(THR_WARN_KEY) || 1.0);
         let crit = Number(localStorage.getItem(THR_CRIT_KEY) || 5.0);
@@ -441,6 +516,9 @@
         document.getElementById('accountId').placeholder=tr('placeholderAccount');
         document.getElementById('fMarket').placeholder=tr('placeholderMarket');
         document.getElementById('fStrategy').placeholder=tr('placeholderStrategy');
+        const ti = document.getElementById('title_top_intel');
+        if (ti) ti.textContent = tr('topIntelTitle');
+        if (publicModeActive && latestPublicSummary) renderTopTraderIntel(latestPublicSummary);
       }
       function num(v){ const n=Number(v||0); return Number.isFinite(n)? n.toLocaleString(undefined,{maximumFractionDigits:4}):"--"; }
       function nowLocal(){ return new Date().toLocaleString(); }
@@ -604,6 +682,76 @@
           tb.appendChild(tr);
         }
       }
+      function clearTopTraderIntel(){
+        latestPublicSummary = null;
+        const sec = document.getElementById('topIntelSection');
+        const summary = document.getElementById('topIntelSummary');
+        const blocks = document.getElementById('topIntelBlocks');
+        if (sec) sec.style.display = 'none';
+        if (summary) summary.textContent = '';
+        if (blocks) blocks.innerHTML = '';
+      }
+      function renderTopTraderIntel(pub){
+        latestPublicSummary = pub || null;
+        const sec = document.getElementById('topIntelSection');
+        const summary = document.getElementById('topIntelSummary');
+        const blocks = document.getElementById('topIntelBlocks');
+        if (!sec || !summary || !blocks) return;
+        if (!pub || typeof pub !== 'object') {
+          sec.style.display = 'none';
+          return;
+        }
+        sec.style.display = 'block';
+        const row = pub.leaderboard_row || {};
+        const intel = pub.intelligence || {};
+        const profile = pub.profile || {};
+        const pos = Array.isArray(intel.top_markets) ? intel.top_markets : [];
+        const closed = Array.isArray(pub.closed_positions) ? pub.closed_positions.slice(0, 10) : [];
+        const acts = Array.isArray(pub.activities) ? pub.activities.slice(0, 10) : [];
+        const trades = Array.isArray(pub.trades) ? pub.trades.slice(0, 10) : [];
+        const src = pub.data_sources || {};
+        summary.textContent = `${tr('topIntelRank')} #${Number(row.rank||0)||'--'} · ${tr('topIntelWallet')}: ${row.proxyWallet||'--'} · ${tr('topIntelPnl')}: ${num(row.pnl)} · ${tr('topIntelVol')}: ${num(row.vol)}`;
+        const bucketText = (intel.bucket_distribution || []).map(x => `${x.bucket}:${x.count}`).join(', ') || '--';
+        const profileRows = `
+          <table class="pnl-table"><tbody>
+            <tr><th>${tr('topIntelName')}</th><td>${esc(profile.name || row.userName || '--')}</td></tr>
+            <tr><th>${tr('topIntelWallet')}</th><td class="pnl-mono">${esc(row.proxyWallet || '--')}</td></tr>
+            <tr><th>${tr('topIntelRank')}</th><td>${esc(row.rank || '--')}</td></tr>
+            <tr><th>${tr('topIntelPnl')}</th><td>${num(row.pnl)}</td></tr>
+            <tr><th>${tr('topIntelVol')}</th><td>${num(row.vol)}</td></tr>
+            <tr><th>${tr('topIntelDownload')}</th><td><a href="${esc(pub.accounting_snapshot_url || '#')}" target="_blank" rel="noopener noreferrer">${tr('topIntelDownload')}</a></td></tr>
+          </tbody></table>
+        `;
+        const behaviorRows = `
+          <table class="pnl-table"><tbody>
+            <tr><th>${tr('topIntelLastActive')}</th><td>${esc(intel.last_active || '--')}</td></tr>
+            <tr><th>${tr('topIntelPosCount')}</th><td>${esc(intel.position_count || 0)}</td></tr>
+            <tr><th>${tr('topIntelClosedCount')}</th><td>${esc(intel.closed_position_count || 0)}</td></tr>
+            <tr><th>${tr('topIntelActivityCount')}</th><td>${esc(intel.activity_count || 0)}</td></tr>
+            <tr><th>${tr('topIntelTradeCount')}</th><td>${esc(intel.trade_count || 0)}</td></tr>
+            <tr><th>${tr('topIntelSideBias')}</th><td>${esc(intel.side_bias || '--')}</td></tr>
+            <tr><th>${tr('topIntelConcentration')}</th><td>${esc(intel.market_concentration_hhi || '--')}</td></tr>
+            <tr><th>${tr('topIntelBuckets')}</th><td>${esc(bucketText)}</td></tr>
+          </tbody></table>
+        `;
+        const topRows = pos.map(r => `<tr><td>${esc(r.title||'--')}</td><td class="num">${num(r.value)}</td><td class="num">${num(r.pnl)}</td><td>${esc(r.bucket||'--')}</td></tr>`).join('') || `<tr><td colspan="4">${tr('topIntelNoData')}</td></tr>`;
+        const closedRows = closed.map(r => `<tr><td>${esc((r.title||r.question||'--'))}</td><td>${esc((r.closedAt||r.updatedAt||r.createdAt||'--'))}</td><td class="num">${num(r.realizedPnl||r.pnl||r.cashPnl||0)}</td></tr>`).join('') || `<tr><td colspan="3">${tr('topIntelNoData')}</td></tr>`;
+        const actRows = acts.map(r => `<tr><td>${esc((r.type||r.action||'--'))}</td><td>${esc((r.timestamp||r.createdAt||'--'))}</td><td>${esc((r.title||r.market||r.slug||'--'))}</td></tr>`).join('');
+        const tradeRows = trades.map(r => `<tr><td>${esc((r.side||r.type||'--'))}</td><td>${esc((r.timestamp||r.createdAt||'--'))}</td><td>${esc((r.market||r.title||r.slug||'--'))}</td></tr>`).join('');
+        const sourceRows = Object.keys(src).map(k => {
+          const item = src[k] || {};
+          const status = item.ok ? 'OK' : 'FAIL';
+          return `<tr><td>${esc(k)}</td><td>${esc(status)}</td><td>${esc(item.error||'')}</td></tr>`;
+        }).join('') || `<tr><td colspan="3">${tr('topIntelNoData')}</td></tr>`;
+        blocks.innerHTML = `
+          <div class="pnl-card half"><h3 class="pnl-title" style="font-size:16px;">${tr('topIntelProfile')}</h3>${profileRows}</div>
+          <div class="pnl-card half"><h3 class="pnl-title" style="font-size:16px;">${tr('topIntelBehavior')}</h3>${behaviorRows}</div>
+          <div class="pnl-card"><h3 class="pnl-title" style="font-size:16px;">${tr('topIntelPositions')}</h3><div class="pnl-table-wrap"><table class="pnl-table"><thead><tr><th>${tr('topIntelTitleCol')}</th><th class="num">${tr('topIntelValueCol')}</th><th class="num">${tr('topIntelPnlCol')}</th><th>${tr('topIntelBucketCol')}</th></tr></thead><tbody>${topRows}</tbody></table></div></div>
+          <div class="pnl-card half"><h3 class="pnl-title" style="font-size:16px;">${tr('topIntelClosed')}</h3><div class="pnl-table-wrap"><table class="pnl-table"><thead><tr><th>${tr('topIntelTitleCol')}</th><th>${tr('topIntelTime')}</th><th class="num">${tr('topIntelPnlCol')}</th></tr></thead><tbody>${closedRows}</tbody></table></div></div>
+          <div class="pnl-card half"><h3 class="pnl-title" style="font-size:16px;">${tr('topIntelActivity')}</h3><div class="pnl-table-wrap"><table class="pnl-table"><thead><tr><th>${tr('topIntelStatus')}</th><th>${tr('topIntelTime')}</th><th>${tr('topIntelItem')}</th></tr></thead><tbody>${actRows || tradeRows || `<tr><td colspan="3">${tr('topIntelNoData')}</td></tr>`}</tbody></table></div></div>
+          <div class="pnl-card"><h3 class="pnl-title" style="font-size:16px;">${tr('topIntelSource')}</h3><div class="pnl-table-wrap"><table class="pnl-table"><thead><tr><th>${tr('topIntelItem')}</th><th>${tr('topIntelStatus')}</th><th>${tr('topIntelError')}</th></tr></thead><tbody>${sourceRows}</tbody></table></div></div>
+        `;
+      }
 
       async function refreshAll(){
         if (refreshInFlight) return;
@@ -630,12 +778,14 @@
             renderRecon(r);
             renderLedger([]);
             renderTrend((pub && pub.series) || []);
+            renderTopTraderIntel(pub);
             document.getElementById('s3v').textContent = nowLocal();
             setPageState(tr('stateReady'));
             setLastEvent(tr('publicLoaded'));
             toast(tr('publicLoaded'), 'ok');
             return;
           }
+          clearTopTraderIntel();
           const qAid=aid?`&account_id=${encodeURIComponent(aid)}`:'';
           let ov=null, rec=null, le=null;
           let partialErr = "";
