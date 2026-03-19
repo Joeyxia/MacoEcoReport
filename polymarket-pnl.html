@@ -8,10 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260319pnl11" />
+    <link rel="stylesheet" href="styles.css?v=20260319pnl12" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260319pnl11" defer></script>
+    <script src="app.js?v=20260319pnl12" defer></script>
     <style>
       .page.pnl-wrap { display:block !important; width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
       .pnl-grid { display:grid !important; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; }
@@ -330,6 +330,10 @@
         return null;
       }
       function lang(){
+        if (typeof window.getLang === 'function') {
+          const gl = window.getLang();
+          if (gl === 'zh' || gl === 'en') return gl;
+        }
         const fromNav = inferLangFromNav();
         if (fromNav) return fromNav;
         try { return localStorage.getItem('macro-monitor-lang') === 'zh' ? 'zh' : 'en'; } catch { return 'en'; }
