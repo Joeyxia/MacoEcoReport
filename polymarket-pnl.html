@@ -36,6 +36,10 @@
       .pnl-table th, .pnl-table td { border-bottom:1px solid rgba(10,40,40,.12); padding:8px; text-align:left; }
       .pnl-table th { position:sticky; top:0; background:#f6fbfa; z-index:1; }
       .pnl-table td.num, .pnl-table th.num { text-align:right; }
+      #reconTable { min-width: 0; table-layout: fixed; }
+      #reconTable th:first-child, #reconTable td:first-child { width: 38%; }
+      #reconTable th:last-child, #reconTable td:last-child { width: 62%; }
+      #reconTable td:last-child { white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
       .pnl-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
       .pnl-toast { margin:10px 0; border-radius:10px; padding:10px 12px; font-size:14px; border:1px solid rgba(10,40,40,.16); background:#f5f7f8; color:#36525b; display:none; }
       .pnl-toast.show { display:block; }
@@ -683,17 +687,18 @@
         const tb=document.querySelector('#reconTable tbody'); tb.innerHTML='';
         const st = classifyDiff(rec.diff_internal_vs_positions);
         const rows=[
-          [tr('status'), `<span class="pnl-pill ${st}">${(rec.status||'--').toUpperCase()}</span>`],
-          [tr('internal'), num(rec.internal_total_pnl)],
-          [tr('positions'), num(rec.positions_total_pnl)],
-          [tr('leaderboard'), rec.leaderboard_total_pnl==null?'--':num(rec.leaderboard_total_pnl)],
-          [tr('diffPos'), num(rec.diff_internal_vs_positions)],
-          [tr('diffLb'), rec.diff_internal_vs_leaderboard==null?'--':num(rec.diff_internal_vs_leaderboard)],
-          [tr('ts'), rec.ts||'--'],
-          [tr('notes'), rec.notes||'--'],
+          [tr('status'), `<span class="pnl-pill ${st}">${(rec.status||'--').toUpperCase()}</span>`, false],
+          [tr('internal'), num(rec.internal_total_pnl), true],
+          [tr('positions'), num(rec.positions_total_pnl), true],
+          [tr('leaderboard'), rec.leaderboard_total_pnl==null?'--':num(rec.leaderboard_total_pnl), true],
+          [tr('diffPos'), num(rec.diff_internal_vs_positions), true],
+          [tr('diffLb'), rec.diff_internal_vs_leaderboard==null?'--':num(rec.diff_internal_vs_leaderboard), true],
+          [tr('ts'), rec.ts||'--', false],
+          [tr('notes'), rec.notes||'--', false],
         ];
-        for(const [k,v] of rows){
-          const tr=document.createElement('tr'); tr.innerHTML=`<td>${k}</td><td class="num">${v}</td>`; tb.appendChild(tr);
+        for(const [k,v,isNum] of rows){
+          const cls = isNum ? 'num' : '';
+          const tr=document.createElement('tr'); tr.innerHTML=`<td>${k}</td><td class="${cls}">${v}</td>`; tb.appendChild(tr);
         }
       }
       function renderTrend(series){
