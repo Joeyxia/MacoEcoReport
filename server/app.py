@@ -97,6 +97,7 @@ try:
     list_trading_accounts as polymarket_list_trading_accounts,
     get_risk_limits as polymarket_get_risk_limits,
     upsert_risk_limits as polymarket_upsert_risk_limits,
+    rollback_risk_limits as polymarket_rollback_risk_limits,
     DEFAULT_RISK_TEMPLATE as POLYMARKET_DEFAULT_RISK_TEMPLATE,
     evaluate_and_execute as polymarket_evaluate_and_execute,
     list_executions as polymarket_list_executions,
@@ -215,6 +216,7 @@ except ImportError:
     list_trading_accounts as polymarket_list_trading_accounts,
     get_risk_limits as polymarket_get_risk_limits,
     upsert_risk_limits as polymarket_upsert_risk_limits,
+    rollback_risk_limits as polymarket_rollback_risk_limits,
     DEFAULT_RISK_TEMPLATE as POLYMARKET_DEFAULT_RISK_TEMPLATE,
     evaluate_and_execute as polymarket_evaluate_and_execute,
     list_executions as polymarket_list_executions,
@@ -3371,6 +3373,25 @@ def polymarket_strategy_templates_apply():
       "analytics": _build_polymarket_strategy_templates().get("analytics") or {},
     }
   ), (200 if out.get("ok") else 400)
+
+
+@app.route("/api/v1/polymarket/strategy-templates/rollback", methods=["POST"])
+def polymarket_strategy_templates_rollback():
+  user, err = _require_public_user()
+  if err:
+    return err
+  payload = request.get_json(silent=True) or {}
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(payload.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
+  out = polymarket_rollback_risk_limits(
+    account_id=account_id,
+    actor=str(user.get("email") or "operator"),
+  )
+  return jsonify(out), (200 if out.get("ok") else 400)
 
 
 @app.route("/api/v1/polymarket/account/public-summary", methods=["GET"])

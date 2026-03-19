@@ -555,6 +555,17 @@ def init_db():
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+    CREATE INDEX IF NOT EXISTS idx_risk_limits_account ON risk_limits(account_id, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS risk_limits_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL,
+      snapshot_json TEXT NOT NULL,
+      actor TEXT,
+      reason TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_risk_limits_history_account ON risk_limits_history(account_id, created_at DESC);
 
     CREATE TABLE IF NOT EXISTS executions (
       id TEXT PRIMARY KEY,

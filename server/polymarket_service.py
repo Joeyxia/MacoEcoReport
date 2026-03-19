@@ -719,9 +719,37 @@ def get_risk_limits(account_id):
     conn.close()
 
 
+def _snapshot_current_risk_limits(conn, account_id, actor="operator", reason="upsert"):
+  row = _fetchone(conn, "SELECT * FROM risk_limits WHERE account_id=?", (account_id,))
+  if not row:
+    return None
+  snapshot = dict(DEFAULT_RISK_TEMPLATE)
+  snapshot.update({k: row.get(k) for k in snapshot.keys() if k in row})
+  snapshot["auto_trading"] = _bool_int(snapshot.get("auto_trading"), 0)
+  snapshot["halt_on_api_degraded"] = _bool_int(snapshot.get("halt_on_api_degraded"), 1)
+  snapshot["post_only"] = _bool_int(snapshot.get("post_only"), 1)
+  snapshot["allow_taker"] = _bool_int(snapshot.get("allow_taker"), 0)
+  snapshot["paper_mode"] = _bool_int(snapshot.get("paper_mode"), 1)
+  conn.execute(
+    """
+    INSERT INTO risk_limits_history(account_id, snapshot_json, actor, reason, created_at)
+    VALUES (?, ?, ?, ?, ?)
+    """,
+    (
+      account_id,
+      json.dumps(snapshot, ensure_ascii=False),
+      str(actor or "operator"),
+      str(reason or "upsert"),
+      now_iso(),
+    ),
+  )
+  return snapshot
+
+
 def upsert_risk_limits(account_id, payload, actor="operator"):
   conn = get_conn()
   try:
+    _snapshot_current_risk_limits(conn, account_id, actor=actor, reason="upsert")
     lim = _sanitize_risk_payload(payload or {})
     ts = now_iso()
     conn.execute(
@@ -783,6 +811,100 @@ def upsert_risk_limits(account_id, payload, actor="operator"):
     _write_audit(conn, actor, "risk_limits", account_id, "upsert", "ok", lim)
     conn.commit()
     return {"ok": True, "account_id": account_id, "limits": lim}
+  finally:
+    conn.close()
+
+
+def rollback_risk_limits(account_id, actor="operator"):
+  conn = get_conn()
+  try:
+    row = _fetchone(
+      conn,
+      """
+      SELECT id, snapshot_json, created_at
+      FROM risk_limits_history
+      WHERE account_id=?
+      ORDER BY id DESC
+      LIMIT 1
+      """,
+      (account_id,),
+    )
+    if not row:
+      return {"ok": False, "error": "no_history"}
+    try:
+      snap = json.loads(row.get("snapshot_json") or "{}")
+    except Exception:
+      return {"ok": False, "error": "history_corrupted"}
+    lim = _sanitize_risk_payload(snap or {})
+    ts = now_iso()
+    conn.execute(
+      """
+      INSERT INTO risk_limits(
+        account_id, max_daily_notional, max_order_notional, max_market_exposure, max_slippage_bps, max_open_orders, auto_trading,
+        min_expected_edge_bps, min_model_confidence, min_orderbook_depth, order_cooldown_sec,
+        max_daily_realized_loss, max_consecutive_failed_orders, max_reject_ratio_pct_10m, halt_on_api_degraded,
+        default_order_type, post_only, allow_taker, cancel_stale_after_sec, paper_mode,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(account_id) DO UPDATE SET
+        max_daily_notional=excluded.max_daily_notional,
+        max_order_notional=excluded.max_order_notional,
+        max_market_exposure=excluded.max_market_exposure,
+        max_slippage_bps=excluded.max_slippage_bps,
+        max_open_orders=excluded.max_open_orders,
+        auto_trading=excluded.auto_trading,
+        min_expected_edge_bps=excluded.min_expected_edge_bps,
+        min_model_confidence=excluded.min_model_confidence,
+        min_orderbook_depth=excluded.min_orderbook_depth,
+        order_cooldown_sec=excluded.order_cooldown_sec,
+        max_daily_realized_loss=excluded.max_daily_realized_loss,
+        max_consecutive_failed_orders=excluded.max_consecutive_failed_orders,
+        max_reject_ratio_pct_10m=excluded.max_reject_ratio_pct_10m,
+        halt_on_api_degraded=excluded.halt_on_api_degraded,
+        default_order_type=excluded.default_order_type,
+        post_only=excluded.post_only,
+        allow_taker=excluded.allow_taker,
+        cancel_stale_after_sec=excluded.cancel_stale_after_sec,
+        paper_mode=excluded.paper_mode,
+        updated_at=excluded.updated_at
+      """,
+      (
+        account_id,
+        lim["max_daily_notional"],
+        lim["max_order_notional"],
+        lim["max_market_exposure"],
+        lim["max_slippage_bps"],
+        lim["max_open_orders"],
+        lim["auto_trading"],
+        lim["min_expected_edge_bps"],
+        lim["min_model_confidence"],
+        lim["min_orderbook_depth"],
+        lim["order_cooldown_sec"],
+        lim["max_daily_realized_loss"],
+        lim["max_consecutive_failed_orders"],
+        lim["max_reject_ratio_pct_10m"],
+        lim["halt_on_api_degraded"],
+        lim["default_order_type"],
+        lim["post_only"],
+        lim["allow_taker"],
+        lim["cancel_stale_after_sec"],
+        lim["paper_mode"],
+        ts,
+        ts,
+      ),
+    )
+    conn.execute("DELETE FROM risk_limits_history WHERE id=?", (int(row.get("id") or 0),))
+    _write_audit(
+      conn,
+      actor,
+      "risk_limits",
+      account_id,
+      "rollback",
+      "ok",
+      {"rolled_back_from": row.get("created_at"), "limits": lim},
+    )
+    conn.commit()
+    return {"ok": True, "account_id": account_id, "limits": lim, "rolled_back_from": row.get("created_at")}
   finally:
     conn.close()
 

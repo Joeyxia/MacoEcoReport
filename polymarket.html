@@ -173,6 +173,7 @@
             </select>
             <button class="pm-btn ghost" id="btnTemplateRefresh">Refresh Templates</button>
             <button class="pm-btn" id="btnTemplateApply">Apply to Current Account</button>
+            <button class="pm-btn ghost" id="btnTemplateRollback">Rollback Last Apply</button>
           </div>
           <div id="templateSummary" class="pm-mono"></div>
         </div>
@@ -260,10 +261,13 @@
           template: "Strategy Templates",
           templateRefresh: "Refresh Templates",
           templateApply: "Apply to Current Account",
+          templateRollback: "Rollback Last Apply",
           templateLoaded: "Templates loaded",
           templateApplied: "Template applied",
+          templateRolledBack: "Rollback completed",
           templateLoadFail: "Template load failed",
           templateApplyFail: "Template apply failed",
+          templateRollbackFail: "Rollback failed",
           templateNeedAccount: "Please connect account first",
           templatePickOne: "Please choose one template first",
           seed: "Init Demo Market",
@@ -395,10 +399,13 @@
           template: "策略模板",
           templateRefresh: "刷新模板",
           templateApply: "应用到当前账户",
+          templateRollback: "回滚上一次应用",
           templateLoaded: "模板已加载",
           templateApplied: "模板已应用",
+          templateRolledBack: "回滚完成",
           templateLoadFail: "模板加载失败",
           templateApplyFail: "模板应用失败",
+          templateRollbackFail: "回滚失败",
           templateNeedAccount: "请先连接账户",
           templatePickOne: "请先选择一个模板",
           seed: "初始化 Demo 市场",
@@ -517,6 +524,7 @@
         document.getElementById("pm-template-title").textContent = pmT("template");
         document.getElementById("btnTemplateRefresh").textContent = pmT("templateRefresh");
         document.getElementById("btnTemplateApply").textContent = pmT("templateApply");
+        document.getElementById("btnTemplateRollback").textContent = pmT("templateRollback");
         document.getElementById("pm-scan-title").textContent = pmT("scan");
         document.getElementById("pm-near-title").textContent = pmT("nearTitle");
         document.getElementById("signer").placeholder = pmT("signerPh");
@@ -1151,6 +1159,21 @@
             toast(`${pmT("templateApplied")}: ${out.template_id}`, "ok");
           }catch(err){
             toast(`${pmT("templateApplyFail")}: ${err.message}`, "err");
+          }
+        });
+        document.getElementById("btnTemplateRollback")?.addEventListener("click", async () => {
+          try{
+            if(!accountId) throw new Error(pmT("templateNeedAccount"));
+            const out = await jfetch("/api/v1/polymarket/strategy-templates/rollback", {
+              method: "POST",
+              headers: {"Content-Type":"application/json"},
+              body: JSON.stringify({ account_id: accountId }),
+            });
+            await refreshAccount();
+            renderTemplateSummary();
+            toast(`${pmT("templateRolledBack")}: ${out.rolled_back_from || "--"}`, "ok");
+          }catch(err){
+            toast(`${pmT("templateRollbackFail")}: ${err.message}`, "err");
           }
         });
         document.getElementById("btnRenameAccount")?.addEventListener("click", async () => {
