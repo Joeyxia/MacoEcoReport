@@ -225,6 +225,9 @@
       let accountId = "";
       let currentUserEmail = "";
       let lastDiagData = null;
+      let lastAutoEngineTickSeen = "";
+      let lastLinkedScanTick = "";
+      let autoLinkedScanInFlight = false;
       let strategyTemplates = [];
       let strategyTemplateAnalytics = {};
       const pmI18n = {
@@ -859,9 +862,28 @@
             ? `${pmT("autoEngineErr")}: ${errs[0]}`
             : `ok: scans=${scanCalls}, last_found=${lastFound}, last_executed=${lastExecuted}, total_executed=${executedAll}`;
           setDiag("autoEngineMessage", msg);
+          const tickKey = String(d.last_tick_at || "").trim();
+          if (d.running && tickKey && tickKey !== lastAutoEngineTickSeen) {
+            lastAutoEngineTickSeen = tickKey;
+            await triggerLinkedAutoScan(tickKey);
+          }
         } catch (e) {
           setDiag("autoEngineRunning", pmT("autoEngineStopped"));
           setDiag("autoEngineMessage", `${pmT("autoEngineErr")}: ${e.message}`);
+        }
+      }
+
+      async function triggerLinkedAutoScan(tickKey) {
+        if (!tickKey || autoLinkedScanInFlight || tickKey === lastLinkedScanTick) return;
+        autoLinkedScanInFlight = true;
+        lastLinkedScanTick = tickKey;
+        try {
+          await runScanAction(false);
+        } catch (e) {
+          const msg = `${pmT("autoEngineErr")}: linked_scan_failed: ${e.message}`;
+          setDiag("autoEngineMessage", msg);
+        } finally {
+          autoLinkedScanInFlight = false;
         }
       }
 
@@ -977,25 +999,37 @@
         }
       }
 
-      document.getElementById("btnScan").onclick = async ()=>{
+      async function runScanAction(manual = true) {
         const btn = document.getElementById("btnScan");
         try{
-          setBusy(btn, true);
-          toast(pmT("loadingScan"), "info");
+          if (manual) {
+            setBusy(btn, true);
+            toast(pmT("loadingScan"), "info");
+          }
           await scan();
           await refreshDiagnostics();
-          await refreshAutoEngineStatus();
-          toast(pmT("scanOk"), "ok");
-        }catch(e){
-          const el = document.getElementById("riskOut");
-          if (el) {
-            el.textContent = (pmGetLang() === "zh"
-              ? `扫描失败：${e.message}\n建议：请稍后重试，或先点击“诊断详情”检查 market_error。`
-              : `Scan failed: ${e.message}\nSuggestion: retry in a moment, or open Diagnostics Details to inspect market_error.`);
+          if (manual) {
+            await refreshAutoEngineStatus();
+            toast(pmT("scanOk"), "ok");
           }
-          toast(`${pmT("scanFail")}: ${e.message}`, "err");
+        }catch(e){
+          if (manual) {
+            const el = document.getElementById("riskOut");
+            if (el) {
+              el.textContent = (pmGetLang() === "zh"
+                ? `扫描失败：${e.message}\n建议：请稍后重试，或先点击“诊断详情”检查 market_error。`
+                : `Scan failed: ${e.message}\nSuggestion: retry in a moment, or open Diagnostics Details to inspect market_error.`);
+            }
+            toast(`${pmT("scanFail")}: ${e.message}`, "err");
+          }
         }
-        finally{ setBusy(btn, false); }
+        finally{
+          if (manual) setBusy(btn, false);
+        }
+      }
+
+      document.getElementById("btnScan").onclick = async ()=>{
+        await runScanAction(true);
       };
 
       document.getElementById("btnConnect").onclick = async ()=>{
