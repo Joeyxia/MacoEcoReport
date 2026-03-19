@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="styles.css?v=20260319pnl13" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260319pnl15" defer></script>
+    <script src="app.js?v=20260319pnl16" defer></script>
     <style>
       .page.pnl-wrap { display:block !important; width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
       .pnl-grid { display:grid !important; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; }
@@ -178,7 +178,7 @@
           nav_polymarket_pnl: "Polymarket PnL",
           nav_openrouter: "OpenRouter",
           nav_intro: "About Nexo",
-          pageTitle: "Polymarket PnL & Ledger Console",
+          pageTitle: "Polymarket PnL Dashboard",
           refresh: "Refresh",
           rebuild: "Rebuild Ledger",
           filter: "Apply Filter",
@@ -257,7 +257,7 @@
           nav_polymarket_pnl: "Polymarket PnL账本",
           nav_openrouter: "OpenRouter",
           nav_intro: "功能介绍",
-          pageTitle: "Polymarket 盈亏与交易账本控制台",
+          pageTitle: "Polymarket PnL账本看板",
           refresh: "刷新",
           rebuild: "重建账本",
           filter: "应用筛选",
@@ -338,7 +338,18 @@
         if (fromNav) return fromNav;
         try { return localStorage.getItem('macro-monitor-lang') === 'zh' ? 'zh' : 'en'; } catch { return 'en'; }
       }
-      function tr(k){ const l=lang(); return (I18N[l] && I18N[l][k]) || I18N.en[k] || k; }
+      function tr(k){
+        const l = lang();
+        const localVal = (I18N[l] && I18N[l][k]) || I18N.en[k];
+        if (localVal) return localVal;
+        try {
+          if (typeof window.t === 'function') {
+            const globalVal = window.t(k);
+            if (globalVal) return globalVal;
+          }
+        } catch {}
+        return '';
+      }
       const THR_WARN_KEY = 'polymarket_pnl_thr_warn';
       const THR_CRIT_KEY = 'polymarket_pnl_thr_crit';
       let pnlTrendChart = null;
