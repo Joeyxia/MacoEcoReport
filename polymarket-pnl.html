@@ -8,10 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260319pnl12" />
+    <link rel="stylesheet" href="styles.css?v=20260319pnl13" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260319pnl12" defer></script>
+    <script src="app.js?v=20260319pnl13" defer></script>
     <style>
       .page.pnl-wrap { display:block !important; width: 100%; max-width: 1160px; margin: 0 auto; padding: 18px 16px 80px; box-sizing: border-box; }
       .pnl-grid { display:grid !important; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; }
@@ -342,6 +342,7 @@
       const THR_WARN_KEY = 'polymarket_pnl_thr_warn';
       const THR_CRIT_KEY = 'polymarket_pnl_thr_crit';
       let pnlTrendChart = null;
+      let refreshInFlight = false;
       function getThresholds(){
         let warn = Number(localStorage.getItem(THR_WARN_KEY) || 1.0);
         let crit = Number(localStorage.getItem(THR_CRIT_KEY) || 5.0);
@@ -418,7 +419,21 @@
         el.textContent=msg;
         el.className='pnl-toast show '+(level||'ok');
       }
-      async function jfetch(url,opt){ const r=await fetch(url,opt||{}); const d=await r.json().catch(()=>({ok:false,error:'bad_json'})); if(!r.ok||d.ok===false) throw new Error(d.detail||d.error||('http_'+r.status)); return d; }
+      async function jfetch(url,opt){
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        try{
+          const r = await fetch(url, { ...(opt||{}), signal: controller.signal });
+          const d = await r.json().catch(()=>({ok:false,error:'bad_json'}));
+          if(!r.ok||d.ok===false) throw new Error(d.detail||d.error||('http_'+r.status));
+          return d;
+        } catch(e){
+          if (String(e && e.name) === 'AbortError') throw new Error('request_timeout');
+          throw e;
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
 
       function currentAccountId(){ return String(document.getElementById('accountId').value||'').trim(); }
       function currentDays(){ return Math.max(1, Number(document.getElementById('days').value||30)); }
@@ -451,32 +466,42 @@
         }
       }
       function renderTrend(series){
-        const labels = (series||[]).map(x => x.d || '');
-        const values = (series||[]).map(x => Number(x.total_pnl || 0));
+        const raw = Array.isArray(series) ? series : [];
+        const cap = 400;
+        const step = raw.length > cap ? Math.ceil(raw.length / cap) : 1;
+        const sampled = step > 1 ? raw.filter((_, i) => i % step === 0) : raw;
+        const labels = sampled.map(x => x.d || '');
+        const values = sampled.map(x => Number(x.total_pnl || 0));
         const ctx = document.getElementById('pnlTrendChart');
         if (!ctx || typeof Chart === 'undefined') return;
-        if (pnlTrendChart) { pnlTrendChart.destroy(); }
-        pnlTrendChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels,
-            datasets: [{
-              label: t('trendSeries'),
-              data: values,
-              borderColor: '#0b8170',
-              backgroundColor: 'rgba(11,129,112,0.1)',
-              fill: true,
-              tension: 0.25,
-              pointRadius: 2,
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: true } },
-            scales: { x: { ticks: { maxRotation: 0, autoSkip: true } } }
-          }
-        });
+        try {
+          if (pnlTrendChart) { pnlTrendChart.destroy(); }
+          pnlTrendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: t('trendSeries'),
+                data: values,
+                borderColor: '#0b8170',
+                backgroundColor: 'rgba(11,129,112,0.1)',
+                fill: true,
+                tension: 0.25,
+                pointRadius: 2,
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: false,
+              plugins: { legend: { display: true } },
+              scales: { x: { ticks: { maxRotation: 0, autoSkip: true } } }
+            }
+          });
+        } catch (e) {
+          const wrap = ctx.parentElement;
+          if (wrap) wrap.innerHTML = `<div class="pnl-sub">${t('initFail')}: chart_disabled</div>`;
+        }
       }
 
       function renderLedger(rows){
@@ -490,52 +515,58 @@
       }
 
       async function refreshAll(){
+        if (refreshInFlight) return;
+        refreshInFlight = true;
         clearErr();
         setPageState(t('stateLoading'));
-        const aid=currentAccountId();
-        const days=currentDays();
-        if(days < 1 || days > 3650){ setErr(t('invalidDays')); setPageState(t('stateError')); return; }
-        document.getElementById('s2v').textContent=`${days}D`;
-        const qAid=aid?`&account_id=${encodeURIComponent(aid)}`:'';
-        let ov=null, rec=null, le=null;
-        let partialErr = "";
-        try { ov=await jfetch(`/api/v1/pnl/overview?days=${days}${qAid}`); } catch(e){ partialErr = String(e.message || e); }
-        try { rec=await jfetch(`/api/v1/pnl/reconciliation?${aid?`account_id=${encodeURIComponent(aid)}`:''}`); } catch(e){ partialErr = partialErr || String(e.message || e); }
-        const limit=Math.max(1,Math.min(2000,Number(document.getElementById('fLimit').value||200)));
-        const fMarket=String(document.getElementById('fMarket').value||'').trim();
-        const fStrategy=String(document.getElementById('fStrategy').value||'').trim();
-        const q=new URLSearchParams();
-        if(aid) q.set('account_id',aid);
-        q.set('limit',String(limit));
-        if(fMarket) q.set('market_id',fMarket);
-        if(fStrategy) q.set('strategy_type',fStrategy);
-        try { le=await jfetch(`/api/v1/ledger/entries?${q.toString()}`); } catch(e){ partialErr = partialErr || String(e.message || e); }
+        try {
+          const aid=currentAccountId();
+          const days=currentDays();
+          if(days < 1 || days > 3650){ setErr(t('invalidDays')); setPageState(t('stateError')); return; }
+          document.getElementById('s2v').textContent=`${days}D`;
+          const qAid=aid?`&account_id=${encodeURIComponent(aid)}`:'';
+          let ov=null, rec=null, le=null;
+          let partialErr = "";
+          try { ov=await jfetch(`/api/v1/pnl/overview?days=${days}${qAid}`); } catch(e){ partialErr = String(e.message || e); }
+          try { rec=await jfetch(`/api/v1/pnl/reconciliation?${aid?`account_id=${encodeURIComponent(aid)}`:''}`); } catch(e){ partialErr = partialErr || String(e.message || e); }
+          const limit=Math.max(1,Math.min(500,Number(document.getElementById('fLimit').value||200)));
+          const fMarket=String(document.getElementById('fMarket').value||'').trim();
+          const fStrategy=String(document.getElementById('fStrategy').value||'').trim();
+          const q=new URLSearchParams();
+          if(aid) q.set('account_id',aid);
+          q.set('limit',String(limit));
+          if(fMarket) q.set('market_id',fMarket);
+          if(fStrategy) q.set('strategy_type',fStrategy);
+          try { le=await jfetch(`/api/v1/ledger/entries?${q.toString()}`); } catch(e){ partialErr = partialErr || String(e.message || e); }
 
-        const o=(ov && ov.overview)||{};
-        document.getElementById('v_total').textContent=num(o.total_pnl);
-        document.getElementById('s_total').textContent=`${t('asof')} ${ov && ov.as_of ? ov.as_of : '--'}`;
-        document.getElementById('v_realized').textContent=num(o.realized_pnl);
-        document.getElementById('v_unrealized').textContent=num(o.unrealized_pnl);
-        document.getElementById('v_fee').textContent=num(o.fee_total);
-        const r=(rec && rec.reconciliation)||{};
-        document.getElementById('v_recon').textContent=(r.status||'--').toUpperCase();
-        document.getElementById('s_recon').textContent=`diff=${num(r.diff_internal_vs_positions)}`;
-        const reconClass = classifyDiff(r.diff_internal_vs_positions);
-        document.getElementById('v_recon').style.color = reconClass === 'critical' ? '#a13030' : (reconClass === 'warn' ? '#8a6200' : '#0b6f55');
+          const o=(ov && ov.overview)||{};
+          document.getElementById('v_total').textContent=num(o.total_pnl);
+          document.getElementById('s_total').textContent=`${t('asof')} ${ov && ov.as_of ? ov.as_of : '--'}`;
+          document.getElementById('v_realized').textContent=num(o.realized_pnl);
+          document.getElementById('v_unrealized').textContent=num(o.unrealized_pnl);
+          document.getElementById('v_fee').textContent=num(o.fee_total);
+          const r=(rec && rec.reconciliation)||{};
+          document.getElementById('v_recon').textContent=(r.status||'--').toUpperCase();
+          document.getElementById('s_recon').textContent=`diff=${num(r.diff_internal_vs_positions)}`;
+          const reconClass = classifyDiff(r.diff_internal_vs_positions);
+          document.getElementById('v_recon').style.color = reconClass === 'critical' ? '#a13030' : (reconClass === 'warn' ? '#8a6200' : '#0b6f55');
 
-        renderAttr((ov && ov.strategy_attribution)||[]);
-        renderRecon(r);
-        renderLedger((le && le.items)||[]);
-        renderTrend((ov && ov.series) || []);
-        document.getElementById('s3v').textContent = nowLocal();
-        if (partialErr) {
-          setPageState(t('statePartial'));
-          setLastEvent(partialErr);
-          toast(`${t('refreshed')} (${t('statePartial')})`, 'warn');
-        } else {
-          setPageState(t('stateReady'));
-          setLastEvent(t('refreshed'));
-          toast(t('refreshed'), 'ok');
+          renderAttr((ov && ov.strategy_attribution)||[]);
+          renderRecon(r);
+          renderLedger((le && le.items)||[]);
+          renderTrend((ov && ov.series) || []);
+          document.getElementById('s3v').textContent = nowLocal();
+          if (partialErr) {
+            setPageState(t('statePartial'));
+            setLastEvent(partialErr);
+            toast(`${t('refreshed')} (${t('statePartial')})`, 'warn');
+          } else {
+            setPageState(t('stateReady'));
+            setLastEvent(t('refreshed'));
+            toast(t('refreshed'), 'ok');
+          }
+        } finally {
+          refreshInFlight = false;
         }
       }
 
