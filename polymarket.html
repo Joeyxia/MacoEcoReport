@@ -112,12 +112,20 @@
           <div class="pm-d-v" id="autoEngineScanCount">--</div>
         </div>
         <div class="pm-auto-item">
+          <div id="pm-auto-scan-total-label" class="pm-d-k">Total Scans</div>
+          <div class="pm-d-v" id="autoEngineScanTotal">--</div>
+        </div>
+        <div class="pm-auto-item">
           <div id="pm-auto-active-label" class="pm-d-k">Active Accounts</div>
           <div class="pm-d-v" id="autoEngineActiveAccounts">--</div>
         </div>
         <div class="pm-auto-item">
           <div id="pm-auto-exec-label" class="pm-d-k">Last Executed</div>
           <div class="pm-d-v" id="autoEngineExecuted">--</div>
+        </div>
+        <div class="pm-auto-item">
+          <div id="pm-auto-exec-total-label" class="pm-d-k">Total Executed</div>
+          <div class="pm-d-v" id="autoEngineExecutedTotal">--</div>
         </div>
         <div id="autoEngineMessage" class="pm-auto-msg">--</div>
       </div>
@@ -351,8 +359,10 @@
           autoEngineStatus: "Auto Engine",
           autoEngineLastTick: "Last Tick",
           autoEngineLastScan: "Last Scan",
+          autoEngineTotalScans: "Total Scans",
           autoEngineActive: "Active Accounts",
           autoEngineExecuted: "Last Executed",
+          autoEngineTotalExecuted: "Total Executed",
           autoEngineRunning: "Running",
           autoEngineStopped: "Stopped",
           autoEngineErr: "Engine error",
@@ -488,9 +498,11 @@
           diagUpdatedAt: "更新时间",
           autoEngineStatus: "自动引擎",
           autoEngineLastTick: "最近轮询",
-          autoEngineLastScan: "最近扫描",
+          autoEngineLastScan: "本轮扫描",
+          autoEngineTotalScans: "累计扫描",
           autoEngineActive: "活跃账户",
-          autoEngineExecuted: "最近执行",
+          autoEngineExecuted: "本轮执行",
+          autoEngineTotalExecuted: "累计执行",
           autoEngineRunning: "运行中",
           autoEngineStopped: "已停止",
           autoEngineErr: "引擎错误",
@@ -515,8 +527,10 @@
         document.getElementById("pm-auto-status-label").textContent = pmT("autoEngineStatus");
         document.getElementById("pm-auto-last-tick-label").textContent = pmT("autoEngineLastTick");
         document.getElementById("pm-auto-scan-label").textContent = pmT("autoEngineLastScan");
+        document.getElementById("pm-auto-scan-total-label").textContent = pmT("autoEngineTotalScans");
         document.getElementById("pm-auto-active-label").textContent = pmT("autoEngineActive");
         document.getElementById("pm-auto-exec-label").textContent = pmT("autoEngineExecuted");
+        document.getElementById("pm-auto-exec-total-label").textContent = pmT("autoEngineTotalExecuted");
         document.getElementById("pm-account-title").textContent = pmT("account");
         document.getElementById("accountSelect").setAttribute("aria-label", pmT("accountSelect"));
         document.getElementById("btnRenameAccount").textContent = pmT("rename");
@@ -835,9 +849,11 @@
           const lastExecuted = Number(d.last_executed || 0);
           setDiag("autoEngineRunning", d.running ? pmT("autoEngineRunning") : pmT("autoEngineStopped"));
           setDiag("autoEngineLastTick", tickLabel);
-          setDiag("autoEngineScanCount", `${scanCalls}`);
+          setDiag("autoEngineScanCount", `${lastFound}`);
+          setDiag("autoEngineScanTotal", `${scanCalls}`);
           setDiag("autoEngineActiveAccounts", `${Number(d.last_active_accounts || 0)}`);
-          setDiag("autoEngineExecuted", `${executedAll}`);
+          setDiag("autoEngineExecuted", `${lastExecuted}`);
+          setDiag("autoEngineExecutedTotal", `${executedAll}`);
           const errs = Array.isArray(d.last_errors) ? d.last_errors : [];
           const msg = errs.length
             ? `${pmT("autoEngineErr")}: ${errs[0]}`
