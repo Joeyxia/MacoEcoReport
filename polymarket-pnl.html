@@ -31,11 +31,19 @@
       .pnl-btn { border:1px solid #0b8170; background:#0b8170; color:#fff; border-radius:10px; padding:10px 14px; font-weight:600; cursor:pointer; }
       .pnl-btn.ghost { background:#fff; color:#0b8170; }
       .pnl-chart-wrap { border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:10px; height:280px; background:#fff; }
-      .pnl-table-wrap { overflow:auto; max-height:420px; border:1px solid rgba(10,40,40,.12); border-radius:12px; }
-      .pnl-table { width:100%; min-width: 760px; border-collapse:collapse; font-size:13px; }
-      .pnl-table th, .pnl-table td { border-bottom:1px solid rgba(10,40,40,.12); padding:8px; text-align:left; }
+      .pnl-table-wrap { width:100%; max-width:100%; overflow-y:auto; overflow-x:hidden; max-height:420px; border:1px solid rgba(10,40,40,.12); border-radius:12px; }
+      .pnl-table { width:100%; max-width:100%; min-width:0; table-layout:fixed; border-collapse:collapse; font-size:13px; }
+      .pnl-table th, .pnl-table td {
+        border-bottom:1px solid rgba(10,40,40,.12);
+        padding:8px;
+        text-align:left;
+        white-space:normal;
+        word-break:break-word;
+        overflow-wrap:anywhere;
+        vertical-align:top;
+      }
       .pnl-table th { position:sticky; top:0; background:#f6fbfa; z-index:1; }
-      .pnl-table td.num, .pnl-table th.num { text-align:right; }
+      .pnl-table td.num, .pnl-table th.num { text-align:left; }
       #reconTable { min-width: 0; table-layout: fixed; }
       #reconTable th:first-child, #reconTable td:first-child { width: 38%; }
       #reconTable th:last-child, #reconTable td:last-child { width: 62%; }
