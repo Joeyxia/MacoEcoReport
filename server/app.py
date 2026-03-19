@@ -3213,6 +3213,166 @@ def polymarket_top_traders_sync():
     return jsonify({"ok": False, "error": "top_sync_failed", "detail": str(e)[:240]}), 500
 
 
+def _build_polymarket_strategy_templates():
+  snap = get_latest_polymarket_top_trader_snapshot(limit=10) or {}
+  items = snap.get("items") or []
+  total = max(1, len(items))
+  bucket_counts = {}
+  buy_heavy = 0
+  sell_heavy = 0
+  avg_hhi = 0.0
+  avg_trade = 0.0
+  for it in items:
+    s = (it.get("summary") or {})
+    intel = (s.get("intelligence") or {})
+    if str(intel.get("side_bias") or "") == "buy-heavy":
+      buy_heavy += 1
+    if str(intel.get("side_bias") or "") == "sell-heavy":
+      sell_heavy += 1
+    avg_hhi += float(intel.get("market_concentration_hhi") or 0.0)
+    avg_trade += float(intel.get("trade_count") or 0.0)
+    for row in (intel.get("bucket_distribution") or []):
+      if not isinstance(row, dict):
+        continue
+      b = str(row.get("bucket") or "other")
+      c = int(row.get("count") or 0)
+      if c > 0:
+        bucket_counts[b] = bucket_counts.get(b, 0) + c
+  avg_hhi /= float(total)
+  avg_trade /= float(total)
+  top_buckets = [k for k, _ in sorted(bucket_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:3]]
+  dominant_bucket = top_buckets[0] if top_buckets else "macro"
+  side_bias = "balanced"
+  if buy_heavy >= max(3, int(0.4 * total)):
+    side_bias = "buy-heavy"
+  elif sell_heavy >= max(3, int(0.4 * total)):
+    side_bias = "sell-heavy"
+
+  trend_limits = {
+    "min_expected_edge_bps": 38.0 if avg_trade >= 80 else 42.0,
+    "max_order_notional": 45.0,
+    "max_market_exposure": 130.0,
+    "min_orderbook_depth": 350.0,
+    "max_slippage_bps": 18.0,
+    "order_cooldown_sec": 25,
+    "allow_taker": 0,
+    "post_only": 1,
+  }
+  contrarian_limits = {
+    "min_expected_edge_bps": 55.0,
+    "max_order_notional": 28.0,
+    "max_market_exposure": 80.0,
+    "min_orderbook_depth": 500.0,
+    "max_slippage_bps": 12.0,
+    "order_cooldown_sec": 45,
+    "allow_taker": 0,
+    "post_only": 1,
+  }
+  liquidity_limits = {
+    "min_expected_edge_bps": 32.0,
+    "max_order_notional": 60.0,
+    "max_market_exposure": 140.0,
+    "min_orderbook_depth": 700.0,
+    "max_slippage_bps": 10.0,
+    "order_cooldown_sec": 20,
+    "allow_taker": 0,
+    "post_only": 1,
+  }
+  return {
+    "ok": True,
+    "fetched_at": str(snap.get("fetched_at") or ""),
+    "analytics": {
+      "sample_size": len(items),
+      "dominant_bucket": dominant_bucket,
+      "top_buckets": top_buckets,
+      "side_bias": side_bias,
+      "avg_market_concentration_hhi": round(avg_hhi, 6),
+      "avg_trade_count": round(avg_trade, 2),
+    },
+    "templates": [
+      {
+        "id": "follow_top_traders",
+        "name": "Follow Top Traders",
+        "name_zh": "跟随头部账户",
+        "desc": "Follow dominant market buckets and directional bias with moderate risk.",
+        "desc_zh": f"跟随头部账户主要市场偏好（{dominant_bucket}）与方向偏好，使用中等风险参数。",
+        "style": "momentum",
+        "limits": trend_limits,
+      },
+      {
+        "id": "contrarian_reversal",
+        "name": "Contrarian Reversal",
+        "name_zh": "反转均值回归",
+        "desc": "Trade against crowded side with stricter edge/depth requirements.",
+        "desc_zh": "逆向拥挤方向，只在更高边际和更深流动性时出手。",
+        "style": "reversion",
+        "limits": contrarian_limits,
+      },
+      {
+        "id": "liquidity_priority",
+        "name": "Liquidity Priority",
+        "name_zh": "流动性优先",
+        "desc": "Prioritize deep books and low slippage for stable execution quality.",
+        "desc_zh": "优先深度充足、滑点低的市场，强化成交稳定性。",
+        "style": "maker",
+        "limits": liquidity_limits,
+      },
+    ],
+  }
+
+
+@app.route("/api/v1/polymarket/strategy-templates", methods=["GET"])
+def polymarket_strategy_templates():
+  user, err = _require_public_user()
+  if err:
+    return err
+  _ = user
+  try:
+    return jsonify(_build_polymarket_strategy_templates())
+  except Exception as e:
+    return jsonify({"ok": False, "error": "strategy_templates_failed", "detail": str(e)[:240]}), 500
+
+
+@app.route("/api/v1/polymarket/strategy-templates/apply", methods=["POST"])
+def polymarket_strategy_templates_apply():
+  user, err = _require_public_user()
+  if err:
+    return err
+  payload = request.get_json(silent=True) or {}
+  template_id = str(payload.get("template_id") or "").strip()
+  account_id, own_err = _polymarket_resolve_account_for_user(
+    str(user.get("email") or "").strip().lower(),
+    str(payload.get("account_id") or "").strip(),
+  )
+  if own_err:
+    return own_err
+  templates = _build_polymarket_strategy_templates().get("templates") or []
+  picked = next((x for x in templates if str(x.get("id") or "") == template_id), None)
+  if not picked:
+    return jsonify({"ok": False, "error": "invalid_template_id"}), 400
+  base = polymarket_get_risk_limits(account_id) or {}
+  merged = dict(base)
+  merged.update(picked.get("limits") or {})
+  if "paper_mode" not in merged:
+    merged["paper_mode"] = 1
+  out = polymarket_upsert_risk_limits(
+    account_id=account_id,
+    payload=merged,
+    actor=str(user.get("email") or "operator"),
+  )
+  return jsonify(
+    {
+      "ok": bool(out.get("ok")),
+      "account_id": account_id,
+      "template_id": template_id,
+      "template_name": picked.get("name"),
+      "template_name_zh": picked.get("name_zh"),
+      "applied_limits": out.get("limits") or merged,
+      "analytics": _build_polymarket_strategy_templates().get("analytics") or {},
+    }
+  ), (200 if out.get("ok") else 400)
+
+
 @app.route("/api/v1/polymarket/account/public-summary", methods=["GET"])
 def polymarket_public_account_summary():
   user, err = _require_public_user()

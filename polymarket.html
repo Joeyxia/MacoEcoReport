@@ -165,6 +165,18 @@
           <div id="riskOut" class="pm-mono"></div>
         </div>
 
+        <div class="pm-card half">
+          <h2 id="pm-template-title" class="pm-title" style="font-size:18px;">Strategy Templates</h2>
+          <div class="pm-row">
+            <select id="templateSelect" class="pm-input" style="min-width:320px;max-width:560px;">
+              <option value="">--</option>
+            </select>
+            <button class="pm-btn ghost" id="btnTemplateRefresh">Refresh Templates</button>
+            <button class="pm-btn" id="btnTemplateApply">Apply to Current Account</button>
+          </div>
+          <div id="templateSummary" class="pm-mono"></div>
+        </div>
+
         <div class="pm-card">
           <h2 id="pm-scan-title" class="pm-title" style="font-size:18px;">Arbitrage Opportunity Scan</h2>
           <div class="pm-row">
@@ -204,6 +216,8 @@
       let accountId = "";
       let currentUserEmail = "";
       let lastDiagData = null;
+      let strategyTemplates = [];
+      let strategyTemplateAnalytics = {};
       const pmI18n = {
         en: {
           title: "Polymarket Quant Trading Console (MVP)",
@@ -243,6 +257,15 @@
           riskBtn: "Risk Overview",
           cancelAll: "Emergency Cancel All",
           replay: "Execution Replay Summary",
+          template: "Strategy Templates",
+          templateRefresh: "Refresh Templates",
+          templateApply: "Apply to Current Account",
+          templateLoaded: "Templates loaded",
+          templateApplied: "Template applied",
+          templateLoadFail: "Template load failed",
+          templateApplyFail: "Template apply failed",
+          templateNeedAccount: "Please connect account first",
+          templatePickOne: "Please choose one template first",
           seed: "Init Demo Market",
           scanBtn: "Scan Opportunities",
           colMarket: "Market",
@@ -369,6 +392,15 @@
           riskBtn: "查看风险总览",
           cancelAll: "紧急撤单",
           replay: "执行复盘摘要",
+          template: "策略模板",
+          templateRefresh: "刷新模板",
+          templateApply: "应用到当前账户",
+          templateLoaded: "模板已加载",
+          templateApplied: "模板已应用",
+          templateLoadFail: "模板加载失败",
+          templateApplyFail: "模板应用失败",
+          templateNeedAccount: "请先连接账户",
+          templatePickOne: "请先选择一个模板",
           seed: "初始化 Demo 市场",
           scanBtn: "扫描机会",
           colMarket: "市场",
@@ -482,6 +514,9 @@
         document.getElementById("accountSelect").setAttribute("aria-label", pmT("accountSelect"));
         document.getElementById("btnRenameAccount").textContent = pmT("rename");
         document.getElementById("pm-risk-title").textContent = pmT("risk");
+        document.getElementById("pm-template-title").textContent = pmT("template");
+        document.getElementById("btnTemplateRefresh").textContent = pmT("templateRefresh");
+        document.getElementById("btnTemplateApply").textContent = pmT("templateApply");
         document.getElementById("pm-scan-title").textContent = pmT("scan");
         document.getElementById("pm-near-title").textContent = pmT("nearTitle");
         document.getElementById("signer").placeholder = pmT("signerPh");
@@ -517,6 +552,10 @@
         }
         if (currentUserEmail) {
           document.getElementById("currentUser").textContent = `${pmT("signedIn")}${currentUserEmail}`;
+        }
+        if (strategyTemplates.length) {
+          renderTemplateSelect(String(document.getElementById("templateSelect")?.value || ""));
+          renderTemplateSummary();
         }
       }
       window.applyPolymarketI18n = applyPolymarketI18n;
@@ -632,6 +671,69 @@
           <div class="pm-k">${pmT("accountStatus")}</div><div class="pm-v">${d?.health?.account_status || "--"}</div>
           <div class="pm-k">${pmT("syncDelay")}</div><div class="pm-v">${d?.health?.sync_delay_sec ?? "--"} s</div>
         `;
+      }
+
+      function templateOptionLabel(t){
+        const zh = pmGetLang() === "zh";
+        const name = zh ? (t.name_zh || t.name || t.id) : (t.name || t.id);
+        const style = t.style || "--";
+        return `${name} | ${style}`;
+      }
+
+      function renderTemplateSelect(pickedId){
+        const sel = document.getElementById("templateSelect");
+        if (!sel) return;
+        const prev = pickedId || String(sel.value || "");
+        sel.innerHTML = `<option value="">--</option>`;
+        for (const t of strategyTemplates){
+          const op = document.createElement("option");
+          op.value = String(t.id || "");
+          op.textContent = templateOptionLabel(t);
+          if (op.value === prev) op.selected = true;
+          sel.appendChild(op);
+        }
+      }
+
+      function renderTemplateSummary(){
+        const box = document.getElementById("templateSummary");
+        if (!box) return;
+        const sel = document.getElementById("templateSelect");
+        const id = String(sel?.value || "");
+        const t = strategyTemplates.find((x) => String(x.id || "") === id);
+        const a = strategyTemplateAnalytics || {};
+        if (!t){
+          const tips = pmGetLang() === "zh"
+            ? "请选择一个模板查看详情。"
+            : "Select a template to view details.";
+          box.textContent = tips;
+          return;
+        }
+        const zh = pmGetLang() === "zh";
+        const name = zh ? (t.name_zh || t.name || t.id) : (t.name || t.id);
+        const desc = zh ? (t.desc_zh || t.desc || "") : (t.desc || "");
+        const lines = [
+          `${name} (${t.style || "--"})`,
+          desc,
+          "",
+          zh ? "模板参数：" : "Template limits:",
+        ];
+        Object.entries(t.limits || {}).forEach(([k, v]) => lines.push(`${k}: ${v}`));
+        lines.push("");
+        lines.push(zh ? "头部账户统计：" : "Top trader analytics:");
+        lines.push(`sample_size: ${a.sample_size ?? 0}`);
+        lines.push(`dominant_bucket: ${a.dominant_bucket || "--"}`);
+        lines.push(`side_bias: ${a.side_bias || "--"}`);
+        lines.push(`avg_hhi: ${a.avg_market_concentration_hhi ?? "--"}`);
+        box.textContent = lines.join("\n");
+      }
+
+      async function loadStrategyTemplates(){
+        const out = await jfetch("/api/v1/polymarket/strategy-templates");
+        strategyTemplates = Array.isArray(out.templates) ? out.templates : [];
+        strategyTemplateAnalytics = out.analytics || {};
+        renderTemplateSelect("");
+        renderTemplateSummary();
+        return out;
       }
 
       function accountOptionLabel(it){
@@ -1023,6 +1125,34 @@
             toast(`${pmT("connectFail")}: ${err.message}`, "err");
           }
         });
+        document.getElementById("templateSelect")?.addEventListener("change", () => {
+          renderTemplateSummary();
+        });
+        document.getElementById("btnTemplateRefresh")?.addEventListener("click", async () => {
+          try{
+            await loadStrategyTemplates();
+            toast(pmT("templateLoaded"), "ok");
+          }catch(err){
+            toast(`${pmT("templateLoadFail")}: ${err.message}`, "err");
+          }
+        });
+        document.getElementById("btnTemplateApply")?.addEventListener("click", async () => {
+          try{
+            if(!accountId) throw new Error(pmT("templateNeedAccount"));
+            const tid = String(document.getElementById("templateSelect")?.value || "");
+            if(!tid) throw new Error(pmT("templatePickOne"));
+            const out = await jfetch("/api/v1/polymarket/strategy-templates/apply", {
+              method: "POST",
+              headers: {"Content-Type":"application/json"},
+              body: JSON.stringify({ account_id: accountId, template_id: tid }),
+            });
+            await refreshAccount();
+            renderTemplateSummary();
+            toast(`${pmT("templateApplied")}: ${out.template_id}`, "ok");
+          }catch(err){
+            toast(`${pmT("templateApplyFail")}: ${err.message}`, "err");
+          }
+        });
         document.getElementById("btnRenameAccount")?.addEventListener("click", async () => {
           try{
             if(!accountId) throw new Error(pmT("needAccount"));
@@ -1043,6 +1173,7 @@
         });
         toast(pmT("ready"), "info");
         await bootstrapUserAndAccount();
+        try { await loadStrategyTemplates(); } catch {}
         await refreshAutoEngineStatus();
         setInterval(() => {
           refreshAutoEngineStatus().catch(() => {});
