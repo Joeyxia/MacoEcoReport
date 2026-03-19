@@ -3395,9 +3395,17 @@ async function init() {
     if (page === "openrouter") await renderOpenRouterPage();
   });
 
-  // Static intro page should not depend on model/db boot sequence.
-  // This guarantees language toggle always works even if data APIs are slow/unavailable.
-  if (page === "about" || page === "polymarket" || page === "polymarket-pnl") return;
+  // Static/special pages should not depend on model/db boot sequence.
+  // But page-local i18n renderers must run once at first load.
+  if (page === "about") return;
+  if (page === "polymarket") {
+    if (typeof window.applyPolymarketI18n === "function") window.applyPolymarketI18n();
+    return;
+  }
+  if (page === "polymarket-pnl") {
+    if (typeof window.applyPolymarketPnlI18n === "function") await window.applyPolymarketPnlI18n();
+    return;
+  }
 
   await migrateBrowserDataToServer();
   const model = await ensureModelData(await loadCurrentModel());
