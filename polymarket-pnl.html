@@ -24,7 +24,7 @@
       .pnl-kpis { display:grid; gap:10px; grid-template-columns:repeat(5,minmax(0,1fr)); }
       .pnl-kpi { border:1px solid rgba(10,40,40,.12); border-radius:12px; padding:10px; background:#fff; }
       .pnl-k { color:#5a727a; font-size:12px; }
-      .pnl-v { color:#15323b; font-size:28px; font-weight:700; margin-top:4px; }
+      .pnl-v { color:#15323b; font-size:28px; font-weight:700; margin-top:4px; line-height:1.15; white-space:nowrap; overflow:hidden; }
       .pnl-sub { color:#5a727a; font-size:12px; margin-top:2px; }
       .pnl-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
       .pnl-input { border:1px solid rgba(10,40,40,.25); border-radius:10px; padding:10px 12px; min-width:180px; }
@@ -555,6 +555,24 @@
         if (publicModeActive && latestPublicSummary) renderTopTraderIntel(latestPublicSummary);
       }
       function num(v){ const n=Number(v||0); return Number.isFinite(n)? n.toLocaleString(undefined,{maximumFractionDigits:4}):"--"; }
+      function fitKpiValue(el){
+        if (!el) return;
+        const min = 18;
+        const max = 56;
+        let size = max;
+        el.style.fontSize = `${size}px`;
+        const available = Math.max(40, el.clientWidth - 2);
+        while (size > min && el.scrollWidth > available) {
+          size -= 1;
+          el.style.fontSize = `${size}px`;
+        }
+      }
+      function fitAllKpiValues(){
+        ['v_total','v_realized','v_unrealized','v_fee','v_recon'].forEach((id)=>{
+          const el = document.getElementById(id);
+          if (el) fitKpiValue(el);
+        });
+      }
       function nowLocal(){ return new Date().toLocaleString(); }
       function setPageState(v){ document.getElementById('s1v').textContent=v; }
       function setLastEvent(v){ document.getElementById('s4v').textContent=v; }
@@ -850,6 +868,7 @@
             const r=(pub && pub.reconciliation)||{};
             document.getElementById('v_recon').textContent=(r.status||'--').toUpperCase();
             document.getElementById('s_recon').textContent=`diff=${num(r.diff_internal_vs_positions)}`;
+            fitAllKpiValues();
             renderAttr((pub && pub.strategy_attribution)||[]);
             renderRecon(r);
             renderLedger([]);
@@ -886,6 +905,7 @@
           const r=(rec && rec.reconciliation)||{};
           document.getElementById('v_recon').textContent=(r.status||'--').toUpperCase();
           document.getElementById('s_recon').textContent=`diff=${num(r.diff_internal_vs_positions)}`;
+          fitAllKpiValues();
           const reconClass = classifyDiff(r.diff_internal_vs_positions);
           document.getElementById('v_recon').style.color = reconClass === 'critical' ? '#a13030' : (reconClass === 'warn' ? '#8a6200' : '#0b6f55');
 
@@ -952,6 +972,7 @@
           try { await refreshAll(); } catch {}
         });
         await loadTopAccounts();
+        window.addEventListener('resize', fitAllKpiValues);
         // Use the global app.js language toggle callback only.
         // Avoid observing/nav-rewriting loops that can spike the main thread.
         try{ await refreshAll(); }catch(e){ setPageState(tr('stateError')); setErr(`${tr('initFail')}: ${e.message}`); toast(`${tr('initFail')}: ${e.message}`,'err'); }
