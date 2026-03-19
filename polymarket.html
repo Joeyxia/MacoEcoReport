@@ -825,17 +825,23 @@
       async function refreshAutoEngineStatus() {
         try {
           const d = await jfetch("/api/v1/polymarket/auto-engine/status");
+          const tick = d.last_tick_at ? new Date(String(d.last_tick_at)) : null;
+          const tickLabel = (tick && !Number.isNaN(tick.getTime()))
+            ? tick.toLocaleString()
+            : "--";
+          const scanCalls = Number(d.total_scan_calls || 0);
+          const executedAll = Number(d.total_executed_all || 0);
+          const lastFound = Number(d.last_scan_count || 0);
+          const lastExecuted = Number(d.last_executed || 0);
           setDiag("autoEngineRunning", d.running ? pmT("autoEngineRunning") : pmT("autoEngineStopped"));
-          setDiag("autoEngineLastTick", d.last_tick_at ? String(d.last_tick_at).replace("T", " ").replace("Z", "") : "--");
-          setDiag("autoEngineScanCount", `${Number(d.last_scan_count || 0)}`);
+          setDiag("autoEngineLastTick", tickLabel);
+          setDiag("autoEngineScanCount", `${scanCalls}`);
           setDiag("autoEngineActiveAccounts", `${Number(d.last_active_accounts || 0)}`);
-          setDiag("autoEngineExecuted", `${Number(d.last_executed || 0)}`);
+          setDiag("autoEngineExecuted", `${executedAll}`);
           const errs = Array.isArray(d.last_errors) ? d.last_errors : [];
           const msg = errs.length
             ? `${pmT("autoEngineErr")}: ${errs[0]}`
-            : (Number(d.last_executed || 0) > 0
-              ? `ok: executed ${Number(d.last_executed || 0)} in latest tick`
-              : pmT("autoEngineIdle"));
+            : `ok: scans=${scanCalls}, last_found=${lastFound}, last_executed=${lastExecuted}, total_executed=${executedAll}`;
           setDiag("autoEngineMessage", msg);
         } catch (e) {
           setDiag("autoEngineRunning", pmT("autoEngineStopped"));

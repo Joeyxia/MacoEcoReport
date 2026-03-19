@@ -312,6 +312,10 @@ _polymarket_auto_state = {
   "last_scan_count": 0,
   "last_active_accounts": 0,
   "last_executed": 0,
+  "total_ticks": 0,
+  "total_scan_calls": 0,
+  "total_candidates_seen": 0,
+  "total_executed_all": 0,
   "last_errors": [],
   "last_account_stats": [],
 }
@@ -487,6 +491,10 @@ def _polymarket_auto_engine_loop():
         "last_scan_count": scan_count,
         "last_active_accounts": active_accounts,
         "last_executed": executed_total,
+        "total_ticks": int(_polymarket_auto_state.get("total_ticks") or 0) + 1,
+        "total_scan_calls": int(_polymarket_auto_state.get("total_scan_calls") or 0) + 1,
+        "total_candidates_seen": int(_polymarket_auto_state.get("total_candidates_seen") or 0) + int(scan_count),
+        "total_executed_all": int(_polymarket_auto_state.get("total_executed_all") or 0) + int(executed_total),
         "last_errors": errors[:20],
         "last_account_stats": account_stats[:50],
       })
