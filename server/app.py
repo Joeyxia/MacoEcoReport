@@ -317,6 +317,7 @@ _polymarket_auto_state = {
   "total_candidates_seen": 0,
   "total_executed_all": 0,
   "last_errors": [],
+  "last_skip_reasons": {},
   "last_account_stats": [],
 }
 _polymarket_top_lock = Lock()
@@ -431,6 +432,7 @@ def _polymarket_auto_engine_loop():
     executed_total = 0
     account_stats = []
     errors = []
+    skip_reason_counts = {}
     try:
       all_accounts = polymarket_list_trading_accounts()
       auto_accounts = []
@@ -475,6 +477,8 @@ def _polymarket_auto_engine_loop():
             executed_total += 1
           else:
             skipped += 1
+            reason = str(out.get("error") or "execution_rejected").strip() or "execution_rejected"
+            skip_reason_counts[reason] = int(skip_reason_counts.get(reason) or 0) + 1
         account_stats.append({
           "account_id": account_id,
           "executed": executed,
@@ -496,6 +500,7 @@ def _polymarket_auto_engine_loop():
         "total_candidates_seen": int(_polymarket_auto_state.get("total_candidates_seen") or 0) + int(scan_count),
         "total_executed_all": int(_polymarket_auto_state.get("total_executed_all") or 0) + int(executed_total),
         "last_errors": errors[:20],
+        "last_skip_reasons": dict(sorted(skip_reason_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:12]),
         "last_account_stats": account_stats[:50],
       })
     try:

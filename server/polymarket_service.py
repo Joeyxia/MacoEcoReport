@@ -22,7 +22,7 @@ DEFAULT_RISK_TEMPLATE = {
   "max_open_orders": 3,
   "auto_trading": 0,
   "min_expected_edge_bps": 40.0,
-  "min_model_confidence": 0.65,
+  "min_model_confidence": 0.58,
   "min_orderbook_depth": 300.0,
   "order_cooldown_sec": 30,
   "max_daily_realized_loss": 80.0,
@@ -1252,7 +1252,12 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
           })
         continue
       expected_net_profit = round(expected_net_bps / 10000.0, 6)
-      confidence = _clamp(0.45 + (max(0.0, expected_net_profit) * 12), 0.45, 0.99)
+      # Calibrated confidence: driven by expected net edge (bps) and fill probability.
+      confidence = _clamp(
+        0.34 + (max(0.0, expected_net_bps) / 90.0) + (0.24 * float(fill_probability)),
+        0.35,
+        0.99,
+      )
       opp_id = f"opp-{market_id}-{int(datetime.now().timestamp())}"
       conn.execute(
         """
@@ -1340,7 +1345,7 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
           title = f"{low['market_title']}  <->  {high['market_title']}"
           if spread_bps >= cross_min_spread_bps and expected_bps >= cross_min_expected_bps:
             expected_net_profit = round(expected_bps / 10000.0, 6)
-            confidence = _clamp(0.42 + max(0.0, expected_net_profit) * 10, 0.42, 0.92)
+            confidence = _clamp(0.36 + max(0.0, expected_bps) / 95.0, 0.38, 0.94)
             conn.execute(
               """
               INSERT INTO arbitrage_opportunities(
@@ -1646,8 +1651,25 @@ def evaluate_and_execute(account_id, opportunity_id, actor="system"):
     edge_bps = expected_profit * 10000
     if edge_bps < float(lim.get("min_expected_edge_bps") or 0):
       return {"ok": False, "error": "edge_below_threshold", "edge_bps": round(edge_bps, 3)}
-    if float(opp.get("confidence") or 0) < float(lim.get("min_model_confidence") or 0):
-      return {"ok": False, "error": "confidence_below_threshold", "confidence": float(opp.get("confidence") or 0)}
+    opp_conf = float(opp.get("confidence") or 0)
+    conf_floor = float(lim.get("min_model_confidence") or 0)
+    # Adaptive confidence threshold:
+    # if expected edge is materially higher, allow a modest relaxation so
+    # executable opportunities are not blocked by an overly conservative static cut.
+    if edge_bps >= 25:
+      conf_floor = max(0.48, conf_floor - 0.12)
+    elif edge_bps >= 15:
+      conf_floor = max(0.52, conf_floor - 0.08)
+    elif edge_bps >= 10:
+      conf_floor = max(0.55, conf_floor - 0.05)
+    if opp_conf < conf_floor:
+      return {
+        "ok": False,
+        "error": "confidence_below_threshold",
+        "confidence": round(opp_conf, 6),
+        "required_confidence": round(conf_floor, 6),
+        "edge_bps": round(edge_bps, 3),
+      }
     if float(sim.get("fill_risk") or 0) > 0.95 and int(lim.get("halt_on_api_degraded") or 0) == 1:
       return {"ok": False, "error": "api_or_liquidity_degraded", "simulation": sim}
 

@@ -858,9 +858,11 @@
           setDiag("autoEngineExecuted", `${lastExecuted}`);
           setDiag("autoEngineExecutedTotal", `${executedAll}`);
           const errs = Array.isArray(d.last_errors) ? d.last_errors : [];
+          const skipReasons = d.last_skip_reasons && typeof d.last_skip_reasons === "object" ? d.last_skip_reasons : {};
+          const topSkip = Object.entries(skipReasons).sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0))[0];
           const msg = errs.length
             ? `${pmT("autoEngineErr")}: ${errs[0]}`
-            : `ok: scans=${scanCalls}, last_found=${lastFound}, last_executed=${lastExecuted}, total_executed=${executedAll}`;
+            : `ok: scans=${scanCalls}, last_found=${lastFound}, last_executed=${lastExecuted}, total_executed=${executedAll}${topSkip ? `, top_skip=${topSkip[0]}(${topSkip[1]})` : ""}`;
           setDiag("autoEngineMessage", msg);
           const tickKey = String(d.last_tick_at || "").trim();
           if (d.running && tickKey && tickKey !== lastAutoEngineTickSeen) {
