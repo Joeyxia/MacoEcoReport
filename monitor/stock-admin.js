@@ -268,6 +268,34 @@ async function refreshPanels(){
   renderTrainHistory(runs?.rows || []);
 }
 
+function sleep(ms){
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForTrainFeedback(ticker, prevTrainTime = "", timeoutMs = 180000){
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs){
+    try{
+      const tStatus = await api.get(`/monitor-api/stocks/admin/tickers/${encodeURIComponent(ticker)}/status`);
+      const nextTime = String(tStatus?.latest_train_time || "");
+      const nextStatus = String(tStatus?.latest_train_status || "");
+      const changed = !!nextTime && nextTime !== String(prevTrainTime || "");
+      if (changed){
+        await refreshPanels();
+        if (nextStatus === "success"){
+          setText("upload-status", `train ok: ${ticker} @ ${nextTime}`);
+        } else {
+          setText("upload-status", `train ${nextStatus || "failed"}: ${ticker} @ ${nextTime}`);
+        }
+        return;
+      }
+    } catch (_) {}
+    await sleep(5000);
+  }
+  await refreshPanels();
+  setText("upload-status", `train pending: ${ticker} (no completed run within ${Math.round(timeoutMs / 1000)}s)`);
+}
+
 function uploadWithProgress(path, formData){
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
@@ -301,6 +329,11 @@ async function doUpload(){
   const fd = new FormData();
   fd.append("ticker", ticker);
   fd.append("autoRefresh", String(!!el("auto-refresh")?.checked));
+  let prevTrainTime = "";
+  try {
+    const before = await api.get(`/monitor-api/stocks/admin/tickers/${encodeURIComponent(ticker)}/status`);
+    prevTrainTime = String(before?.latest_train_time || "");
+  } catch (_) {}
   for (const f of files) fd.append("files", f);
   setText("upload-status", t("loading"));
   const res = await uploadWithProgress("/monitor-api/stocks/admin/import-and-refresh", fd);
@@ -313,8 +346,15 @@ async function doUpload(){
     }
     return;
   }
-  setText("upload-status", `ok: imported=${res.data?.importedCount || 0}, failed=${res.data?.failedCount || 0}, rows=${res.data?.totalRows || 0}`);
+  const modelRun = res.data?.modelRun || null;
+  const modelMsg = modelRun
+    ? `, modelRun=${modelRun.ok ? "ok" : "failed"}${modelRun.runId ? `#${modelRun.runId}` : ""}${modelRun.error ? `(${modelRun.error})` : ""}`
+    : "";
+  setText("upload-status", `ok: imported=${res.data?.importedCount || 0}, failed=${res.data?.failedCount || 0}, rows=${res.data?.totalRows || 0}${modelMsg}`);
   await refreshPanels();
+  if (el("auto-refresh")?.checked){
+    await waitForTrainFeedback(ticker, prevTrainTime, 120000);
+  }
 }
 
 async function doTrain(){
@@ -341,6 +381,11 @@ async function doFetchYahoo(){
     setText("upload-status", "ticker required");
     return;
   }
+  let prevTrainTime = "";
+  try {
+    const before = await api.get(`/monitor-api/stocks/admin/tickers/${encodeURIComponent(ticker)}/status`);
+    prevTrainTime = String(before?.latest_train_time || "");
+  } catch (_) {}
   setText("upload-status", t("autoFetchRunning"));
   const res = await api.postJson("/monitor-api/stocks/admin/fetch-yahoo", {
     ticker,
@@ -359,6 +404,9 @@ async function doFetchYahoo(){
     `ok: downloaded=${(res.data?.downloadedFiles || []).length}, imported=${res.data?.importedCount || 0}, failed=${res.data?.failedCount || 0}, rows=${res.data?.totalRows || 0}`,
   );
   await refreshPanels();
+  if (el("auto-refresh")?.checked){
+    await waitForTrainFeedback(ticker, prevTrainTime, 180000);
+  }
 }
 
 async function inspectFiles(){
