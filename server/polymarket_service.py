@@ -1070,6 +1070,25 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
       if " " not in s and len(s) >= 20:
         return True
       return False
+
+    def _pick_binary_token_pair(tokens):
+      toks = list(tokens or [])
+      if not toks:
+        return None, None
+      yes_tok = None
+      no_tok = None
+      for t in toks:
+        out = str((t or {}).get("outcome") or "").strip().lower()
+        if out in {"yes", "y", "true"} and yes_tok is None:
+          yes_tok = t
+        elif out in {"no", "n", "false"} and no_tok is None:
+          no_tok = t
+      if yes_tok and no_tok:
+        return yes_tok, no_tok
+      # Strict fallback for classic binary markets where only two outcomes exist.
+      if len(toks) == 2:
+        return toks[0], toks[1]
+      return None, None
     if live_client.enabled:
       lm = live_client.fetch_markets(max_markets=180, max_pages=3)
       if lm.get("ok"):
@@ -1092,8 +1111,22 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
         toks = m.get("tokens") or []
         if not isinstance(toks, list) or len(toks) < 2:
           continue
-        t0 = str((toks[0] or {}).get("token_id") or "")
-        t1 = str((toks[1] or {}).get("token_id") or "")
+        yes_tok, no_tok = _pick_binary_token_pair(toks)
+        if not yes_tok or not no_tok:
+          if include_near_miss:
+            near_miss.append({
+              "market_id": str(m.get("condition_id") or ""),
+              "market_title": str(m.get("question") or m.get("condition_id") or ""),
+              "strategy_type": "market_skipped_non_binary",
+              "reason": "non_binary_market",
+              "gap_bps": 0.0,
+              "source": "polymarket_live",
+            })
+          continue
+        t0 = str((yes_tok or {}).get("token_id") or "")
+        t1 = str((no_tok or {}).get("token_id") or "")
+        if not t0 or not t1:
+          continue
         b0 = live_client.fetch_order_book(t0)
         b1 = live_client.fetch_order_book(t1)
         if not b0.get("ok") or not b1.get("ok"):
@@ -1117,7 +1150,7 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
         no = _latest_book(conn, f"{m['id']}:NO")
       if not yes or not no:
         continue
-      qtxt = str((m.get("question") if live_mode else m.get("title")) or "")
+      qtxt = str((m.get("question") if live_mode else m.get("title")) or (m.get("condition_id") if live_mode else m.get("id")) or "")
       y_bid = float(yes.get("best_bid") or 0.0)
       y_ask = float(yes.get("best_ask") or 0.0)
       if y_bid > 0 and y_ask > 0:
