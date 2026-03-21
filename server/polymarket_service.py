@@ -1722,7 +1722,13 @@ def evaluate_and_execute(account_id, opportunity_id, actor="system"):
     ts = now_iso()
     exe_id = f"exe-{abs(hash(opportunity_id + account_id + ts)) % 1000000000}"
     latency = random.randint(120, 960)
-    is_paper = int(lim.get("paper_mode") or 1) == 1
+    paper_raw = lim.get("paper_mode")
+    if paper_raw is None or str(paper_raw).strip() == "":
+      paper_raw = 1
+    try:
+      is_paper = int(float(paper_raw)) == 1
+    except Exception:
+      is_paper = True
     if is_paper:
       realized_profit = round(expected_profit * random.uniform(0.85, 1.05), 6)
       conn.execute(
