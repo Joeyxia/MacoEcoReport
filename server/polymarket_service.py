@@ -21,7 +21,7 @@ DEFAULT_RISK_TEMPLATE = {
   "max_slippage_bps": 20.0,
   "max_open_orders": 3,
   "auto_trading": 0,
-  "min_expected_edge_bps": 40.0,
+  "min_expected_edge_bps": 12.0,
   "min_model_confidence": 0.58,
   "min_orderbook_depth": 300.0,
   "order_cooldown_sec": 30,
@@ -1638,6 +1638,19 @@ def evaluate_and_execute(account_id, opportunity_id, actor="system"):
     if not lim:
       return {"ok": False, "error": "risk_limit_not_found"}
     lim = {**dict(DEFAULT_RISK_TEMPLATE), **(lim or {})}
+    if str(actor or "").strip() == "auto_engine":
+      # Auto-engine can be slightly more permissive than manual path so it can
+      # continuously find executable flow under live microstructure noise.
+      try:
+        auto_min_edge = max(1.0, float(os.environ.get("POLYMARKET_AUTO_MIN_EDGE_BPS", "10")))
+      except Exception:
+        auto_min_edge = 10.0
+      try:
+        auto_min_conf = max(0.35, min(0.95, float(os.environ.get("POLYMARKET_AUTO_MIN_CONFIDENCE", "0.5"))))
+      except Exception:
+        auto_min_conf = 0.5
+      lim["min_expected_edge_bps"] = min(float(lim.get("min_expected_edge_bps") or auto_min_edge), auto_min_edge)
+      lim["min_model_confidence"] = min(float(lim.get("min_model_confidence") or auto_min_conf), auto_min_conf)
     if int(lim.get("auto_trading") or 0) != 1:
       return {"ok": False, "error": "auto_trading_disabled"}
     try:

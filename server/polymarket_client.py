@@ -230,8 +230,43 @@ class PolymarketLiveClient:
       with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
         fut = ex.submit(client.get_order_book, token_id)
         ob = fut.result(timeout=max(0.2, float(self.book_timeout_sec)))
-      bids = [{"price": float(x.price), "size": float(x.size)} for x in (getattr(ob, "bids", []) or [])]
-      asks = [{"price": float(x.price), "size": float(x.size)} for x in (getattr(ob, "asks", []) or [])]
+      def _norm_px(v):
+        try:
+          p = float(v)
+        except Exception:
+          return None
+        # Some endpoints may return cent-scale prices (e.g. 48.7 for 0.487).
+        # Normalize to [0,1] probability-like price space.
+        if p > 1.5 and p <= 100.0:
+          p = p / 100.0
+        # Guard extreme malformed values.
+        if p < 0:
+          p = 0.0
+        if p > 1.0:
+          p = 1.0
+        return round(p, 8)
+
+      bids = []
+      for x in (getattr(ob, "bids", []) or []):
+        px = _norm_px(getattr(x, "price", None))
+        try:
+          sz = float(getattr(x, "size", 0) or 0)
+        except Exception:
+          sz = 0.0
+        if px is None or sz <= 0:
+          continue
+        bids.append({"price": px, "size": sz})
+
+      asks = []
+      for x in (getattr(ob, "asks", []) or []):
+        px = _norm_px(getattr(x, "price", None))
+        try:
+          sz = float(getattr(x, "size", 0) or 0)
+        except Exception:
+          sz = 0.0
+        if px is None or sz <= 0:
+          continue
+        asks.append({"price": px, "size": sz})
       return {
         "ok": True,
         "token_id": token_id,
