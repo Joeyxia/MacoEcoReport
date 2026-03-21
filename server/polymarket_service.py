@@ -21,7 +21,7 @@ DEFAULT_RISK_TEMPLATE = {
   "max_slippage_bps": 20.0,
   "max_open_orders": 3,
   "auto_trading": 0,
-  "min_expected_edge_bps": 12.0,
+  "min_expected_edge_bps": 8.0,
   "min_model_confidence": 0.58,
   "min_orderbook_depth": 300.0,
   "order_cooldown_sec": 30,
@@ -1037,13 +1037,13 @@ def scan_opportunities(limit=50, include_near_miss=False, near_limit=10):
     except Exception:
       cross_pair_cap = 80
     try:
-      cross_min_spread_bps = max(5.0, float(os.environ.get("POLYMARKET_CROSS_MIN_SPREAD_BPS", "60")))
+      cross_min_spread_bps = max(1.0, float(os.environ.get("POLYMARKET_CROSS_MIN_SPREAD_BPS", "40")))
     except Exception:
-      cross_min_spread_bps = 60.0
+      cross_min_spread_bps = 40.0
     try:
-      cross_min_expected_bps = max(2.0, float(os.environ.get("POLYMARKET_CROSS_MIN_EXPECTED_BPS", "6")))
+      cross_min_expected_bps = max(1.0, float(os.environ.get("POLYMARKET_CROSS_MIN_EXPECTED_BPS", "4")))
     except Exception:
-      cross_min_expected_bps = 6.0
+      cross_min_expected_bps = 4.0
     try:
       cross_near_quota = max(0, int(os.environ.get("POLYMARKET_CROSS_NEAR_QUOTA", "4")))
     except Exception:
@@ -1675,13 +1675,13 @@ def evaluate_and_execute(account_id, opportunity_id, actor="system"):
       # Auto-engine can be slightly more permissive than manual path so it can
       # continuously find executable flow under live microstructure noise.
       try:
-        auto_min_edge = max(1.0, float(os.environ.get("POLYMARKET_AUTO_MIN_EDGE_BPS", "10")))
+        auto_min_edge = max(1.0, float(os.environ.get("POLYMARKET_AUTO_MIN_EDGE_BPS", "6")))
       except Exception:
-        auto_min_edge = 10.0
+        auto_min_edge = 6.0
       try:
-        auto_min_conf = max(0.35, min(0.95, float(os.environ.get("POLYMARKET_AUTO_MIN_CONFIDENCE", "0.5"))))
+        auto_min_conf = max(0.30, min(0.95, float(os.environ.get("POLYMARKET_AUTO_MIN_CONFIDENCE", "0.4"))))
       except Exception:
-        auto_min_conf = 0.5
+        auto_min_conf = 0.4
       lim["min_expected_edge_bps"] = min(float(lim.get("min_expected_edge_bps") or auto_min_edge), auto_min_edge)
       lim["min_model_confidence"] = min(float(lim.get("min_model_confidence") or auto_min_conf), auto_min_conf)
     if int(lim.get("auto_trading") or 0) != 1:
