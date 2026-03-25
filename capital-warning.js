@@ -65,6 +65,9 @@ const CW_I18N = {
     bias_watch_to_add: "Watch to Add",
     bias_reduce: "Reduce",
     bias_increase: "Increase",
+    recommend_sell: "Recommend Sell",
+    recommend_hold: "Recommend Hold",
+    recommend_keep_position: "Recommend Keep Current Position",
     signal_risk_off: "Risk Off",
     signal_neutral: "Neutral",
     signal_favorable: "Favorable",
@@ -154,6 +157,9 @@ const CW_I18N = {
     bias_watch_to_add: "观察后加仓",
     bias_reduce: "减仓",
     bias_increase: "增持",
+    recommend_sell: "建议卖出",
+    recommend_hold: "建议持仓",
+    recommend_keep_position: "建议保持现有仓位",
     signal_risk_off: "风险回避",
     signal_neutral: "中性",
     signal_favorable: "偏正面",
@@ -217,6 +223,9 @@ function cwMapValue(value) {
     watch_to_add: "bias_watch_to_add",
     reduce: "bias_reduce",
     increase: "bias_increase",
+    recommend_sell: "recommend_sell",
+    recommend_hold: "recommend_hold",
+    recommend_keep_position: "recommend_keep_position",
     risk_off: "signal_risk_off",
     neutral: "signal_neutral",
     favorable: "signal_favorable",
@@ -343,8 +352,8 @@ function cwFmtTop(items, zh) {
   return rows.slice(0, 3).map((x) => {
     const ticker = String(x?.ticker || "--").toUpperCase();
     const score = cwFmtNum(x?.macro_risk_score, 1);
-    const action = cwMapValue(x?.action_bias || "--");
-    return zh ? `${ticker}（分数 ${score}，建议 ${action}）` : `${ticker} (score ${score}, bias ${action})`;
+    const action = cwMapValue(x?.recommended_action || x?.action_bias || "--");
+    return zh ? `${ticker}（分数 ${score}，建议 ${action}）` : `${ticker} (score ${score}, suggestion ${action})`;
   }).join(zh ? "；" : "; ");
 }
 
@@ -386,6 +395,10 @@ function buildPortfolioDetailedSummary(summary, modelCtx) {
   const highRisk = Number(s.high_risk_count || 0);
   const riskOff = Number(s.risk_off_count || 0);
   const domBias = cwMapValue(s.dominant_action_bias || "--");
+  const recCnt = s.recommendation_count || {};
+  const sellCnt = Number(recCnt.recommend_sell || 0);
+  const holdCnt = Number(recCnt.recommend_hold || 0);
+  const keepCnt = Number(recCnt.recommend_keep_position || 0);
   const topRiskText = cwFmtTop(s.top_risk_positions, zh);
   const topBenefitText = cwFmtTop(s.top_benefit_positions, zh);
 
@@ -422,6 +435,7 @@ function buildPortfolioDetailedSummary(summary, modelCtx) {
     <div class="summary-line">${cwEsc(zh ? "持仓数量" : "Positions")}: ${cwEsc(cnt)}</div>
     <div class="summary-line"><strong>${cwEsc(zh ? "宏观环境" : "Macro context")}:</strong> ${cwEsc(zh ? `模型分数 ${cwFmtNum(macroScore, 1)}/100，状态 ${macroStatus}（更新日 ${macroAsOf}）` : `Model score ${cwFmtNum(macroScore, 1)}/100, regime ${macroStatus} (as of ${macroAsOf})`)}</div>
     <div class="summary-line"><strong>${cwEsc(zh ? "风险结构" : "Risk structure")}:</strong> ${cwEsc(zh ? `高风险持仓 ${highRisk} 个；风险回避信号 ${riskOff} 个；主导动作偏向 ${domBias}` : `High-risk holdings ${highRisk}; risk-off signals ${riskOff}; dominant bias ${domBias}`)}</div>
+    <div class="summary-line"><strong>${cwEsc(zh ? "直接建议分布" : "Direct suggestion mix")}:</strong> ${cwEsc(zh ? `建议卖出 ${sellCnt} 个；建议持仓 ${holdCnt} 个；建议保持现有仓位 ${keepCnt} 个` : `Recommend Sell ${sellCnt}; Recommend Hold ${holdCnt}; Recommend Keep Position ${keepCnt}`)}</div>
     <div class="summary-line"><strong>${cwEsc(zh ? "主要风险持仓" : "Top risk holdings")}:</strong> ${cwEsc(topRiskText)}</div>
     <div class="summary-line"><strong>${cwEsc(zh ? "相对受益持仓" : "Potential beneficiaries")}:</strong> ${cwEsc(topBenefitText)}</div>
     <div class="summary-line"><strong>${cwEsc(zh ? "投资动作建议" : "Action plan")}:</strong></div>
@@ -856,7 +870,10 @@ async function initPortfolioWatchlistPage() {
           <td>${cwEsc(x.ticker)}</td>
           <td>${cwEsc(x.quantity)}</td>
           <td>${cwEsc(x.macro_signal?.macro_risk_score ?? "--")}</td>
-          <td>${cwEsc(cwMapValue(x.macro_signal?.action_bias ?? "--"))}</td>
+          <td>
+            <div>${cwEsc(cwMapValue(x.portfolio_recommendation?.recommended_action || "--"))}</div>
+            <div class="subtle">${cwEsc(cwMapValue(x.macro_signal?.action_bias ?? "--"))}</div>
+          </td>
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <button type="button" class="btn ghost" data-pos-edit="${cwEsc(x.ticker)}" data-pos-qty="${cwEsc(x.quantity)}" style="padding:4px 8px;font-size:.78rem;">${cwEsc(cwT("edit_qty"))}</button>

@@ -18,6 +18,37 @@ def _query_all(conn, sql, params=()):
   return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
+def _normalize_bias(v):
+  return str(v or "").strip().lower()
+
+
+def _position_recommendation(signal):
+  sig = signal or {}
+  score = float(sig.get("macro_risk_score") or 0)
+  action_bias = _normalize_bias(sig.get("action_bias"))
+  signal_tag = _normalize_bias(sig.get("signal"))
+
+  # Priority 1: explicit defensive signals.
+  if score >= 75 or signal_tag == "risk_off" or action_bias in {"reduce", "avoid_new_adds"}:
+    return {
+      "recommended_action": "recommend_sell",
+      "recommendation_reason": "High macro risk / defensive bias. Prioritize capital protection."
+    }
+
+  # Priority 2: constructive but not aggressive.
+  if score <= 55 and action_bias in {"increase", "watch_to_add", "hold"} and signal_tag in {"favorable", "neutral", ""}:
+    return {
+      "recommended_action": "recommend_hold",
+      "recommendation_reason": "Macro risk is manageable. Holding is acceptable while waiting for confirmation."
+    }
+
+  # Default: keep current position size.
+  return {
+    "recommended_action": "recommend_keep_position",
+    "recommendation_reason": "Mixed signals. Keep current size and wait for next confirmation window."
+  }
+
+
 def list_watchlists(user_email=""):
   conn = get_conn()
   try:
@@ -79,6 +110,8 @@ def list_positions(watchlist_id):
       ticker = str(row.get("ticker") or "").upper()
       row["macro_exposure"] = get_macro_exposure(ticker)
       row["macro_signal"] = get_macro_signal_latest(ticker)
+      rec = _position_recommendation(row.get("macro_signal"))
+      row["portfolio_recommendation"] = rec
       out.append(row)
     return out
   finally:
@@ -155,11 +188,14 @@ def build_portfolio_risk_summary(user_email, watchlist_id=None):
   for pos in all_positions:
     signal = pos.get("macro_signal") or {}
     score = float(signal.get("macro_risk_score") or 0)
+    rec = _position_recommendation(signal)
     scored.append({
       "ticker": pos.get("ticker"),
       "macro_risk_score": score,
       "action_bias": signal.get("action_bias") or "",
       "signal": signal.get("signal") or "",
+      "recommended_action": rec.get("recommended_action") or "recommend_keep_position",
+      "recommendation_reason": rec.get("recommendation_reason") or "",
       "quantity": pos.get("quantity"),
       "note": pos.get("note") or "",
     })
@@ -168,9 +204,17 @@ def build_portfolio_risk_summary(user_email, watchlist_id=None):
   high_risk = [x for x in scored if float(x.get("macro_risk_score") or 0) >= 70]
   risk_off = [x for x in scored if str(x.get("signal") or "").lower() == "risk_off"]
   action_count = {}
+  recommendation_count = {
+    "recommend_sell": 0,
+    "recommend_hold": 0,
+    "recommend_keep_position": 0,
+  }
   for x in scored:
     action = str(x.get("action_bias") or "").strip().lower() or "unknown"
     action_count[action] = action_count.get(action, 0) + 1
+    rk = str(x.get("recommended_action") or "recommend_keep_position")
+    if rk in recommendation_count:
+      recommendation_count[rk] += 1
   dominant_action = sorted(action_count.items(), key=lambda kv: kv[1], reverse=True)[0][0] if action_count else "neutral"
   top_risk = scored_sorted[:5]
   top_benefit = list(reversed(scored_sorted[-5:]))
@@ -179,6 +223,7 @@ def build_portfolio_risk_summary(user_email, watchlist_id=None):
     f"High-risk names (>=70): {len(high_risk)}. "
     f"Risk-off signals: {len(risk_off)}. "
     f"Dominant action bias: {dominant_action}. "
+    f"Recommendations => sell: {recommendation_count['recommend_sell']}, hold: {recommendation_count['recommend_hold']}, keep: {recommendation_count['recommend_keep_position']}. "
     f"Trim concentration in {', '.join(x['ticker'] for x in top_risk[:3]) or '--'}, "
     f"and stagger adds toward {', '.join(x['ticker'] for x in top_benefit[:3]) or '--'} only after risk signal stabilizes."
   )
@@ -194,6 +239,7 @@ def build_portfolio_risk_summary(user_email, watchlist_id=None):
       "high_risk_count": len(high_risk),
       "risk_off_count": len(risk_off),
       "dominant_action_bias": dominant_action,
+      "recommendation_count": recommendation_count,
       "advice": advice,
     },
   }
