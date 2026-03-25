@@ -442,20 +442,64 @@ function cwExplainBlock({ indicators = [], how = [], takeaway = [] }) {
   `;
 }
 
+function cwRegimeScoreBand(score, zh) {
+  if (score >= 75) return zh ? "强扩张（风险偏好可提高）" : "Strong expansion (risk-on can be increased)";
+  if (score >= 60) return zh ? "温和扩张（可偏进攻，但要控回撤）" : "Moderate expansion (lean risk-on with drawdown control)";
+  if (score >= 45) return zh ? "中性过渡（仓位中性、等待确认）" : "Neutral transition (stay balanced, wait for confirmation)";
+  return zh ? "偏防守（先保资本再求收益）" : "Defensive (protect capital first)";
+}
+
+function cwOverlayRiskLevel(conflict, supply) {
+  const c = String(conflict || "").toLowerCase();
+  const s = String(supply || "").toLowerCase();
+  const toN = (x) => (x === "high" ? 3 : x === "medium" ? 2 : x === "low" ? 1 : 0);
+  return toN(c) + toN(s);
+}
+
+function cwTransmissionRiskCount(trans) {
+  const keys = ["rates_bias", "equities_bias", "credit_bias", "usd_bias", "commodities_bias", "crypto_bias"];
+  let n = 0;
+  keys.forEach((k) => {
+    const v = String(trans?.[k] || "").toLowerCase();
+    if (["tightening", "fragile", "risk_off", "defensive", "bearish", "stress"].includes(v)) n += 1;
+  });
+  return n;
+}
+
 function buildRegimeExplain(regime, hist) {
   const zh = cwLang() === "zh";
   const score = Number(regime?.score || 0);
   const delta = Number(regime?.score_delta || 0);
   const trend = hist?.length >= 2 ? Number(hist[0]?.score || 0) - Number(hist[Math.min(6, hist.length - 1)]?.score || 0) : 0;
   const trendText = trend > 1 ? (zh ? "近一周分数上行" : "score rose over the last week") : trend < -1 ? (zh ? "近一周分数下行" : "score fell over the last week") : (zh ? "近一周分数大体持平" : "score stayed roughly flat over the last week");
+  const band = cwRegimeScoreBand(score, zh);
+  const actionNow = delta >= 1.5
+    ? (zh ? "短线可小幅加仓风险资产，但不要一次性满仓。" : "You may add risk in small steps, avoid one-shot full allocation.")
+    : delta <= -1.5
+      ? (zh ? "先降杠杆和高波动仓位，观察 1-2 天再决定是否继续减仓。" : "Cut leverage/high-vol first, then reassess in 1-2 days.")
+      : (zh ? "保持中性仓位，等下一次数据确认后再调整方向。" : "Keep neutral sizing until the next data confirmation.");
   return cwExplainBlock({
     indicators: ["regime_code", "confidence", "score", "delta"],
     how: zh
-      ? [`当前总分 ${score.toFixed(2)}，日变化 ${delta.toFixed(2)}。`, `${trendText}，需要与历史表中的斜率一起看。`]
-      : [`Current score is ${score.toFixed(2)} with daily delta ${delta.toFixed(2)}.`, `${trendText}; read it with the history slope.`],
+      ? [
+          `当前总分 ${score.toFixed(2)}，日变化 ${delta.toFixed(2)}。用白话说：现在属于“${band}”。`,
+          `${trendText}。判断是否转向时，看“连续 3 天”而不是单日波动。`,
+          `实操上：分数高于 60 更适合做进攻配置；低于 45 时先做防守和降波动。`
+        ]
+      : [
+          `Score is ${score.toFixed(2)} and daily delta is ${delta.toFixed(2)}. In plain terms: "${band}".`,
+          `${trendText}. Use a 3-day confirmation rule instead of reacting to one day.`,
+          `In practice: above 60 supports offensive allocation; below 45 favors defense and volatility reduction.`
+        ],
     takeaway: zh
-      ? ["分数上行可逐步增加风险预算；分数回落时先降杠杆、再降高波动敞口。"]
-      : ["When score trends up, increase risk budget gradually; when it drops, reduce leverage and high-volatility exposure first."]
+      ? [
+          `决策建议：${actionNow}`,
+          "风险管理：每次调仓控制在组合净值 10%-20% 的增减，避免情绪化全仓切换。"
+        ]
+      : [
+          `Decision cue: ${actionNow}`,
+          "Risk rule: rebalance in 10%-20% NAV steps instead of abrupt all-in/all-out switches."
+        ]
   });
 }
 
@@ -463,14 +507,30 @@ function buildOverlayExplain(overlay) {
   const zh = cwLang() === "zh";
   const conflict = cwMapValue(overlay?.conflict_level || "--");
   const supply = cwMapValue(overlay?.supply_disruption_level || "--");
+  const rawRisk = cwOverlayRiskLevel(overlay?.conflict_level, overlay?.supply_disruption_level);
+  const riskTag = rawRisk >= 5 ? (zh ? "高压区" : "high-stress") : rawRisk >= 3 ? (zh ? "观察区" : "watch zone") : (zh ? "常态区" : "normal zone");
   return cwExplainBlock({
     indicators: ["conflict", "supply", "summary"],
     how: zh
-      ? [`冲突等级 ${conflict}，供应冲击 ${supply}。`, "两者同时抬升时，通常先影响油价，再传导到通胀预期和风险资产波动。"]
-      : [`Conflict level is ${conflict}, supply disruption is ${supply}.`, "When both rise together, oil usually moves first, then inflation expectations and risk-asset volatility follow."],
+      ? [
+          `冲突等级 ${conflict}，供应冲击 ${supply}，当前属于“${riskTag}”。`,
+          "直观理解：这两个指标上升，通常先推升油气和运输成本，再抬高通胀预期，最后压制成长资产估值。",
+          "如果你是股票投资者，这往往意味着：高估值成长股的波动会先放大。"
+        ]
+      : [
+          `Conflict=${conflict}, supply shock=${supply}, currently in "${riskTag}".`,
+          "Plain reading: geopolitics usually lifts energy/logistics first, then inflation expectations, then compresses growth valuations.",
+          "For equity investors: high-multiple growth names usually feel this pressure first."
+        ],
     takeaway: zh
-      ? ["地缘风险抬升期，优先控制单一高贝塔行业集中度，并提高对冲比率。"]
-      : ["During geopolitical stress, reduce concentration in single high-beta sectors and raise hedge ratio."]
+      ? [
+          "决策建议：地缘风险在“高压区”时，降低单一赛道集中度，优先保留现金流稳健标的。",
+          "对冲建议：可用指数对冲或降低净仓位，目标是把组合日波动先压下来。"
+        ]
+      : [
+          "Decision cue: in high-stress regime, reduce single-theme concentration and prefer cash-flow resilient names.",
+          "Hedging cue: use index hedges or lower net exposure to compress daily portfolio volatility."
+        ]
   });
 }
 
@@ -479,33 +539,66 @@ function buildActionExplain(bias) {
   const action = cwMapValue(bias?.overall_bias || "--");
   const favored = (bias?.favored_styles_json || []).map((x) => cwMapValue(x)).join(", ") || "--";
   const avoided = (bias?.avoided_styles_json || []).map((x) => cwMapValue(x)).join(", ") || "--";
+  const actionHint = zh
+    ? (String(action).includes("不新增") || String(action).includes("防守")
+      ? "当前更适合“先管风险，再找机会”。"
+      : "当前允许提高进攻仓位，但仍要分批执行。")
+    : (String(action).toLowerCase().includes("avoid")
+      ? "Priority is risk control first, opportunity second."
+      : "You can lean offensive, but still scale in by tranches.");
   return cwExplainBlock({
     indicators: ["action_bias", "favored_styles", "avoided_styles"],
     how: zh
-      ? [`当前动作偏向为“${action}”。`, `偏好风格：${favored}；回避风格：${avoided}。`]
-      : [`Current action bias is "${action}".`, `Favored styles: ${favored}; avoided styles: ${avoided}.`],
+      ? [
+          `当前动作偏向为“${action}”。${actionHint}`,
+          `偏好风格：${favored}；回避风格：${avoided}。`,
+          "可把它理解成交易节奏器：它不一定告诉你买哪只票，但会告诉你“该快还是该慢”。"
+        ]
+      : [
+          `Current action bias is "${action}". ${actionHint}`,
+          `Favored styles: ${favored}; avoided styles: ${avoided}.`,
+          "Think of it as a pacing signal: not always what to buy, but how fast to deploy risk."
+        ],
     takeaway: zh
-      ? ["把动作偏向当作仓位节奏器：先调仓位速度，再调整方向。"]
-      : ["Use action bias as a position-timing tool: adjust speed of risk first, then direction."]
+      ? [
+          "执行建议：先定总仓位上限，再在偏好风格里做结构优化，避免边加仓边追高。",
+          "复盘建议：若连续两天动作偏向未变，执行可以更稳定；若频繁切换，优先减交易频率。"
+        ]
+      : [
+          "Execution cue: set exposure cap first, then rotate into favored styles without chasing spikes.",
+          "Review cue: stable bias for 2+ days supports steady execution; frequent flips call for lower trading frequency."
+        ]
   });
 }
 
 function buildTransmissionExplain(trans) {
   const zh = cwLang() === "zh";
+  const riskCount = cwTransmissionRiskCount(trans);
+  const riskBand = riskCount >= 4 ? (zh ? "高传导风险" : "high transmission risk")
+    : riskCount >= 2 ? (zh ? "中等传导风险" : "medium transmission risk")
+      : (zh ? "低传导风险" : "low transmission risk");
   return cwExplainBlock({
     indicators: ["rates", "equities", "credit", "usd", "commodities", "crypto"],
     how: zh
       ? [
           `利率=${cwMapValue(trans?.rates_bias)}, 权益=${cwMapValue(trans?.equities_bias)}, 信用=${cwMapValue(trans?.credit_bias)}。`,
-          "传导热力表用于判断“风险如何扩散”：先看利率与信用，再看权益和商品确认。"
+          `当前判定为“${riskBand}”。传导热力表用于判断“风险如何扩散”：先看利率与信用，再看权益和商品确认。`,
+          "白话理解：当“利率+信用”同时偏紧时，后续更容易看到估值压缩和融资成本上升。"
         ]
       : [
           `Rates=${cwMapValue(trans?.rates_bias)}, Equities=${cwMapValue(trans?.equities_bias)}, Credit=${cwMapValue(trans?.credit_bias)}.`,
-          "Use the heatmap to track how risk propagates: read rates and credit first, then confirm with equities and commodities."
+          `Current reading is "${riskBand}". Use heatmap as risk propagation map: rates/credit first, then equities/commodities confirmation.`,
+          "Plain language: when rates and credit tighten together, valuation compression and financing stress often follow."
         ],
     takeaway: zh
-      ? ["若信用与利率同时走弱，建议降低组合净风险暴露并缩短复盘周期。"]
-      : ["If credit and rates weaken together, reduce net portfolio risk and shorten review cycle."]
+      ? [
+          "决策建议：若信用与利率同时走弱，降低净风险暴露，并把复盘频率提高到“每日”。",
+          "持仓建议：优先减少高负债、高估值、对融资环境敏感的资产。"
+        ]
+      : [
+          "Decision cue: if credit and rates deteriorate together, cut net risk and move to daily review cadence.",
+          "Positioning cue: reduce leverage-sensitive and high-duration/high-valuation exposures first."
+        ]
   });
 }
 
@@ -524,7 +617,11 @@ function buildInvestorBrief(regime, overlay, bias, trans, hist) {
   const watch = zh
     ? "若未来两天信用与权益同时恶化，应优先减高波动仓位并提高现金/对冲比例。"
     : "If credit and equities deteriorate together over the next 2 days, cut high-volatility positions first and increase cash/hedges.";
+  const oneLine = zh
+    ? "一句话给投资人：先看方向，再控节奏；先守回撤，再争收益。"
+    : "One-line investor cue: direction first, pacing second; protect drawdown before chasing return.";
   return `
+    <div class="summary-line"><strong>${cwEsc(zh ? "一句话结论" : "One-line conclusion")}:</strong> ${cwEsc(oneLine)}</div>
     <div class="summary-line"><strong>${cwEsc(cwT("investor_scenario"))}:</strong> ${cwEsc(`${regimeLabel} · ${trendView}`)}</div>
     <div class="summary-line"><strong>${cwEsc(cwT("investor_risk"))}:</strong> ${cwEsc(risk)}</div>
     <div class="summary-line"><strong>${cwEsc(cwT("investor_positioning"))}:</strong> ${cwEsc(positioning)}</div>
