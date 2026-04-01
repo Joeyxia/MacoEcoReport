@@ -701,20 +701,27 @@ def _enrich_model_with_warning_stack(model):
     or out.get("status")
     or ""
   )
-  final_score = latest_run.get("total_score")
+  final_score_raw = latest_run.get("total_score")
+  final_score_norm = latest_run.get("normalized_score")
   try:
-    final_score = float(final_score)
+    final_score_raw = float(final_score_raw)
   except Exception:
-    final_score = out.get("totalScore") or 0
+    final_score_raw = out.get("totalScore") or 0
+  try:
+    final_score_norm = float(final_score_norm)
+  except Exception:
+    final_score_norm = final_score_raw
 
   if run_as_of:
     out["asOf"] = run_as_of
-  out["totalScore"] = final_score
+  # User-facing headline score should use post-overlay normalized score.
+  out["totalScore"] = final_score_norm
   out["status"] = final_regime
   out["latestRun"] = {
     "run_id": run_id or None,
     "as_of_date": run_as_of,
-    "total_score": final_score,
+    "total_score": final_score_raw,
+    "display_score": final_score_norm,
     "final_regime": final_regime,
     "regime_confidence": latest_run.get("regime_confidence"),
     "overlay_level": latest_run.get("overlay_level"),
