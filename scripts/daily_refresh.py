@@ -318,6 +318,63 @@ def yahoo_chart_last(symbol: str, rng: str = "10d", interval: str = "1d"):
     return d, v
 
 
+def yahoo_chart_series(symbol: str, rng: str = "6mo", interval: str = "1d"):
+    encoded = quote(symbol, safe="")
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded}?range={rng}&interval={interval}"
+    data = fetch_json(url)
+    result = (data.get("chart", {}).get("result") or [])
+    if not result:
+        raise ValueError(f"Yahoo chart empty for {symbol}")
+    item = result[0] or {}
+    ts = item.get("timestamp") or []
+    q = ((item.get("indicators") or {}).get("quote") or [{}])[0]
+    close = q.get("close") or []
+    out = []
+    for t, v in zip(ts, close):
+        if v is None:
+            continue
+        out.append((datetime.fromtimestamp(int(t), tz=timezone.utc).date().isoformat(), float(v)))
+    if not out:
+        raise ValueError(f"Yahoo no close series for {symbol}")
+    return out
+
+
+def trailing_max_drawdown_pct(series, window: int = 63):
+    # window=63 ~ 3 months of trading days
+    if not series:
+        raise ValueError("empty series")
+    closes = [float(v) for _, v in series[-max(2, int(window)) :]]
+    peak = closes[0]
+    worst = 0.0
+    for px in closes:
+        if px > peak:
+            peak = px
+        if peak > 0:
+            dd = (px / peak - 1.0) * 100.0
+            if dd < worst:
+                worst = dd
+    return worst
+
+
+def fetch_stablecoin_total_billion():
+    # DeFiLlama stablecoin aggregate chart (public endpoint)
+    data = fetch_json("https://stablecoins.llama.fi/stablecoincharts/all")
+    if not isinstance(data, list) or not data:
+        raise ValueError("stablecoin total empty")
+    last = data[-1] or {}
+    total_usd = float(
+        last.get("totalCirculatingUSD")
+        or last.get("totalCirculating")
+        or last.get("total")
+        or 0
+    )
+    ts = int(last.get("date") or 0)
+    if total_usd <= 0:
+        raise ValueError("stablecoin total missing")
+    d = datetime.fromtimestamp(ts, tz=timezone.utc).date().isoformat() if ts else date.today().isoformat()
+    return d, total_usd / 1_000_000_000
+
+
 def first_series_token(raw: str) -> str:
     text = str(raw or "").upper()
     for token in text.replace("&", " ").replace("/", " ").replace(",", " ").split():
@@ -565,6 +622,12 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
                     d, v = s_last("A191RL1Q225SBEA")
                 elif code == "CLAIMS_4WMA":
                     d, v = s_last("IC4WSA")
+                elif code == "PMI_MAN":
+                    # ISM Manufacturing PMI proxy from FRED
+                    d, v = s_last("NAPM")
+                elif code == "LEI":
+                    # OECD composite leading indicator for US (proxy)
+                    d, v = s_last("USALOLITONOSTSAM")
                 elif code == "CORE_CPI_YOY":
                     d, v = fred_yoy("CPILFESL")
                 elif code == "CORE_PCE_YOY":
@@ -592,6 +655,12 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
                         d, v = yahoo_chart_last("^VIX")
                     except Exception:
                         d, v = s_last("VIXCLS")
+                elif code == "MOVE":
+                    d, v = yahoo_chart_last("^MOVE")
+                elif code == "SPX_DD_3M":
+                    spx = yahoo_chart_series("^GSPC", rng="6mo", interval="1d")
+                    d = spx[-1][0]
+                    v = trailing_max_drawdown_pct(spx, window=63)
                 elif code == "DXY":
                     try:
                         d, v = yahoo_chart_last("DX-Y.NYB")
@@ -613,6 +682,8 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
                         d, v = yahoo_chart_last("CL=F")
                     except Exception:
                         d, v = s_last("DCOILWTICO")
+                elif code == "CRB":
+                    d, v = yahoo_chart_last("^CRB")
                 elif code == "BTC":
                     j = fetch_json("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
                     d = today
@@ -621,6 +692,10 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
                     j = fetch_json("https://api.coingecko.com/api/v3/coins/usd-coin")
                     d = today
                     v = float(j["market_data"]["market_cap"]["usd"]) / 1_000_000_000
+                elif code == "STABLECOIN_DOM":
+                    d, v = fetch_stablecoin_total_billion()
+                elif code == "EPU":
+                    d, v = s_last("USEPUINDXD")
                 elif "fred" in source:
                     token = first_series_token(series_hint)
                     if not token:
