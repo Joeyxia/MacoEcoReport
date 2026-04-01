@@ -36,6 +36,7 @@ sys.path.insert(0, str(ROOT / "server"))
 from db import (
     bind_stock_macro_signals_to_run,
     create_macro_model_run,
+    get_run_id_by_date,
     get_api_key,
     init_db,
     log_token_usage,
@@ -1019,6 +1020,10 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
 
     v21 = build_v21_outputs(snapshot, regime=regime_snapshot, overlay=geopolitical_overlay)
     run_id = create_macro_model_run(today, v21.get("run") or {})
+    if not run_id:
+        run_id = get_run_id_by_date(today) or 0
+    if not run_id:
+        raise RuntimeError(f"macro_v2_1_run_missing as_of={today}")
     if run_id:
         replace_dimension_scores(run_id, v21.get("dimension_scores") or [])
         replace_regime_layers(run_id, v21.get("layers") or [])
