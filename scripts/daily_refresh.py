@@ -362,12 +362,11 @@ def fetch_stablecoin_total_billion():
     if not isinstance(data, list) or not data:
         raise ValueError("stablecoin total empty")
     last = data[-1] or {}
-    total_usd = float(
-        last.get("totalCirculatingUSD")
-        or last.get("totalCirculating")
-        or last.get("total")
-        or 0
-    )
+    raw_total = last.get("totalCirculatingUSD") or last.get("totalCirculating") or last.get("total") or 0
+    if isinstance(raw_total, dict):
+        total_usd = float(sum(float(v or 0) for v in raw_total.values()))
+    else:
+        total_usd = float(raw_total or 0)
     ts = int(last.get("date") or 0)
     if total_usd <= 0:
         raise ValueError("stablecoin total missing")
@@ -628,6 +627,9 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
                 elif code == "LEI":
                     # OECD composite leading indicator for US (proxy)
                     d, v = s_last("USALOLITONOSTSAM")
+                elif code == "CB_CONS_CONF":
+                    # University of Michigan sentiment as confidence proxy
+                    d, v = s_last("UMCSENT")
                 elif code == "CORE_CPI_YOY":
                     d, v = fred_yoy("CPILFESL")
                 elif code == "CORE_PCE_YOY":
@@ -647,6 +649,9 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
                     v = x * 100 if x < 50 else x
                 elif code == "MORTGAGE_30Y":
                     d, v = s_last("MORTGAGE30US")
+                elif code == "EXIST_HOME_SALES":
+                    d, x = s_last("EXHOSLUSM495S")
+                    v = x / 1000
                 elif code == "HOUSING_STARTS":
                     d, x = s_last("HOUST")
                     v = x / 1000
@@ -683,7 +688,13 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
                     except Exception:
                         d, v = s_last("DCOILWTICO")
                 elif code == "CRB":
-                    d, v = yahoo_chart_last("^CRB")
+                    try:
+                        d, v = yahoo_chart_last("^CRB")
+                    except Exception:
+                        # Broad commodity proxy (World Bank all-commodity index, level)
+                        d, v = s_last("PALLFNFINDEXM")
+                elif code == "DEBT_GDP":
+                    d, v = s_last("GFDEGDQ188S")
                 elif code == "BTC":
                     j = fetch_json("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
                     d = today
