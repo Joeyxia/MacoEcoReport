@@ -1184,6 +1184,11 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
     stock_macro_signals = generate_stock_macro_signals(today, regime_snapshot, geopolitical_overlay, action_bias)
 
     v21 = build_v21_outputs(snapshot, regime=regime_snapshot, overlay=geopolitical_overlay)
+    final_run = v21.get("run") or {}
+    final_score = as_number(final_run.get("normalized_score"))
+    if final_score is None:
+        final_score = total_score
+    final_status = str(final_run.get("final_regime") or model_status)
     run_id = create_macro_model_run(today, v21.get("run") or {})
     if not run_id:
         run_id = get_run_id_by_date(today) or 0
@@ -1204,6 +1209,8 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
     snapshot["actionBias"] = action_bias
     snapshot["stockMacroSignals"] = stock_macro_signals[:20]
     snapshot["runId"] = run_id
+    snapshot["totalScore"] = round(float(final_score), 2)
+    snapshot["status"] = final_status
     snapshot["v2_1"] = {
         "run": v21.get("run") or {},
         "layers": v21.get("layers") or [],
@@ -1214,7 +1221,7 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
 
     today_entry = {
         "date": today,
-        "meta": {"score": str(total_score), "status": model_status},
+        "meta": {"score": str(round(float(final_score), 2)), "status": final_status},
         "text": report_text,
         "path": f"reports/{today}.html",
         "reportPayload": {
