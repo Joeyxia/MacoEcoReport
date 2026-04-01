@@ -61,6 +61,17 @@ try:
     touch_user_login,
     save_polymarket_top_trader_snapshot,
     get_latest_polymarket_top_trader_snapshot,
+    get_run_id_by_date,
+    get_latest_macro_model_run,
+    get_regime_layers_by_run_id,
+    get_overlay_decision_by_run_id,
+    get_geopolitical_overlay_snapshot_by_run_id,
+    get_score_calibration_by_run_id,
+    get_daily_analysis_by_run_id,
+    get_stock_macro_signal_for_run,
+    get_portfolio_risk_snapshot,
+    get_latest_portfolio_risk_snapshot,
+    upsert_portfolio_risk_snapshot,
   )
   from .mailer import send_email
   from .stock_service import (
@@ -180,6 +191,17 @@ except ImportError:
     touch_user_login,
     save_polymarket_top_trader_snapshot,
     get_latest_polymarket_top_trader_snapshot,
+    get_run_id_by_date,
+    get_latest_macro_model_run,
+    get_regime_layers_by_run_id,
+    get_overlay_decision_by_run_id,
+    get_geopolitical_overlay_snapshot_by_run_id,
+    get_score_calibration_by_run_id,
+    get_daily_analysis_by_run_id,
+    get_stock_macro_signal_for_run,
+    get_portfolio_risk_snapshot,
+    get_latest_portfolio_risk_snapshot,
+    upsert_portfolio_risk_snapshot,
   )
   from mailer import send_email
   from stock_service import (
@@ -587,6 +609,7 @@ def _build_model_summary(model, latest_report=None):
   report_date = latest_report.get("date") if isinstance(latest_report, dict) else ""
   report_ai = latest_report.get("aiAnalysis") if isinstance(latest_report, dict) else {}
   ai = get_daily_report_ai_insight(report_date) if report_date else None
+  latest_run = get_latest_macro_model_run() or {}
   short_ai = (
     (report_ai or {}).get("short_summary")
     or ((ai or {}).get("short_summary") if isinstance(ai, dict) else "")
@@ -605,6 +628,19 @@ def _build_model_summary(model, latest_report=None):
     "latestReportDate": report_date or "",
     "latestReportAiInsight": report_ai or ai or None,
     "generatedAt": model.get("generatedAt") or "",
+    "latestRun": {
+      "run_id": latest_run.get("id"),
+      "as_of_date": latest_run.get("as_of_date"),
+      "score_background": latest_run.get("score_background"),
+      "normalized_score": latest_run.get("normalized_score"),
+      "final_regime": latest_run.get("final_regime"),
+      "regime_confidence": latest_run.get("regime_confidence"),
+      "overlay_level": latest_run.get("overlay_level"),
+      "overlay_override_applied": bool(latest_run.get("overlay_override_applied")) if latest_run else False,
+      "score_cap_applied": latest_run.get("score_cap_applied"),
+      "primary_decision_source": latest_run.get("primary_decision_source"),
+      "topline_message": latest_run.get("topline_message"),
+    },
   }
 
 
@@ -664,6 +700,58 @@ def _build_model_workbook(model):
       "sheets": workbook.get("sheets") or [],
     },
   }
+
+
+def _resolve_macro_run_id(as_of_date: str = ""):
+  date_key = str(as_of_date or "").strip()
+  if date_key:
+    rid = get_run_id_by_date(date_key)
+    if rid:
+      return rid, date_key
+  latest = get_latest_macro_model_run()
+  if not latest:
+    return None, ""
+  return int(latest.get("id") or 0), str(latest.get("as_of_date") or "")
+
+
+def _build_dynamic_portfolio_payload(user_id: str, run_id: int):
+  cached = get_portfolio_risk_snapshot(run_id, user_id)
+  if cached:
+    return cached
+  summary = build_portfolio_risk_summary(user_id)
+  positions = summary.get("positions") or []
+  top_risk = sorted(
+    [
+      {
+        "ticker": x.get("ticker"),
+        "macro_risk_score": float(x.get("macro_risk_score") or 0),
+        "recommended_action": x.get("recommended_action") or "",
+        "reason": x.get("recommendation_reason") or "",
+      }
+      for x in positions
+    ],
+    key=lambda x: x.get("macro_risk_score") or 0,
+    reverse=True,
+  )[:5]
+  run_info = get_latest_macro_model_run() if not run_id else None
+  if not run_info and run_id:
+    run_info = {"id": run_id}
+  analysis = get_daily_analysis_by_run_id(run_id) or {}
+  row = {
+    "regime_confidence": run_info.get("regime_confidence") if isinstance(run_info, dict) else None,
+    "signal_confidence_score": analysis.get("signal_confidence_score"),
+    "hedge_preference": analysis.get("hedge_preference") or "",
+    "action_size_cap": analysis.get("action_size_cap"),
+    "dynamic_top_risk_positions": top_risk,
+    "payload": {
+      "decision_priority": analysis.get("decision_priority") or "",
+      "overlay_summary": analysis.get("overlay_summary") or "",
+      "summary": summary.get("summary") or {},
+    },
+  }
+  upsert_portfolio_risk_snapshot(run_id, user_id, row)
+  saved = get_portfolio_risk_snapshot(run_id, user_id)
+  return saved or row
 
 
 def _etag_response(payload, status_code=200):
@@ -2160,6 +2248,38 @@ def model_summary():
   return _etag_response(_cache_set("model:summary", summary))
 
 
+@app.route("/api/latest-run", methods=["GET"])
+def api_latest_run():
+  run = get_latest_macro_model_run()
+  if not run:
+    return jsonify({"error": "not_found"}), 404
+  payload = {
+    "run_id": run.get("id"),
+    "as_of_date": run.get("as_of_date"),
+    "total_score": run.get("total_score"),
+    "score_background": run.get("score_background"),
+    "normalized_score": run.get("normalized_score"),
+    "final_regime": run.get("final_regime"),
+    "regime_confidence": run.get("regime_confidence"),
+    "overlay_level": run.get("overlay_level"),
+    "overlay_override_applied": bool(run.get("overlay_override_applied")),
+    "score_cap_applied": run.get("score_cap_applied"),
+    "primary_decision_source": run.get("primary_decision_source"),
+    "topline_message": run.get("topline_message"),
+    "payload": run.get("payload_json") or {},
+  }
+  return _etag_response({"ok": True, "item": payload})
+
+
+@app.route("/api/latest-analysis", methods=["GET"])
+def api_latest_analysis():
+  run_id, as_of_date = _resolve_macro_run_id("")
+  if not run_id:
+    return jsonify({"error": "not_found"}), 404
+  row = get_daily_analysis_by_run_id(run_id) or {}
+  return _etag_response({"ok": True, "run_id": run_id, "as_of_date": as_of_date, "item": row})
+
+
 @app.route("/api/model/tables", methods=["GET"])
 def model_tables():
   cached = _cache_get("model:tables")
@@ -2653,6 +2773,42 @@ def api_action_bias_latest():
   return jsonify({"ok": True, "item": row})
 
 
+@app.route("/api/run/<report_date>/regime-layers", methods=["GET"])
+def api_run_regime_layers(report_date):
+  run_id, as_of_date = _resolve_macro_run_id(report_date)
+  if not run_id:
+    return jsonify({"ok": False, "error": "not_found"}), 404
+  rows = get_regime_layers_by_run_id(run_id)
+  return _etag_response({"ok": True, "run_id": run_id, "as_of_date": as_of_date, "items": rows, "count": len(rows)})
+
+
+@app.route("/api/run/<report_date>/overlay-decision", methods=["GET"])
+def api_run_overlay_decision(report_date):
+  run_id, as_of_date = _resolve_macro_run_id(report_date)
+  if not run_id:
+    return jsonify({"ok": False, "error": "not_found"}), 404
+  row = get_overlay_decision_by_run_id(run_id)
+  return _etag_response({"ok": True, "run_id": run_id, "as_of_date": as_of_date, "item": row or {}})
+
+
+@app.route("/api/run/<report_date>/geopolitical-overlay", methods=["GET"])
+def api_run_geopolitical_overlay(report_date):
+  run_id, as_of_date = _resolve_macro_run_id(report_date)
+  if not run_id:
+    return jsonify({"ok": False, "error": "not_found"}), 404
+  row = get_geopolitical_overlay_snapshot_by_run_id(run_id)
+  return _etag_response({"ok": True, "run_id": run_id, "as_of_date": as_of_date, "item": row or {}})
+
+
+@app.route("/api/run/<report_date>/score-calibration", methods=["GET"])
+def api_run_score_calibration(report_date):
+  run_id, as_of_date = _resolve_macro_run_id(report_date)
+  if not run_id:
+    return jsonify({"ok": False, "error": "not_found"}), 404
+  rows = get_score_calibration_by_run_id(run_id)
+  return _etag_response({"ok": True, "run_id": run_id, "as_of_date": as_of_date, "items": rows, "count": len(rows)})
+
+
 @app.route("/api/portfolio/watchlists", methods=["GET", "POST", "OPTIONS"])
 def api_portfolio_watchlists():
   if request.method == "OPTIONS":
@@ -2727,6 +2883,52 @@ def api_portfolio_risk_summary():
   wid = int(watchlist_id) if str(watchlist_id or "").strip().isdigit() else None
   out = build_portfolio_risk_summary(user_email, watchlist_id=wid)
   return jsonify({"ok": True, **out})
+
+
+@app.route("/api/portfolio/<user_id>/dynamic-risk", methods=["GET"])
+def api_portfolio_dynamic_risk(user_id):
+  # Privacy guard: only self can query.
+  user, err = _require_public_user()
+  if err:
+    return err
+  me = str(user.get("email") or "").strip().lower()
+  uid = str(user_id or "").strip().lower()
+  if uid != me:
+    return jsonify({"ok": False, "error": "forbidden"}), 403
+  run_date = str(request.args.get("date") or "").strip()
+  run_id, as_of_date = _resolve_macro_run_id(run_date)
+  if not run_id:
+    latest = get_latest_portfolio_risk_snapshot(uid)
+    if latest:
+      return _etag_response({"ok": True, "run_id": latest.get("run_id"), "as_of_date": latest.get("as_of_date"), "item": latest})
+    return jsonify({"ok": False, "error": "not_found"}), 404
+  row = _build_dynamic_portfolio_payload(uid, run_id)
+  return _etag_response({"ok": True, "run_id": run_id, "as_of_date": as_of_date, "item": row})
+
+
+@app.route("/api/portfolio/<user_id>/stock/<ticker>/macro-signal", methods=["GET"])
+def api_portfolio_stock_macro_signal(user_id, ticker):
+  user, err = _require_public_user()
+  if err:
+    return err
+  me = str(user.get("email") or "").strip().lower()
+  uid = str(user_id or "").strip().lower()
+  if uid != me:
+    return jsonify({"ok": False, "error": "forbidden"}), 403
+  run_date = str(request.args.get("date") or "").strip()
+  run_id, as_of_date = _resolve_macro_run_id(run_date)
+  if not run_id:
+    row = get_macro_signal_latest(ticker)
+    if not row:
+      return jsonify({"ok": False, "error": "not_found"}), 404
+    return _etag_response({"ok": True, "ticker": str(ticker or "").upper(), "as_of_date": row.get("as_of_date"), "item": row})
+  row = get_stock_macro_signal_for_run(run_id, ticker, user_id=uid)
+  if not row:
+    # Backward compatibility fallback.
+    row = get_macro_signal_latest(ticker)
+    if not row:
+      return jsonify({"ok": False, "error": "not_found"}), 404
+  return _etag_response({"ok": True, "run_id": run_id, "as_of_date": as_of_date or row.get("as_of_date"), "ticker": str(ticker or "").upper(), "item": row})
 
 
 @app.route("/api/stocks/<ticker>/macro-exposure", methods=["GET"])

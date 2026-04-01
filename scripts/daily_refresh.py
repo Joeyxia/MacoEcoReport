@@ -11,7 +11,7 @@ import time
 from math import ceil
 from datetime import date, datetime, timezone
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 from urllib.request import Request, urlopen
 import urllib.error
 
@@ -34,13 +34,20 @@ if ENV_FILE.exists():
         pass
 sys.path.insert(0, str(ROOT / "server"))
 from db import (
+    bind_stock_macro_signals_to_run,
+    create_macro_model_run,
     get_api_key,
     init_db,
     log_token_usage,
     replace_sheet_rows,
     save_model_snapshot,
+    upsert_daily_analysis_v21,
     upsert_daily_report,
     upsert_daily_report_ai_insight,
+    upsert_geopolitical_overlay_snapshot,
+    upsert_overlay_decision,
+    replace_dimension_scores,
+    replace_regime_layers,
 )
 from regime_service import (
     upsert_regime_snapshot,
@@ -50,6 +57,7 @@ from regime_service import (
 from alert_service import save_alert_snapshots
 from geopolitical_service import upsert_overlay
 from macro_exposure_service import generate_stock_macro_signals
+from v21_engine import build_v21_outputs
 
 MODEL_PATH = ROOT / "model.xlsx"
 REPORTS_DIR = ROOT / "reports"
@@ -288,6 +296,25 @@ def fred_yoy(series: str):
     d, v = vals[-1]
     _, v12 = vals[-13]
     return d, (v / v12 - 1) * 100
+
+
+def yahoo_chart_last(symbol: str, rng: str = "10d", interval: str = "1d"):
+    encoded = quote(symbol, safe="")
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded}?range={rng}&interval={interval}"
+    data = fetch_json(url)
+    result = (data.get("chart", {}).get("result") or [])
+    if not result:
+        raise ValueError(f"Yahoo chart empty for {symbol}")
+    item = result[0] or {}
+    ts = item.get("timestamp") or []
+    q = ((item.get("indicators") or {}).get("quote") or [{}])[0]
+    close = q.get("close") or []
+    pairs = [(int(t), float(v)) for t, v in zip(ts, close) if v is not None]
+    if not pairs:
+        raise ValueError(f"Yahoo no close value for {symbol}")
+    t, v = pairs[-1]
+    d = datetime.fromtimestamp(t, tz=timezone.utc).date().isoformat()
+    return d, v
 
 
 def first_series_token(raw: str) -> str:
@@ -560,9 +587,15 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
                     d, x = s_last("HOUST")
                     v = x / 1000
                 elif code == "VIX":
-                    d, v = s_last("VIXCLS")
+                    try:
+                        d, v = yahoo_chart_last("^VIX")
+                    except Exception:
+                        d, v = s_last("VIXCLS")
                 elif code == "DXY":
-                    d, v = s_last("DTWEXBGS")
+                    try:
+                        d, v = yahoo_chart_last("DX-Y.NYB")
+                    except Exception:
+                        d, v = s_last("DTWEXBGS")
                 elif code == "US_JP_10Y_SPREAD":
                     d1, us10 = s_last("DGS10")
                     d2, jp10 = s_last("IRLTLT01JPM156N")
@@ -575,7 +608,10 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
                 elif code == "TED_SPREAD":
                     d, v = s_last("TEDRATE")
                 elif code == "WTI":
-                    d, v = s_last("DCOILWTICO")
+                    try:
+                        d, v = yahoo_chart_last("CL=F")
+                    except Exception:
+                        d, v = s_last("DCOILWTICO")
                 elif code == "BTC":
                     j = fetch_json("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
                     d = today
@@ -981,12 +1017,30 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
     action_bias = upsert_action_bias(today, snapshot, regime=regime_snapshot, overlay=geopolitical_overlay)
     stock_macro_signals = generate_stock_macro_signals(today, regime_snapshot, geopolitical_overlay, action_bias)
 
+    v21 = build_v21_outputs(snapshot, regime=regime_snapshot, overlay=geopolitical_overlay)
+    run_id = create_macro_model_run(today, v21.get("run") or {})
+    if run_id:
+        replace_dimension_scores(run_id, v21.get("dimension_scores") or [])
+        replace_regime_layers(run_id, v21.get("layers") or [])
+        upsert_overlay_decision(run_id, v21.get("overlay_decision") or {})
+        upsert_geopolitical_overlay_snapshot(run_id, v21.get("geopolitical_overlay") or {})
+        upsert_daily_analysis_v21(run_id, today, v21.get("daily_analysis") or {})
+        bind_stock_macro_signals_to_run(today, run_id)
+
     snapshot["regime"] = regime_snapshot
     snapshot["alertSnapshots"] = alert_snapshots
     snapshot["geopoliticalOverlay"] = geopolitical_overlay
     snapshot["marketTransmission"] = transmission_snapshot
     snapshot["actionBias"] = action_bias
     snapshot["stockMacroSignals"] = stock_macro_signals[:20]
+    snapshot["runId"] = run_id
+    snapshot["v2_1"] = {
+        "run": v21.get("run") or {},
+        "layers": v21.get("layers") or [],
+        "overlayDecision": v21.get("overlay_decision") or {},
+        "geopoliticalOverlay": v21.get("geopolitical_overlay") or {},
+        "dailyAnalysis": v21.get("daily_analysis") or {},
+    }
 
     today_entry = {
         "date": today,
@@ -1008,6 +1062,8 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
             "marketTransmission": transmission_snapshot,
             "actionBias": action_bias,
             "stockMacroSignals": stock_macro_signals[:20],
+            "v2_1": snapshot.get("v2_1") or {},
+            "runId": run_id,
             "aiInsight": {
                 "short_summary_zh": ai_short_zh,
                 "short_summary_en": ai_short_en,

@@ -92,7 +92,22 @@ const CW_I18N = {
     investor_scenario: "Macro scenario",
     investor_risk: "Main risk",
     investor_positioning: "Suggested positioning",
-    investor_watch: "Watch list"
+    investor_watch: "Watch list",
+    final_regime: "Final Regime",
+    overlay_level: "Overlay Level",
+    decision_source: "Decision Source",
+    score_background: "Background Score",
+    normalized_score: "Normalized Score",
+    score_cap: "Score Cap",
+    layer_shock: "Shock Layer",
+    layer_tactical: "Tactical Layer",
+    layer_cyclical: "Cyclical Layer",
+    decision_priority: "Decision Priority",
+    signal_confidence_score: "Signal Confidence",
+    action_size_cap: "Action Size Cap",
+    hedge_preference: "Hedge Preference",
+    run_date: "Run Date",
+    no_v21_run: "No v2.1 run snapshot."
   },
   zh: {
     code: "代码",
@@ -184,7 +199,22 @@ const CW_I18N = {
     investor_scenario: "宏观情景",
     investor_risk: "主要风险",
     investor_positioning: "建议仓位",
-    investor_watch: "重点观察"
+    investor_watch: "重点观察",
+    final_regime: "最终状态",
+    overlay_level: "叠加层级",
+    decision_source: "决策来源",
+    score_background: "背景分",
+    normalized_score: "归一分",
+    score_cap: "分数上限",
+    layer_shock: "冲击层",
+    layer_tactical: "战术层",
+    layer_cyclical: "周期层",
+    decision_priority: "决策优先级",
+    signal_confidence_score: "信号置信分",
+    action_size_cap: "动作仓位上限",
+    hedge_preference: "对冲偏好",
+    run_date: "运行日期",
+    no_v21_run: "暂无 v2.1 运行快照。"
   }
 };
 
@@ -281,6 +311,21 @@ async function cwGet(path) {
   } catch {
     return null;
   }
+}
+
+function cwRunDateOrToday(runDate) {
+  const raw = String(runDate || "").trim();
+  if (raw) return raw;
+  return new Date().toISOString().slice(0, 10);
+}
+
+function cwLayerMap(rows) {
+  const out = { shock: null, tactical: null, cyclical: null };
+  (rows || []).forEach((x) => {
+    const k = String(x.layer || "").trim().toLowerCase();
+    if (k && Object.prototype.hasOwnProperty.call(out, k)) out[k] = x;
+  });
+  return out;
 }
 
 function cwText(el, html) {
@@ -645,6 +690,8 @@ function buildInvestorBrief(regime, overlay, bias, trans, hist) {
 
 async function renderDashboardCapitalWarning() {
   const [
+    latestRunRes,
+    latestAnalysisRes,
     regimeRes,
     overlayRes,
     transRes,
@@ -652,6 +699,8 @@ async function renderDashboardCapitalWarning() {
     alertsRes,
     summaryRes,
   ] = await Promise.all([
+    cwGet("/api/latest-run"),
+    cwGet("/api/latest-analysis"),
     cwGet("/api/regime/latest"),
     cwGet("/api/geopolitical-overlay/latest"),
     cwGet("/api/transmission/latest"),
@@ -659,6 +708,17 @@ async function renderDashboardCapitalWarning() {
     cwGet("/api/alerts/latest"),
     cwGet("/api/portfolio/risk-summary"),
   ]);
+  const latestRun = latestRunRes?.item || null;
+  const latestAnalysis = latestAnalysisRes?.item || null;
+  const runDate = cwRunDateOrToday(latestRun?.as_of_date || latestAnalysisRes?.as_of_date);
+  const [layersRes, overlayDecisionRes, geoRunRes] = await Promise.all([
+    cwGet(`/api/run/${encodeURIComponent(runDate)}/regime-layers`),
+    cwGet(`/api/run/${encodeURIComponent(runDate)}/overlay-decision`),
+    cwGet(`/api/run/${encodeURIComponent(runDate)}/geopolitical-overlay`),
+  ]);
+  const layerMap = cwLayerMap(layersRes?.items || []);
+  const overlayDecision = overlayDecisionRes?.item || null;
+  const geoRun = geoRunRes?.item || null;
   const regime = regimeRes?.item;
   const overlay = overlayRes?.item;
   const trans = transRes?.item;
@@ -667,28 +727,41 @@ async function renderDashboardCapitalWarning() {
   const portfolio = summaryRes?.summary;
 
   cwText(document.getElementById("regime-engine-card"),
-    regime ? `
+    latestRun ? `
+      <div class="summary-score">${cwEsc(cwMapValue(latestRun.final_regime || "--"))}</div>
+      <div class="summary-line">${cwT("run_date")}: ${cwEsc(runDate)}</div>
+      <div class="summary-line">${cwT("decision_source")}: ${cwEsc(cwMapValue(latestRun.primary_decision_source || "--"))}</div>
+      <div class="summary-line">${cwT("score_background")}: ${cwEsc(latestRun.score_background ?? "--")} / ${cwT("normalized_score")}: ${cwEsc(latestRun.normalized_score ?? "--")}</div>
+      <div class="summary-line">${cwT("confidence")}: ${cwEsc(latestRun.regime_confidence ?? "--")}</div>
+      <div class="summary-line">${cwEsc(latestRun.topline_message || "--")}</div>
+    ` : regime ? `
       <div class="summary-score">${cwEsc(cwMapValue(regime.regime_code) || regime.regime_label)}</div>
       <div class="summary-line">${cwT("code")}: ${cwEsc(regime.regime_code)}</div>
       <div class="summary-line">${cwT("confidence")}: ${cwEsc(regime.confidence)}</div>
       <div class="summary-line">${cwT("score_delta")}: ${cwEsc(regime.score)} / ${cwT("delta")}: ${cwEsc(regime.score_delta)}</div>
       ${cwList(regime.drivers_json || [])}
-    ` : `<p class='subtle'>${cwEsc(cwT("no_regime_snapshot"))}</p>`
+    ` : `<p class='subtle'>${cwEsc(cwT("no_v21_run"))}</p>`
   );
   cwText(document.getElementById("geopolitical-overlay-card"),
-    overlay ? `
-      <div class="summary-score">${cwEsc(overlay.oil_shock_scenario || "--")}</div>
-      <div class="summary-line">${cwT("conflict")}: ${cwEsc(cwMapValue(overlay.conflict_level || "--"))}</div>
-      <div class="summary-line">${cwT("supply")}: ${cwEsc(cwMapValue(overlay.supply_disruption_level || "--"))}</div>
-      <div class="summary-line">${cwT("summary")}: ${cwEsc(cwMapValue(overlay.summary || "--"))}</div>
+    (geoRun || overlayDecision || overlay) ? `
+      <div class="summary-score">${cwEsc(cwMapValue((overlayDecision?.overlay_level) || (geoRun?.overlay_level) || (overlay?.oil_shock_scenario) || "--"))}</div>
+      <div class="summary-line">${cwT("overlay_level")}: ${cwEsc(cwMapValue((overlayDecision?.overlay_level) || (geoRun?.overlay_level) || "--"))}</div>
+      <div class="summary-line">${cwT("score_cap")}: ${cwEsc(overlayDecision?.score_cap ?? "--")}</div>
+      <div class="summary-line">${cwT("conflict")}: ${cwEsc(geoRun?.conflict_intensity_score ?? cwMapValue(overlay?.conflict_level || "--"))}</div>
+      <div class="summary-line">${cwT("supply")}: ${cwEsc(geoRun?.supply_disruption_score ?? cwMapValue(overlay?.supply_disruption_level || "--"))}</div>
+      <div class="summary-line">${cwT("summary")}: ${cwEsc(cwMapValue((overlayDecision?.rationale) || (geoRun?.conclusion) || (overlay?.summary) || "--"))}</div>
     ` : `<p class='subtle'>${cwEsc(cwT("no_overlay_snapshot"))}</p>`
   );
   cwText(document.getElementById("action-bias-card"),
-    bias ? `
-      <div class="summary-score">${cwEsc(cwMapValue(bias.overall_bias || "--"))}</div>
-      <div class="summary-line">${cwT("favored_styles")}: ${cwEsc((bias.favored_styles_json || []).map((x) => cwMapValue(x)).join(", "))}</div>
-      <div class="summary-line">${cwT("avoided_styles")}: ${cwEsc((bias.avoided_styles_json || []).map((x) => cwMapValue(x)).join(", "))}</div>
-      <div class="summary-line">${cwEsc(cwMapValue(bias.summary || "--"))}</div>
+    (latestAnalysis || bias) ? `
+      <div class="summary-score">${cwEsc(cwMapValue(bias?.overall_bias || "--"))}</div>
+      <div class="summary-line">${cwT("decision_priority")}: ${cwEsc(cwMapValue(latestAnalysis?.decision_priority || "--"))}</div>
+      <div class="summary-line">${cwT("signal_confidence_score")}: ${cwEsc(latestAnalysis?.signal_confidence_score ?? "--")}</div>
+      <div class="summary-line">${cwT("action_size_cap")}: ${cwEsc(latestAnalysis?.action_size_cap ?? "--")}</div>
+      <div class="summary-line">${cwT("hedge_preference")}: ${cwEsc(cwMapValue(latestAnalysis?.hedge_preference || "--"))}</div>
+      <div class="summary-line">${cwT("favored_styles")}: ${cwEsc(((bias?.favored_styles_json) || []).map((x) => cwMapValue(x)).join(", "))}</div>
+      <div class="summary-line">${cwT("avoided_styles")}: ${cwEsc(((bias?.avoided_styles_json) || []).map((x) => cwMapValue(x)).join(", "))}</div>
+      <div class="summary-line">${cwEsc(cwMapValue((latestAnalysis?.overlay_summary) || (bias?.summary) || "--"))}</div>
     ` : `<p class='subtle'>${cwEsc(cwT("no_action_bias_snapshot"))}</p>`
   );
   cwText(document.getElementById("portfolio-macro-risk-card"),
@@ -704,15 +777,18 @@ async function renderDashboardCapitalWarning() {
     `
   );
   cwText(document.getElementById("transmission-heatmap"),
-    trans ? cwObjTable({
-      rates_bias: trans.rates_bias,
-      equities_bias: trans.equities_bias,
-      credit_bias: trans.credit_bias,
-      usd_bias: trans.usd_bias,
-      commodities_bias: trans.commodities_bias,
-      crypto_bias: trans.crypto_bias,
-      favored_sectors: (trans.sectors_json || {}).favored || [],
-      avoided_sectors: (trans.sectors_json || {}).avoided || [],
+    (trans || layersRes?.items?.length) ? cwObjTable({
+      [cwT("layer_shock")]: layerMap.shock ? `${cwMapValue(layerMap.shock.layer_regime)} (${layerMap.shock.layer_score})` : "--",
+      [cwT("layer_tactical")]: layerMap.tactical ? `${cwMapValue(layerMap.tactical.layer_regime)} (${layerMap.tactical.layer_score})` : "--",
+      [cwT("layer_cyclical")]: layerMap.cyclical ? `${cwMapValue(layerMap.cyclical.layer_regime)} (${layerMap.cyclical.layer_score})` : "--",
+      rates_bias: trans?.rates_bias || "--",
+      equities_bias: trans?.equities_bias || "--",
+      credit_bias: trans?.credit_bias || "--",
+      usd_bias: trans?.usd_bias || "--",
+      commodities_bias: trans?.commodities_bias || "--",
+      crypto_bias: trans?.crypto_bias || "--",
+      favored_sectors: (trans?.sectors_json || {}).favored || [],
+      avoided_sectors: (trans?.sectors_json || {}).avoided || [],
     }) : `<p class='subtle'>${cwEsc(cwT("no_transmission_snapshot"))}</p>`
   );
 }
@@ -976,56 +1052,80 @@ async function initPortfolioWatchlistPage() {
 }
 
 async function initRegimeTransmissionPage() {
-  const [regimeRes, histRes, overlayRes, transRes, biasRes] = await Promise.all([
+  const [latestRunRes, latestAnalysisRes, regimeRes, histRes, overlayRes, transRes, biasRes] = await Promise.all([
+    cwGet("/api/latest-run"),
+    cwGet("/api/latest-analysis"),
     cwGet("/api/regime/latest"),
     cwGet("/api/regime/history?days=90"),
     cwGet("/api/geopolitical-overlay/latest"),
     cwGet("/api/transmission/latest"),
     cwGet("/api/action-bias/latest"),
   ]);
+  const latestRun = latestRunRes?.item || null;
+  const latestAnalysis = latestAnalysisRes?.item || null;
+  const runDate = cwRunDateOrToday(latestRun?.as_of_date || latestAnalysisRes?.as_of_date);
+  const [layersRes, overlayDecisionRes, geoRunRes] = await Promise.all([
+    cwGet(`/api/run/${encodeURIComponent(runDate)}/regime-layers`),
+    cwGet(`/api/run/${encodeURIComponent(runDate)}/overlay-decision`),
+    cwGet(`/api/run/${encodeURIComponent(runDate)}/geopolitical-overlay`),
+  ]);
+  const layerMap = cwLayerMap(layersRes?.items || []);
+  const overlayDecision = overlayDecisionRes?.item || null;
+  const geoRun = geoRunRes?.item || null;
   const regime = regimeRes?.item;
   const hist = histRes?.items || [];
   const overlay = overlayRes?.item;
   const trans = transRes?.item;
   const bias = biasRes?.item;
   cwText(document.getElementById("rt-regime-card"), regime ? `
-    <div class="summary-score">${cwEsc(cwMapValue(regime.regime_code) || regime.regime_label)}</div>
-    <div class="summary-line">${cwT("code")}: ${cwEsc(regime.regime_code)}</div>
-    <div class="summary-line">${cwT("confidence")}: ${cwEsc(regime.confidence)}</div>
+    <div class="summary-score">${cwEsc(cwMapValue((latestRun?.final_regime) || regime.regime_code || regime.regime_label))}</div>
+    <div class="summary-line">${cwT("run_date")}: ${cwEsc(runDate)}</div>
+    <div class="summary-line">${cwT("decision_source")}: ${cwEsc(cwMapValue((latestRun?.primary_decision_source) || "--"))}</div>
+    <div class="summary-line">${cwT("score_background")}: ${cwEsc((latestRun?.score_background) ?? regime.score ?? "--")} / ${cwT("normalized_score")}: ${cwEsc((latestRun?.normalized_score) ?? "--")}</div>
+    <div class="summary-line">${cwT("confidence")}: ${cwEsc((latestRun?.regime_confidence) ?? regime.confidence ?? "--")}</div>
     ${cwList(regime.drivers_json || [])}
   ` : "<p class='subtle'>--</p>");
-  cwText(document.getElementById("rt-overlay-card"), overlay ? `
-    <div class="summary-score">${cwEsc(overlay.oil_shock_scenario)}</div>
-    <div class="summary-line">${cwT("conflict")}: ${cwEsc(cwMapValue(overlay.conflict_level))}</div>
-    <div class="summary-line">${cwT("supply")}: ${cwEsc(cwMapValue(overlay.supply_disruption_level))}</div>
-    <div class="summary-line">${cwEsc(cwMapValue(overlay.summary || "--"))}</div>
+  cwText(document.getElementById("rt-overlay-card"), (overlay || overlayDecision || geoRun) ? `
+    <div class="summary-score">${cwEsc(cwMapValue((overlayDecision?.overlay_level) || (geoRun?.overlay_level) || (overlay?.oil_shock_scenario) || "--"))}</div>
+    <div class="summary-line">${cwT("overlay_level")}: ${cwEsc(cwMapValue((overlayDecision?.overlay_level) || (geoRun?.overlay_level) || "--"))}</div>
+    <div class="summary-line">${cwT("score_cap")}: ${cwEsc(overlayDecision?.score_cap ?? "--")}</div>
+    <div class="summary-line">${cwT("conflict")}: ${cwEsc((geoRun?.conflict_intensity_score) ?? cwMapValue(overlay?.conflict_level || "--"))}</div>
+    <div class="summary-line">${cwT("supply")}: ${cwEsc((geoRun?.supply_disruption_score) ?? cwMapValue(overlay?.supply_disruption_level || "--"))}</div>
+    <div class="summary-line">${cwEsc(cwMapValue((overlayDecision?.rationale) || (geoRun?.conclusion) || (overlay?.summary) || "--"))}</div>
   ` : "<p class='subtle'>--</p>");
   cwText(document.getElementById("rt-regime-history"), hist.length ? `
     <table class="data-table"><thead><tr><th>${cwT("date")}</th><th>${cwT("regime")}</th><th>${cwT("score_delta")}</th><th>${cwT("delta")}</th></tr></thead><tbody>${
       hist.map((x) => `<tr><td>${cwEsc(x.as_of_date)}</td><td>${cwEsc(cwMapValue(x.regime_code) || x.regime_label)}</td><td>${cwEsc(x.score)}</td><td>${cwEsc(x.score_delta)}</td></tr>`).join("")
     }</tbody></table>` : `<p class='subtle'>${cwEsc(cwT("no_history"))}</p>`);
-  cwText(document.getElementById("rt-action-bias"), bias ? `
-    <div class="summary-score">${cwEsc(cwMapValue(bias.overall_bias))}</div>
-    <div class="summary-line">${cwT("favored_styles")}: ${cwEsc((bias.favored_styles_json || []).map((x) => cwMapValue(x)).join(", "))}</div>
-    <div class="summary-line">${cwT("avoided_styles")}: ${cwEsc((bias.avoided_styles_json || []).map((x) => cwMapValue(x)).join(", "))}</div>
-    <div class="summary-line">${cwEsc(cwMapValue(bias.summary || "--"))}</div>
+  cwText(document.getElementById("rt-action-bias"), (bias || latestAnalysis) ? `
+    <div class="summary-score">${cwEsc(cwMapValue(bias?.overall_bias || "--"))}</div>
+    <div class="summary-line">${cwT("decision_priority")}: ${cwEsc(cwMapValue(latestAnalysis?.decision_priority || "--"))}</div>
+    <div class="summary-line">${cwT("signal_confidence_score")}: ${cwEsc(latestAnalysis?.signal_confidence_score ?? "--")}</div>
+    <div class="summary-line">${cwT("action_size_cap")}: ${cwEsc(latestAnalysis?.action_size_cap ?? "--")}</div>
+    <div class="summary-line">${cwT("hedge_preference")}: ${cwEsc(cwMapValue(latestAnalysis?.hedge_preference || "--"))}</div>
+    <div class="summary-line">${cwT("favored_styles")}: ${cwEsc(((bias?.favored_styles_json) || []).map((x) => cwMapValue(x)).join(", "))}</div>
+    <div class="summary-line">${cwT("avoided_styles")}: ${cwEsc(((bias?.avoided_styles_json) || []).map((x) => cwMapValue(x)).join(", "))}</div>
+    <div class="summary-line">${cwEsc(cwMapValue((latestAnalysis?.overlay_summary) || (bias?.summary) || "--"))}</div>
   ` : "<p class='subtle'>--</p>");
-  cwText(document.getElementById("rt-transmission"), trans ? cwObjTable({
-    rates: trans.rates_bias,
-    equities: trans.equities_bias,
-    credit: trans.credit_bias,
-    usd: trans.usd_bias,
-    commodities: trans.commodities_bias,
-    crypto: trans.crypto_bias,
-    favored: (trans.sectors_json || {}).favored || [],
-    avoided: (trans.sectors_json || {}).avoided || [],
+  cwText(document.getElementById("rt-transmission"), (trans || layersRes?.items?.length) ? cwObjTable({
+    [cwT("layer_shock")]: layerMap.shock ? `${cwMapValue(layerMap.shock.layer_regime)} (${layerMap.shock.layer_score})` : "--",
+    [cwT("layer_tactical")]: layerMap.tactical ? `${cwMapValue(layerMap.tactical.layer_regime)} (${layerMap.tactical.layer_score})` : "--",
+    [cwT("layer_cyclical")]: layerMap.cyclical ? `${cwMapValue(layerMap.cyclical.layer_regime)} (${layerMap.cyclical.layer_score})` : "--",
+    rates: trans?.rates_bias || "--",
+    equities: trans?.equities_bias || "--",
+    credit: trans?.credit_bias || "--",
+    usd: trans?.usd_bias || "--",
+    commodities: trans?.commodities_bias || "--",
+    crypto: trans?.crypto_bias || "--",
+    favored: (trans?.sectors_json || {}).favored || [],
+    avoided: (trans?.sectors_json || {}).avoided || [],
   }) : "<p class='subtle'>--</p>");
 
   cwText(document.getElementById("rt-regime-explain"), regime ? buildRegimeExplain(regime, hist) : "<p class='subtle'>--</p>");
-  cwText(document.getElementById("rt-overlay-explain"), overlay ? buildOverlayExplain(overlay) : "<p class='subtle'>--</p>");
-  cwText(document.getElementById("rt-action-explain"), bias ? buildActionExplain(bias) : "<p class='subtle'>--</p>");
+  cwText(document.getElementById("rt-overlay-explain"), (overlay || geoRun) ? buildOverlayExplain(overlay || geoRun) : "<p class='subtle'>--</p>");
+  cwText(document.getElementById("rt-action-explain"), (bias || latestAnalysis) ? buildActionExplain(bias || latestAnalysis) : "<p class='subtle'>--</p>");
   cwText(document.getElementById("rt-transmission-explain"), trans ? buildTransmissionExplain(trans) : "<p class='subtle'>--</p>");
-  cwText(document.getElementById("rt-investor-brief"), buildInvestorBrief(regime, overlay, bias, trans, hist));
+  cwText(document.getElementById("rt-investor-brief"), buildInvestorBrief(regime || latestRun, overlay || geoRun, bias || latestAnalysis, trans, hist));
 }
 
 async function rerenderCurrentCapitalWarningPage() {

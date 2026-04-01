@@ -870,6 +870,160 @@ def init_db():
     );
     """
   )
+  conn.executescript(
+    """
+    CREATE TABLE IF NOT EXISTS scoring_calibration_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      rule_code TEXT UNIQUE NOT NULL,
+      target_type TEXT NOT NULL,
+      target_code TEXT NOT NULL,
+      transform_method TEXT NOT NULL,
+      static_weight REAL NOT NULL DEFAULT 0.40,
+      momentum_weight REAL NOT NULL DEFAULT 0.35,
+      resonance_weight REAL NOT NULL DEFAULT 0.25,
+      tail_penalty_enabled INTEGER NOT NULL DEFAULT 1,
+      green_threshold REAL,
+      yellow_threshold REAL,
+      orange_threshold REAL,
+      red_threshold REAL,
+      config_json TEXT NOT NULL DEFAULT '{}',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS dimension_scores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL,
+      dimension_code TEXT NOT NULL,
+      layer TEXT,
+      static_level_score REAL,
+      momentum_score REAL,
+      resonance_penalty REAL DEFAULT 0,
+      tail_penalty REAL DEFAULT 0,
+      pre_overlay_score REAL,
+      final_dimension_score REAL,
+      signal_direction TEXT,
+      alert_color TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(run_id, dimension_code)
+    );
+    CREATE INDEX IF NOT EXISTS idx_dimension_scores_run_layer ON dimension_scores(run_id, layer);
+
+    CREATE TABLE IF NOT EXISTS dimension_resonance_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL,
+      dimension_code TEXT NOT NULL,
+      resonance_score REAL NOT NULL DEFAULT 0,
+      resonance_flag INTEGER NOT NULL DEFAULT 0,
+      triggered_rules_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(run_id, dimension_code)
+    );
+
+    CREATE TABLE IF NOT EXISTS regime_layer_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL,
+      layer TEXT NOT NULL,
+      layer_score REAL NOT NULL,
+      layer_regime TEXT,
+      layer_confidence REAL,
+      key_drivers_json TEXT NOT NULL DEFAULT '[]',
+      key_risks_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(run_id, layer)
+    );
+    CREATE INDEX IF NOT EXISTS idx_regime_layer_snapshots_run ON regime_layer_snapshots(run_id);
+
+    CREATE TABLE IF NOT EXISTS overlay_decisions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL,
+      overlay_type TEXT NOT NULL,
+      overlay_level TEXT NOT NULL,
+      override_applied INTEGER NOT NULL DEFAULT 0,
+      score_cap REAL,
+      regime_override TEXT,
+      alert_override TEXT,
+      rationale TEXT,
+      triggered_signals_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_overlay_decisions_run ON overlay_decisions(run_id);
+
+    CREATE TABLE IF NOT EXISTS geopolitical_overlay_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL UNIQUE,
+      conflict_intensity_score REAL,
+      supply_disruption_score REAL,
+      shipping_insurance_score REAL,
+      energy_microstructure_score REAL,
+      macro_transmission_score REAL,
+      overlay_level TEXT NOT NULL,
+      brent_price REAL,
+      brent_5d_change_pct REAL,
+      hormuz_status TEXT,
+      conclusion TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_geopolitical_overlay_run ON geopolitical_overlay_snapshots(run_id);
+
+    CREATE TABLE IF NOT EXISTS daily_analysis (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL UNIQUE,
+      as_of_date TEXT NOT NULL,
+      score_background REAL,
+      final_regime TEXT,
+      final_alert_level TEXT,
+      decision_priority TEXT,
+      signal_confidence_score REAL,
+      overlay_summary TEXT,
+      action_size_cap REAL,
+      hedge_preference TEXT,
+      payload_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_daily_analysis_asof ON daily_analysis(as_of_date DESC, id DESC);
+
+    CREATE TABLE IF NOT EXISTS portfolio_macro_exposure (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT,
+      ticker TEXT NOT NULL,
+      dynamic_rate_beta REAL,
+      dynamic_growth_beta REAL,
+      dynamic_inflation_beta REAL,
+      dynamic_oil_beta REAL,
+      dynamic_credit_beta REAL,
+      dynamic_usd_beta REAL,
+      dynamic_vol_beta REAL,
+      valuation_stretch_score REAL,
+      drawdown_sensitivity REAL,
+      earnings_revision_sensitivity REAL,
+      exposure_version TEXT DEFAULT 'v2.1',
+      payload_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, ticker)
+    );
+
+    CREATE TABLE IF NOT EXISTS portfolio_risk_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      regime_confidence REAL,
+      signal_confidence_score REAL,
+      hedge_preference TEXT,
+      action_size_cap REAL,
+      dynamic_top_risk_positions_json TEXT DEFAULT '[]',
+      payload_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(run_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_portfolio_risk_snapshots_user ON portfolio_risk_snapshots(user_id, created_at DESC);
+    """
+  )
   for ddl in [
     "ALTER TABLE daily_reports ADD COLUMN ai_short_summary TEXT",
     "ALTER TABLE daily_reports ADD COLUMN ai_detailed_interpretation TEXT",
@@ -895,6 +1049,29 @@ def init_db():
     "ALTER TABLE risk_limits ADD COLUMN cancel_stale_after_sec INTEGER DEFAULT 120",
     "ALTER TABLE risk_limits ADD COLUMN paper_mode INTEGER DEFAULT 1",
     "ALTER TABLE trading_accounts ADD COLUMN display_name TEXT",
+    "ALTER TABLE model_runs ADD COLUMN run_type TEXT",
+    "ALTER TABLE model_runs ADD COLUMN as_of_date TEXT",
+    "ALTER TABLE model_runs ADD COLUMN total_score REAL",
+    "ALTER TABLE model_runs ADD COLUMN score_background REAL",
+    "ALTER TABLE model_runs ADD COLUMN normalized_score REAL",
+    "ALTER TABLE model_runs ADD COLUMN final_regime TEXT",
+    "ALTER TABLE model_runs ADD COLUMN regime_confidence REAL",
+    "ALTER TABLE model_runs ADD COLUMN overlay_level TEXT",
+    "ALTER TABLE model_runs ADD COLUMN overlay_override_applied INTEGER DEFAULT 0",
+    "ALTER TABLE model_runs ADD COLUMN score_cap_applied REAL",
+    "ALTER TABLE model_runs ADD COLUMN primary_decision_source TEXT",
+    "ALTER TABLE model_runs ADD COLUMN topline_message TEXT",
+    "ALTER TABLE model_runs ADD COLUMN payload_json TEXT",
+    "ALTER TABLE stock_macro_signals ADD COLUMN run_id INTEGER",
+    "ALTER TABLE stock_macro_signals ADD COLUMN user_id TEXT",
+    "ALTER TABLE stock_macro_signals ADD COLUMN regime_contribution REAL",
+    "ALTER TABLE stock_macro_signals ADD COLUMN overlay_contribution REAL",
+    "ALTER TABLE stock_macro_signals ADD COLUMN valuation_penalty REAL",
+    "ALTER TABLE stock_macro_signals ADD COLUMN volatility_penalty REAL",
+    "ALTER TABLE stock_macro_signals ADD COLUMN recommendation TEXT",
+    "ALTER TABLE stock_macro_signals ADD COLUMN recommendation_confidence REAL",
+    "ALTER TABLE stock_macro_signals ADD COLUMN suggested_action_size REAL",
+    "ALTER TABLE stock_macro_signals ADD COLUMN rationale_json TEXT",
   ]:
     try:
       conn.execute(ddl)
@@ -902,6 +1079,556 @@ def init_db():
       pass
   conn.commit()
   conn.close()
+
+
+def create_macro_model_run(as_of_date: str, run_payload: dict):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    payload = run_payload if isinstance(run_payload, dict) else {}
+    cur = conn.execute(
+      """
+      INSERT INTO model_runs
+      (ticker, run_time, model_version, train_start, train_end, sample_count, feature_count, status, notes,
+       run_type, as_of_date, total_score, score_background, normalized_score, final_regime, regime_confidence,
+       overlay_level, overlay_override_applied, score_cap_applied, primary_decision_source, topline_message, payload_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      """,
+      (
+        "__MACRO__",
+        ts,
+        "macro-v2.1",
+        ts,
+        ts,
+        0,
+        0,
+        str(payload.get("status") or "ok"),
+        str(payload.get("notes") or ""),
+        "macro_v2_1",
+        str(as_of_date or "").strip(),
+        float(payload.get("total_score") or 0),
+        float(payload.get("score_background") or 0),
+        float(payload.get("normalized_score") or 0),
+        str(payload.get("final_regime") or ""),
+        float(payload.get("regime_confidence") or 0),
+        str(payload.get("overlay_level") or ""),
+        1 if payload.get("overlay_override_applied") else 0,
+        payload.get("score_cap_applied"),
+        str(payload.get("primary_decision_source") or ""),
+        str(payload.get("topline_message") or ""),
+        json.dumps(payload.get("payload") or {}, ensure_ascii=False),
+      ),
+    )
+    run_id = int(cur.lastrowid or 0)
+    conn.commit()
+    return run_id
+  finally:
+    conn.close()
+
+
+def get_macro_model_run(as_of_date: str):
+  conn = get_conn()
+  try:
+    row = conn.execute(
+      """
+      SELECT id, run_time, as_of_date, total_score, score_background, normalized_score, final_regime,
+             regime_confidence, overlay_level, overlay_override_applied, score_cap_applied,
+             primary_decision_source, topline_message, payload_json
+      FROM model_runs
+      WHERE run_type='macro_v2_1' AND as_of_date=?
+      ORDER BY id DESC
+      LIMIT 1
+      """,
+      (str(as_of_date or "").strip(),),
+    ).fetchone()
+    if not row:
+      return None
+    out = dict(row)
+    try:
+      out["payload_json"] = json.loads(out.get("payload_json") or "{}")
+    except Exception:
+      out["payload_json"] = {}
+    return out
+  finally:
+    conn.close()
+
+
+def get_latest_macro_model_run():
+  conn = get_conn()
+  try:
+    row = conn.execute(
+      """
+      SELECT id, run_time, as_of_date, total_score, score_background, normalized_score, final_regime,
+             regime_confidence, overlay_level, overlay_override_applied, score_cap_applied,
+             primary_decision_source, topline_message, payload_json
+      FROM model_runs
+      WHERE run_type='macro_v2_1'
+      ORDER BY id DESC
+      LIMIT 1
+      """
+    ).fetchone()
+    if not row:
+      return None
+    out = dict(row)
+    try:
+      out["payload_json"] = json.loads(out.get("payload_json") or "{}")
+    except Exception:
+      out["payload_json"] = {}
+    return out
+  finally:
+    conn.close()
+
+
+def replace_dimension_scores(run_id: int, rows):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    conn.execute("DELETE FROM dimension_scores WHERE run_id=?", (int(run_id),))
+    for r in rows or []:
+      conn.execute(
+        """
+        INSERT INTO dimension_scores
+        (run_id, dimension_code, layer, static_level_score, momentum_score, resonance_penalty, tail_penalty,
+         pre_overlay_score, final_dimension_score, signal_direction, alert_color, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+          int(run_id),
+          str(r.get("dimension_code") or ""),
+          str(r.get("layer") or ""),
+          r.get("static_level_score"),
+          r.get("momentum_score"),
+          r.get("resonance_penalty"),
+          r.get("tail_penalty"),
+          r.get("pre_overlay_score"),
+          r.get("final_dimension_score"),
+          str(r.get("signal_direction") or ""),
+          str(r.get("alert_color") or ""),
+          ts,
+          ts,
+        ),
+      )
+    conn.commit()
+  finally:
+    conn.close()
+
+
+def replace_regime_layers(run_id: int, rows):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    conn.execute("DELETE FROM regime_layer_snapshots WHERE run_id=?", (int(run_id),))
+    for r in rows or []:
+      conn.execute(
+        """
+        INSERT INTO regime_layer_snapshots
+        (run_id, layer, layer_score, layer_regime, layer_confidence, key_drivers_json, key_risks_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+          int(run_id),
+          str(r.get("layer") or ""),
+          float(r.get("layer_score") or 0),
+          str(r.get("layer_regime") or ""),
+          float(r.get("layer_confidence") or 0),
+          json.dumps(r.get("key_drivers") or [], ensure_ascii=False),
+          json.dumps(r.get("key_risks") or [], ensure_ascii=False),
+          ts,
+        ),
+      )
+    conn.commit()
+  finally:
+    conn.close()
+
+
+def upsert_overlay_decision(run_id: int, row: dict):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    conn.execute("DELETE FROM overlay_decisions WHERE run_id=?", (int(run_id),))
+    conn.execute(
+      """
+      INSERT INTO overlay_decisions
+      (run_id, overlay_type, overlay_level, override_applied, score_cap, regime_override, alert_override, rationale, triggered_signals_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      """,
+      (
+        int(run_id),
+        str(row.get("overlay_type") or ""),
+        str(row.get("overlay_level") or ""),
+        1 if row.get("override_applied") else 0,
+        row.get("score_cap"),
+        str(row.get("regime_override") or ""),
+        str(row.get("alert_override") or ""),
+        str(row.get("rationale") or ""),
+        json.dumps(row.get("triggered_signals") or [], ensure_ascii=False),
+        ts,
+      ),
+    )
+    conn.commit()
+  finally:
+    conn.close()
+
+
+def upsert_geopolitical_overlay_snapshot(run_id: int, row: dict):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    conn.execute("DELETE FROM geopolitical_overlay_snapshots WHERE run_id=?", (int(run_id),))
+    conn.execute(
+      """
+      INSERT INTO geopolitical_overlay_snapshots
+      (run_id, conflict_intensity_score, supply_disruption_score, shipping_insurance_score, energy_microstructure_score,
+       macro_transmission_score, overlay_level, brent_price, brent_5d_change_pct, hormuz_status, conclusion, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      """,
+      (
+        int(run_id),
+        row.get("conflict_intensity_score"),
+        row.get("supply_disruption_score"),
+        row.get("shipping_insurance_score"),
+        row.get("energy_microstructure_score"),
+        row.get("macro_transmission_score"),
+        str(row.get("overlay_level") or ""),
+        row.get("brent_price"),
+        row.get("brent_5d_change_pct"),
+        str(row.get("hormuz_status") or ""),
+        str(row.get("conclusion") or ""),
+        ts,
+      ),
+    )
+    conn.commit()
+  finally:
+    conn.close()
+
+
+def upsert_daily_analysis_v21(run_id: int, as_of_date: str, row: dict):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    conn.execute(
+      """
+      INSERT INTO daily_analysis
+      (run_id, as_of_date, score_background, final_regime, final_alert_level, decision_priority, signal_confidence_score,
+       overlay_summary, action_size_cap, hedge_preference, payload_json, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(run_id) DO UPDATE SET
+        score_background=excluded.score_background,
+        final_regime=excluded.final_regime,
+        final_alert_level=excluded.final_alert_level,
+        decision_priority=excluded.decision_priority,
+        signal_confidence_score=excluded.signal_confidence_score,
+        overlay_summary=excluded.overlay_summary,
+        action_size_cap=excluded.action_size_cap,
+        hedge_preference=excluded.hedge_preference,
+        payload_json=excluded.payload_json,
+        updated_at=excluded.updated_at
+      """,
+      (
+        int(run_id),
+        str(as_of_date or "").strip(),
+        row.get("score_background"),
+        str(row.get("final_regime") or ""),
+        str(row.get("final_alert_level") or ""),
+        str(row.get("decision_priority") or ""),
+        row.get("signal_confidence_score"),
+        str(row.get("overlay_summary") or ""),
+        row.get("action_size_cap"),
+        str(row.get("hedge_preference") or ""),
+        json.dumps(row.get("payload") or {}, ensure_ascii=False),
+        ts,
+        ts,
+      ),
+    )
+    conn.commit()
+  finally:
+    conn.close()
+
+
+def get_run_id_by_date(as_of_date: str):
+  conn = get_conn()
+  try:
+    row = conn.execute(
+      "SELECT id FROM model_runs WHERE run_type='macro_v2_1' AND as_of_date=? ORDER BY id DESC LIMIT 1",
+      (str(as_of_date or "").strip(),),
+    ).fetchone()
+    return int(row["id"]) if row else None
+  finally:
+    conn.close()
+
+
+def _get_rows(conn, sql, params=()):
+  return [dict(x) for x in conn.execute(sql, params).fetchall()]
+
+
+def get_regime_layers_by_run_id(run_id: int):
+  conn = get_conn()
+  try:
+    rows = _get_rows(
+      conn,
+      """
+      SELECT layer, layer_score, layer_regime, layer_confidence, key_drivers_json, key_risks_json
+      FROM regime_layer_snapshots
+      WHERE run_id=?
+      ORDER BY CASE layer WHEN 'shock' THEN 1 WHEN 'tactical' THEN 2 WHEN 'cyclical' THEN 3 ELSE 9 END, id ASC
+      """,
+      (int(run_id),),
+    )
+    out = []
+    for r in rows:
+      try:
+        r["key_drivers"] = json.loads(r.get("key_drivers_json") or "[]")
+      except Exception:
+        r["key_drivers"] = []
+      try:
+        r["key_risks"] = json.loads(r.get("key_risks_json") or "[]")
+      except Exception:
+        r["key_risks"] = []
+      r.pop("key_drivers_json", None)
+      r.pop("key_risks_json", None)
+      out.append(r)
+    return out
+  finally:
+    conn.close()
+
+
+def get_overlay_decision_by_run_id(run_id: int):
+  conn = get_conn()
+  try:
+    row = conn.execute(
+      """
+      SELECT overlay_type, overlay_level, override_applied, score_cap, regime_override, alert_override, rationale, triggered_signals_json
+      FROM overlay_decisions
+      WHERE run_id=?
+      ORDER BY id DESC
+      LIMIT 1
+      """,
+      (int(run_id),),
+    ).fetchone()
+    if not row:
+      return None
+    out = dict(row)
+    out["override_applied"] = bool(out.get("override_applied"))
+    try:
+      out["triggered_signals"] = json.loads(out.get("triggered_signals_json") or "[]")
+    except Exception:
+      out["triggered_signals"] = []
+    out.pop("triggered_signals_json", None)
+    return out
+  finally:
+    conn.close()
+
+
+def get_geopolitical_overlay_snapshot_by_run_id(run_id: int):
+  conn = get_conn()
+  try:
+    row = conn.execute(
+      """
+      SELECT conflict_intensity_score, supply_disruption_score, shipping_insurance_score, energy_microstructure_score,
+             macro_transmission_score, overlay_level, brent_price, brent_5d_change_pct, hormuz_status, conclusion
+      FROM geopolitical_overlay_snapshots
+      WHERE run_id=?
+      LIMIT 1
+      """,
+      (int(run_id),),
+    ).fetchone()
+    return dict(row) if row else None
+  finally:
+    conn.close()
+
+
+def get_score_calibration_by_run_id(run_id: int):
+  conn = get_conn()
+  try:
+    rows = _get_rows(
+      conn,
+      """
+      SELECT dimension_code, layer, static_level_score, momentum_score, resonance_penalty, tail_penalty,
+             pre_overlay_score, final_dimension_score, alert_color
+      FROM dimension_scores
+      WHERE run_id=?
+      ORDER BY dimension_code ASC
+      """,
+      (int(run_id),),
+    )
+    return rows
+  finally:
+    conn.close()
+
+
+def get_daily_analysis_by_run_id(run_id: int):
+  conn = get_conn()
+  try:
+    row = conn.execute(
+      """
+      SELECT as_of_date, score_background, final_regime, final_alert_level, decision_priority,
+             signal_confidence_score, overlay_summary, action_size_cap, hedge_preference, payload_json
+      FROM daily_analysis
+      WHERE run_id=?
+      LIMIT 1
+      """,
+      (int(run_id),),
+    ).fetchone()
+    if not row:
+      return None
+    out = dict(row)
+    try:
+      out["payload"] = json.loads(out.get("payload_json") or "{}")
+    except Exception:
+      out["payload"] = {}
+    out.pop("payload_json", None)
+    return out
+  finally:
+    conn.close()
+
+
+def bind_stock_macro_signals_to_run(as_of_date: str, run_id: int):
+  conn = get_conn()
+  try:
+    conn.execute(
+      """
+      UPDATE stock_macro_signals
+      SET run_id=?
+      WHERE as_of_date=?
+      """,
+      (int(run_id), str(as_of_date or "").strip()),
+    )
+    conn.commit()
+  finally:
+    conn.close()
+
+
+def upsert_portfolio_risk_snapshot(run_id: int, user_id: str, row: dict):
+  conn = get_conn()
+  try:
+    ts = now_iso()
+    conn.execute(
+      """
+      INSERT INTO portfolio_risk_snapshots
+      (run_id, user_id, regime_confidence, signal_confidence_score, hedge_preference, action_size_cap,
+       dynamic_top_risk_positions_json, payload_json, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(run_id, user_id) DO UPDATE SET
+        regime_confidence=excluded.regime_confidence,
+        signal_confidence_score=excluded.signal_confidence_score,
+        hedge_preference=excluded.hedge_preference,
+        action_size_cap=excluded.action_size_cap,
+        dynamic_top_risk_positions_json=excluded.dynamic_top_risk_positions_json,
+        payload_json=excluded.payload_json,
+        updated_at=excluded.updated_at
+      """,
+      (
+        int(run_id),
+        str(user_id or "").strip().lower(),
+        row.get("regime_confidence"),
+        row.get("signal_confidence_score"),
+        str(row.get("hedge_preference") or ""),
+        row.get("action_size_cap"),
+        json.dumps(row.get("dynamic_top_risk_positions") or [], ensure_ascii=False),
+        json.dumps(row.get("payload") or {}, ensure_ascii=False),
+        ts,
+        ts,
+      ),
+    )
+    conn.commit()
+  finally:
+    conn.close()
+
+
+def get_portfolio_risk_snapshot(run_id: int, user_id: str):
+  conn = get_conn()
+  try:
+    row = conn.execute(
+      """
+      SELECT run_id, user_id, regime_confidence, signal_confidence_score, hedge_preference, action_size_cap,
+             dynamic_top_risk_positions_json, payload_json, created_at, updated_at
+      FROM portfolio_risk_snapshots
+      WHERE run_id=? AND user_id=?
+      LIMIT 1
+      """,
+      (int(run_id), str(user_id or "").strip().lower()),
+    ).fetchone()
+    if not row:
+      return None
+    out = dict(row)
+    try:
+      out["dynamic_top_risk_positions"] = json.loads(out.get("dynamic_top_risk_positions_json") or "[]")
+    except Exception:
+      out["dynamic_top_risk_positions"] = []
+    try:
+      out["payload"] = json.loads(out.get("payload_json") or "{}")
+    except Exception:
+      out["payload"] = {}
+    out.pop("dynamic_top_risk_positions_json", None)
+    out.pop("payload_json", None)
+    return out
+  finally:
+    conn.close()
+
+
+def get_latest_portfolio_risk_snapshot(user_id: str):
+  conn = get_conn()
+  try:
+    row = conn.execute(
+      """
+      SELECT prs.run_id, prs.user_id, prs.regime_confidence, prs.signal_confidence_score, prs.hedge_preference, prs.action_size_cap,
+             prs.dynamic_top_risk_positions_json, prs.payload_json, prs.created_at, prs.updated_at,
+             mr.as_of_date
+      FROM portfolio_risk_snapshots prs
+      JOIN model_runs mr ON mr.id = prs.run_id
+      WHERE prs.user_id=?
+      ORDER BY prs.updated_at DESC, prs.id DESC
+      LIMIT 1
+      """,
+      (str(user_id or "").strip().lower(),),
+    ).fetchone()
+    if not row:
+      return None
+    out = dict(row)
+    try:
+      out["dynamic_top_risk_positions"] = json.loads(out.get("dynamic_top_risk_positions_json") or "[]")
+    except Exception:
+      out["dynamic_top_risk_positions"] = []
+    try:
+      out["payload"] = json.loads(out.get("payload_json") or "{}")
+    except Exception:
+      out["payload"] = {}
+    out.pop("dynamic_top_risk_positions_json", None)
+    out.pop("payload_json", None)
+    return out
+  finally:
+    conn.close()
+
+
+def get_stock_macro_signal_for_run(run_id: int, ticker: str, user_id: str = ""):
+  conn = get_conn()
+  try:
+    params = [int(run_id), str(ticker or "").strip().upper()]
+    sql = """
+      SELECT as_of_date, ticker, regime_code, macro_risk_score, signal, action_bias, explanation_short, explanation_long,
+             run_id, user_id, regime_contribution, overlay_contribution, valuation_penalty, volatility_penalty,
+             recommendation, recommendation_confidence, suggested_action_size, rationale_json, payload_json, created_at
+      FROM stock_macro_signals
+      WHERE run_id=? AND ticker=?
+    """
+    uid = str(user_id or "").strip().lower()
+    if uid:
+      sql += " AND (user_id=? OR user_id IS NULL OR user_id='') ORDER BY CASE WHEN user_id=? THEN 0 ELSE 1 END, id DESC LIMIT 1"
+      params.extend([uid, uid])
+    else:
+      sql += " ORDER BY id DESC LIMIT 1"
+    row = conn.execute(sql, tuple(params)).fetchone()
+    if not row:
+      return None
+    out = dict(row)
+    for key in ("rationale_json", "payload_json"):
+      try:
+        out[key] = json.loads(out.get(key) or "{}")
+      except Exception:
+        out[key] = {}
+    return out
+  finally:
+    conn.close()
 
 
 def upsert_openrouter_rankings_snapshot(payload: dict):
