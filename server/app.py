@@ -595,6 +595,7 @@ def _invalidate_cache(*prefixes):
 def _build_model_summary(model, latest_report=None):
   if not isinstance(model, dict):
     return {"error": "not_found"}
+  model = _enrich_model_with_warning_stack(model)
   dimensions = model.get("dimensions") or []
   alerts = model.get("triggerAlerts") or model.get("alerts") or []
   top_contributors = model.get("topDimensionContributors") or sorted(
@@ -641,12 +642,14 @@ def _build_model_summary(model, latest_report=None):
       "primary_decision_source": latest_run.get("primary_decision_source"),
       "topline_message": latest_run.get("topline_message"),
     },
+    "warningStack": model.get("warningStack") or {},
   }
 
 
 def _build_model_core(model):
   if not isinstance(model, dict):
     return {"error": "not_found"}
+  model = _enrich_model_with_warning_stack(model)
   return {
     "asOf": model.get("asOf") or "",
     "totalScore": model.get("totalScore") or 0,
@@ -660,7 +663,108 @@ def _build_model_core(model):
     "latestReportSummary": model.get("latestReportSummary") or "",
     "reportDate": model.get("reportDate") or "",
     "generatedAt": model.get("generatedAt") or "",
+    "warningStack": model.get("warningStack") or {},
   }
+
+
+def _enrich_model_with_warning_stack(model):
+  if not isinstance(model, dict):
+    return model
+  out = dict(model)
+  base_layer = {
+    "as_of_date": out.get("asOf") or "",
+    "total_score": out.get("totalScore") or 0,
+    "status": out.get("status") or "",
+    "dimensions": out.get("dimensions") or [],
+    "alerts": out.get("triggerAlerts") or out.get("alerts") or [],
+    "dimension_changes": out.get("topDimensionContributors") or [],
+  }
+
+  latest_run = get_latest_macro_model_run() or {}
+  run_id = int(latest_run.get("id") or 0)
+  run_as_of = str(latest_run.get("as_of_date") or out.get("asOf") or "")
+  if run_id:
+    date_run_id = get_run_id_by_date(run_as_of)
+    if date_run_id:
+      run_id = int(date_run_id)
+  analysis = get_daily_analysis_by_run_id(run_id) if run_id else {}
+  overlay = get_overlay_decision_by_run_id(run_id) if run_id else {}
+  geo_overlay = get_geopolitical_overlay_snapshot_by_run_id(run_id) if run_id else {}
+  layers = get_regime_layers_by_run_id(run_id) if run_id else []
+  regime_latest = get_latest_regime() or {}
+  action_latest = get_latest_action_bias() or {}
+
+  final_regime = (
+    (analysis or {}).get("final_regime")
+    or latest_run.get("final_regime")
+    or regime_latest.get("regime_code")
+    or out.get("status")
+    or ""
+  )
+  final_score = latest_run.get("total_score")
+  try:
+    final_score = float(final_score)
+  except Exception:
+    final_score = out.get("totalScore") or 0
+
+  if run_as_of:
+    out["asOf"] = run_as_of
+  out["totalScore"] = final_score
+  out["status"] = final_regime
+  out["latestRun"] = {
+    "run_id": run_id or None,
+    "as_of_date": run_as_of,
+    "total_score": final_score,
+    "final_regime": final_regime,
+    "regime_confidence": latest_run.get("regime_confidence"),
+    "overlay_level": latest_run.get("overlay_level"),
+    "overlay_override_applied": bool(latest_run.get("overlay_override_applied")) if latest_run else False,
+    "score_background": latest_run.get("score_background"),
+    "normalized_score": latest_run.get("normalized_score"),
+    "primary_decision_source": latest_run.get("primary_decision_source"),
+    "topline_message": latest_run.get("topline_message"),
+  }
+
+  overlay_level = (
+    (overlay or {}).get("overlay_level")
+    or (analysis or {}).get("final_alert_level")
+    or latest_run.get("overlay_level")
+    or ""
+  )
+
+  warning_stack = {
+    "run_id": run_id or None,
+    "as_of_date": run_as_of,
+    "base_model": base_layer,
+    "regime_engine": {
+      "final_regime": final_regime,
+      "score_background": (analysis or {}).get("score_background", latest_run.get("score_background")),
+      "normalized_score": latest_run.get("normalized_score"),
+      "regime_confidence": latest_run.get("regime_confidence"),
+      "decision_priority": (analysis or {}).get("decision_priority"),
+      "layers": layers or [],
+    },
+    "geopolitical_overlay": {
+      "overlay_level": overlay_level,
+      "overlay_decision": overlay or {},
+      "energy_geo_state": geo_overlay or {},
+      "override_applied": bool((overlay or {}).get("override_applied")),
+    },
+    "portfolio_risk_mapping": {
+      "summary": (analysis or {}).get("overlay_summary") or "",
+      "suggested_hedge": (analysis or {}).get("hedge_preference") or "",
+    },
+    "action_engine": {
+      "overall_bias": action_latest.get("overall_bias") or "",
+      "favored_styles": action_latest.get("favored_styles_json") or [],
+      "avoided_styles": action_latest.get("avoided_styles_json") or [],
+      "action_size_cap": (analysis or {}).get("action_size_cap"),
+      "hedge_preference": (analysis or {}).get("hedge_preference"),
+      "decision_priority": (analysis or {}).get("decision_priority"),
+    },
+  }
+  out["warningStack"] = warning_stack
+  return out
 
 
 def _build_model_tables(model):
@@ -2212,6 +2316,7 @@ def model_current():
       row = _cache_set("model:current", get_latest_model_snapshot())
     if not row:
       return jsonify({"error": "not_found"}), 404
+    row = _enrich_model_with_warning_stack(row)
     if view == "core":
       core_key = "model:current:core"
       core = _cache_get(core_key)

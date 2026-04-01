@@ -424,6 +424,15 @@ const statusMap = {
   "衰退/危机": "Recession/Crisis"
 };
 
+const regimeCodeLabelMap = {
+  growth_slowdown_credit_stable: { zh: "增长放缓 + 信用稳定", en: "Growth Slowdown + Credit Stable" },
+  liquidity_repair_growth_stable: { zh: "流动性修复 + 增长稳定", en: "Liquidity Repair + Growth Stable" },
+  inflation_reacceleration_energy_shock: { zh: "通胀再上行 + 油价冲击", en: "Inflation Reacceleration + Energy Shock" },
+  credit_stress_risk_off: { zh: "信用收缩 + 风险偏好塌陷", en: "Credit Stress + Risk-Off" },
+  recession_policy_easing: { zh: "衰退确认 + 政策宽松前期", en: "Recession + Early Policy Easing" },
+  stagflation_defensive: { zh: "滞胀防御", en: "Stagflation Defensive" }
+};
+
 const indicatorNameMap = {
   "10Y-3M利差（bps）": "10Y-3M Spread (bps)",
   "SOFR（%）": "SOFR (%)",
@@ -606,6 +615,8 @@ function t(key) {
 function localizeStatus(text) {
   const raw = asText(text);
   if (!raw) return raw;
+  const fromCode = regimeCodeLabelMap[raw];
+  if (fromCode) return getLang() === "zh" ? fromCode.zh : fromCode.en;
   if (getLang() === "zh") {
     const zh = Object.entries(statusMap).find(([, en]) => en.toLowerCase() === raw.toLowerCase());
     return zh ? zh[0] : raw;
@@ -1728,6 +1739,10 @@ async function renderLatestReportSummary(model) {
   const weakDims = [...(model.dimensions || [])].sort((a, b) => a.score - b.score).slice(0, 3);
   const aiInsight = model.latestReportAiInsight || model.aiInsight || {};
   const aiJson = aiInsight.insight || {};
+  const stack = model.warningStack || {};
+  const regimeFinal = asText(stack.regime_engine?.final_regime || model.latestRun?.final_regime || model.status);
+  const overlayLevel = asText(stack.geopolitical_overlay?.overlay_level || model.latestRun?.overlay_level || "");
+  const actionBias = asText(stack.action_engine?.overall_bias || "");
   let aiShort = getLang() === "zh" ? asText(aiJson.short_summary_zh) : asText(aiJson.short_summary_en);
   if (!aiShort) aiShort = asText(aiInsight.short_summary || "");
   if (getLang() === "en" && containsChinese(aiShort)) aiShort = "";
@@ -1735,8 +1750,11 @@ async function renderLatestReportSummary(model) {
   if (getLang() === "en" && containsChinese(latestSummary)) latestSummary = "";
 
   root.innerHTML = `
-    <div class="summary-score">${round(model.totalScore, 1)}/100 · ${escapeHtml(localizeStatus(model.status))}</div>
+    <div class="summary-score">${round(model.totalScore, 1)}/100 · ${escapeHtml(localizeStatus(regimeFinal || model.status))}</div>
     <div class="summary-line">${getLang() === "zh" ? "模型更新日" : "Model As-Of"}: ${escapeHtml(model.asOf)}</div>
+    <div class="summary-line">${getLang() === "zh" ? "Regime 引擎" : "Regime Engine"}: ${escapeHtml(localizeStatus(regimeFinal || "--"))}</div>
+    <div class="summary-line">${getLang() === "zh" ? "地缘/能源覆盖层" : "Geopolitical Overlay"}: ${escapeHtml(overlayLevel || "--")}</div>
+    <div class="summary-line">${getLang() === "zh" ? "动作建议层" : "Action Engine"}: ${escapeHtml(cwMapActionBias(actionBias) || "--")}</div>
     <div class="summary-line">${getLang() === "zh" ? "最新报告日期" : "Latest Report Date"}: ${escapeHtml(latest?.date || "--")}</div>
     <div class="summary-line">${getLang() === "zh" ? "简要结论" : "Short Summary"}: ${escapeHtml(
       aiShort ||
@@ -1764,6 +1782,27 @@ async function renderLatestReportSummary(model) {
     link.textContent = text;
     watchRoot.appendChild(link);
   });
+}
+
+function cwMapActionBias(bias) {
+  const raw = asText(bias).toLowerCase();
+  if (!raw) return "";
+  if (getLang() === "zh") {
+    if (raw === "increase") return "增配";
+    if (raw === "watch_to_add") return "观察后增配";
+    if (raw === "hold") return "持有";
+    if (raw === "reduce") return "降低仓位";
+    if (raw === "avoid_new_adds") return "回避新增";
+    if (raw.includes("hedge")) return "对冲风险";
+    return bias;
+  }
+  if (raw === "increase") return "Increase";
+  if (raw === "watch_to_add") return "Watch then Add";
+  if (raw === "hold") return "Hold";
+  if (raw === "reduce") return "Reduce";
+  if (raw === "avoid_new_adds") return "Avoid New Adds";
+  if (raw.includes("hedge")) return "Hedge Risk";
+  return bias;
 }
 
 function getDailyAiInsightContent(report, analysis) {
