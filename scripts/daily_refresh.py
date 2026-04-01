@@ -5,6 +5,7 @@ import io
 import json
 import math
 import os
+import re
 import ssl
 import sys
 import time
@@ -316,6 +317,85 @@ def yahoo_chart_last(symbol: str, rng: str = "10d", interval: str = "1d"):
     t, v = pairs[-1]
     d = datetime.fromtimestamp(t, tz=timezone.utc).date().isoformat()
     return d, v
+
+
+def yahoo_quote_page_last(symbol: str):
+    encoded = quote(symbol, safe="")
+    html = fetch_text(f"https://finance.yahoo.com/quote/{encoded}")
+    m = re.search(r'"regularMarketPrice"\s*:\s*\{"raw"\s*:\s*([0-9]+(?:\.[0-9]+)?)', html)
+    if not m:
+        m = re.search(r'"currentPrice"\s*:\s*\{"raw"\s*:\s*([0-9]+(?:\.[0-9]+)?)', html)
+    if not m:
+        raise ValueError(f"Yahoo quote page parse failed for {symbol}")
+    return date.today().isoformat(), float(m.group(1))
+
+
+def stooq_last(symbol: str):
+    # Example symbols: cl.f (WTI futures), cb.f (Brent futures)
+    txt = fetch_text(f"https://stooq.com/q/l/?s={symbol}&i=d")
+    rows = list(csv.reader(io.StringIO(txt)))
+    if len(rows) < 2:
+        raise ValueError(f"stooq empty for {symbol}")
+    row = rows[-1]
+    if len(row) < 7:
+        raise ValueError(f"stooq malformed for {symbol}")
+    d = str(row[1] or "").strip()
+    v = str(row[6] or "").strip()
+    if not d or not v:
+        raise ValueError(f"stooq missing value for {symbol}")
+    return d, float(v)
+
+
+def reuters_commodities_last(keyword: str):
+    html = fetch_text("https://www.reuters.com/markets/commodities/")
+    patterns = []
+    if keyword.upper() == "WTI":
+        patterns = [
+            r"(?:WTI|U\.S\.\s*crude|West\s+Texas\s+Intermediate)[^0-9]{0,120}([0-9]{2,3}\.[0-9]{1,3})",
+            r"(?:CLc1)[^0-9]{0,120}([0-9]{2,3}\.[0-9]{1,3})",
+        ]
+    else:
+        patterns = [
+            r"(?:Brent|Brent\s+crude)[^0-9]{0,120}([0-9]{2,3}\.[0-9]{1,3})",
+            r"(?:LCOc1)[^0-9]{0,120}([0-9]{2,3}\.[0-9]{1,3})",
+        ]
+    for p in patterns:
+        m = re.search(p, html, flags=re.IGNORECASE)
+        if m:
+            return date.today().isoformat(), float(m.group(1))
+    raise ValueError(f"Reuters parse failed for {keyword}")
+
+
+def latest_wti_with_fallback():
+    # Priority: Yahoo API -> Yahoo quote page -> Reuters -> Stooq -> FRED.
+    errors = []
+    for fn in (
+        lambda: yahoo_chart_last("CL=F"),
+        lambda: yahoo_quote_page_last("CL=F"),
+        lambda: reuters_commodities_last("WTI"),
+        lambda: stooq_last("cl.f"),
+        lambda: fred_last("DCOILWTICO"),
+    ):
+        try:
+            return fn()
+        except Exception as e:
+            errors.append(str(e)[:120])
+    raise ValueError("WTI all sources failed: " + " | ".join(errors))
+
+
+def latest_brent_with_fallback():
+    errors = []
+    for fn in (
+        lambda: yahoo_chart_last("BZ=F"),
+        lambda: yahoo_quote_page_last("BZ=F"),
+        lambda: reuters_commodities_last("BRENT"),
+        lambda: stooq_last("cb.f"),
+    ):
+        try:
+            return fn()
+        except Exception as e:
+            errors.append(str(e)[:120])
+    raise ValueError("BRENT all sources failed: " + " | ".join(errors))
 
 
 def yahoo_chart_series(symbol: str, rng: str = "6mo", interval: str = "1d"):
@@ -683,10 +763,9 @@ def run(mode="full", report_date=None, strict_freshness=False, require_openai_ai
                 elif code == "TED_SPREAD":
                     d, v = s_last("TEDRATE")
                 elif code == "WTI":
-                    try:
-                        d, v = yahoo_chart_last("CL=F")
-                    except Exception:
-                        d, v = s_last("DCOILWTICO")
+                    d, v = latest_wti_with_fallback()
+                elif code == "BRENT":
+                    d, v = latest_brent_with_fallback()
                 elif code == "CRB":
                     try:
                         d, v = yahoo_chart_last("^CRB")

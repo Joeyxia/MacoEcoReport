@@ -52,6 +52,8 @@ def build_v21_outputs(snapshot, regime=None, overlay=None):
   d09 = dims.get('D09', 50)
   d03 = dims.get('D03', 50)
   vix = _safe(inds.get('VIX'), 20)
+  move = _safe(inds.get('MOVE'), 100)
+  inf_5y5y = _safe(inds.get('5Y5Y通胀预期（%）'), _safe(inds.get('INF_EXP_5Y5Y'), 2.4))
   hy = _safe(inds.get('HY_OAS'), 350)
   wti = _safe(inds.get('WTI'), 80)
 
@@ -79,7 +81,11 @@ def build_v21_outputs(snapshot, regime=None, overlay=None):
     normalized = min(normalized, score_cap)
 
   base_regime = str((regime or {}).get('regime_code') or 'growth_slowdown_credit_stable')
-  forced_stagflation = overlay_level_num >= 2 and d09 <= 52 and d03 >= 70
+  # Hard overlay regime switch rule:
+  # D11 level >= 2 and volatility + inflation expectation jointly rising.
+  d09_vol_up = (d09 <= 55) or (vix >= 24) or (move >= 110)
+  d03_infexp_up = (d03 >= 65) or (inf_5y5y >= 2.6) or (wti >= 95)
+  forced_stagflation = overlay_level_num >= 2 and d09_vol_up and d03_infexp_up
   final_regime = 'stagflation_defensive' if forced_stagflation else base_regime
 
   override_applied = bool(score_cap is not None or forced_stagflation)
@@ -184,8 +190,13 @@ def build_v21_outputs(snapshot, regime=None, overlay=None):
       f'D11={round(d11,2)}',
       f'WTI={round(wti,2)}',
       f'VIX={round(vix,2)}',
+      f'MOVE={round(move,2)}',
+      f'INF5Y5Y={round(inf_5y5y,3)}',
       f'D03={round(d03,2)}',
       f'D09={round(d09,2)}',
+      f'D09_VOL_UP={1 if d09_vol_up else 0}',
+      f'D03_INFEXP_UP={1 if d03_infexp_up else 0}',
+      f'FORCED_STAGFLATION={1 if forced_stagflation else 0}',
     ],
   }
 
