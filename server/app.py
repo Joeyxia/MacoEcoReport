@@ -2385,11 +2385,48 @@ def api_latest_run():
 
 @app.route("/api/latest-analysis", methods=["GET"])
 def api_latest_analysis():
+  """PRD-aligned merged view: returns daily_analysis (regime / overlay /
+  decision priority) PLUS daily_reports (headline / executive_summary /
+  ai short + detailed interpretation) for the latest macro_v2_1 run.
+
+  This consolidates what was previously two API roundtrips and matches the
+  schema in PRD section 6 (latest-analysis example payload).
+  """
   run_id, as_of_date = _resolve_macro_run_id("")
   if not run_id:
     return jsonify({"error": "not_found"}), 404
-  row = get_daily_analysis_by_run_id(run_id) or {}
-  return _etag_response({"ok": True, "run_id": run_id, "as_of_date": as_of_date, "item": row})
+  analysis = get_daily_analysis_by_run_id(run_id) or {}
+  report = get_daily_report(as_of_date) or {}
+  meta = report.get("meta") or {}
+  ai = report.get("aiAnalysis") or {}
+  payload = report.get("reportPayload") or {}
+  primary_drivers = (payload or {}).get("primaryDrivers") or (payload or {}).get("drivers") or []
+  triggered_alerts = [a for a in ((payload or {}).get("triggerAlerts") or []) if a.get("triggered")]
+  merged = {
+    "run_id": run_id,
+    "as_of_date": as_of_date,
+    "total_score": meta.get("score"),
+    "regime": analysis.get("final_regime") or "",
+    "alert_level": analysis.get("final_alert_level") or "",
+    "decision_priority": analysis.get("decision_priority") or "",
+    "signal_confidence_score": analysis.get("signal_confidence_score"),
+    "headline": (ai.get("short_summary") or meta.get("summary") or "").strip(),
+    "executive_summary": (ai.get("detailed_interpretation") or "").strip(),
+    "executive_summary_zh": (ai.get("detailed_interpretation_zh") or "").strip(),
+    "executive_summary_en": (ai.get("detailed_interpretation_en") or "").strip(),
+    "headline_zh": (ai.get("short_summary_zh") or "").strip(),
+    "headline_en": (ai.get("short_summary_en") or "").strip(),
+    "recommended_stance": analysis.get("hedge_preference") or "",
+    "ai_status": ai.get("status") or "",
+    "ai_model": ai.get("model") or "",
+    "primary_drivers_json": primary_drivers,
+    "key_risks_json": triggered_alerts,
+    "overlay_summary": analysis.get("overlay_summary") or "",
+    "action_size_cap": analysis.get("action_size_cap"),
+    # raw analysis row kept for backward compat with any existing FE code.
+    "item": analysis,
+  }
+  return _etag_response({"ok": True, **merged})
 
 
 @app.route("/api/model/tables", methods=["GET"])
