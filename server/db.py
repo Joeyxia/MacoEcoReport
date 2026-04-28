@@ -1107,12 +1107,13 @@ def init_db():
       conn.commit()
 
     # 2) TTL prune for high-velocity polymarket arbitrage_opportunities.
-    #    Keep latest 60 days; older rows are pure history bloat.
+    #    Keep latest 7 days; older rows are pure history bloat.
+    #    Table grows ~31K rows/day on prod; 60d retained ~1M rows ≈ 1.3GB DB.
     conn.execute(
       """
       DELETE FROM arbitrage_opportunities
       WHERE discovered_at IS NOT NULL
-        AND discovered_at < datetime('now', '-60 days')
+        AND discovered_at < datetime('now', '-7 days')
       """
     )
     # 3) TTL prune for token usage telemetry (kept 90 days).
