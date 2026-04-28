@@ -24,7 +24,19 @@ def _dim_score_map(snapshot):
 
 
 def _indicator_map(snapshot):
+  """Build a code -> latest_value lookup, pulling from both
+  keyIndicatorsSnapshot (curated dashboard set) and indicatorDetails
+  (full 14-dim indicator universe). keyIndicatorsSnapshot wins on
+  conflict because it is the post-validation curated value.
+  """
   out = {}
+  # Lower-priority pass: full indicator universe (gives access to BRENT etc).
+  for item in (snapshot or {}).get('indicatorDetails') or []:
+    code = str(item.get('IndicatorCode') or '').strip()
+    if not code:
+      continue
+    out[code] = _safe(item.get('LatestValue'), None)
+  # Higher-priority pass: curated key indicator snapshot.
   for item in (snapshot or {}).get('keyIndicatorsSnapshot') or []:
     k = str(item.get('label') or '').strip()
     if not k:
@@ -55,7 +67,9 @@ def build_v21_outputs(snapshot, regime=None, overlay=None):
   move = _safe(inds.get('MOVE'), 100)
   inf_5y5y = _safe(inds.get('5Y5Y通胀预期（%）'), _safe(inds.get('INF_EXP_5Y5Y'), 2.4))
   hy = _safe(inds.get('HY_OAS'), 350)
-  wti = _safe(inds.get('WTI'), 80)
+  wti_real = inds.get('WTI')
+  brent_real = inds.get('BRENT')
+  wti = _safe(wti_real, 80)
 
   if d11 >= 90 or wti >= 105:
     overlay_level = 'level_3'
@@ -207,8 +221,11 @@ def build_v21_outputs(snapshot, regime=None, overlay=None):
     'energy_microstructure_score': round(_clamp((wti - 75) * 1.1, 0, 100), 2),
     'macro_transmission_score': round(_clamp((vix - 15) * 4 + max(0, (hy - 300) / 3), 0, 100), 2),
     'overlay_level': overlay_level,
-    'brent_price': round(wti + 3.5, 2),
-    'brent_5d_change_pct': round(_clamp((wti - 90) * 0.9, -20, 20), 2),
+    'brent_price': (round(brent_real, 2) if brent_real is not None else None),
+    'brent_source': ('indicator' if brent_real is not None else 'unavailable'),
+    'wti_price': (round(wti_real, 2) if wti_real is not None else None),
+    'brent_5d_change_pct': None,  # TODO: requires storing 5d Brent history before computing
+    'brent_5d_change_pct_source': 'unavailable',
     'hormuz_status': 'stressed' if overlay_level_num >= 2 else 'normal',
     'conclusion': '能源与地缘冲击已进入需防御管理阶段。' if overlay_level_num >= 2 else '地缘风险可控，维持观察。',
   }
