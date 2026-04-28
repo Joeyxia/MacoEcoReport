@@ -1078,14 +1078,123 @@ def init_db():
     except sqlite3.OperationalError:
       pass
   conn.commit()
+  # ---- One-time cleanups (idempotent, safe to run on every boot) ----
+  try:
+    # 1) Collapse duplicate macro_v2_1 model_runs per as_of_date.
+    #    Keep the most recent row, delete older duplicates and their child
+    #    daily_analysis rows.
+    cursor = conn.execute(
+      """
+      SELECT as_of_date,
+             COUNT(*) AS c,
+             MAX(id) AS keep_id,
+             GROUP_CONCAT(id) AS all_ids
+      FROM model_runs
+      WHERE run_type='macro_v2_1' AND as_of_date IS NOT NULL AND as_of_date <> ''
+      GROUP BY as_of_date HAVING c > 1
+      """
+    )
+    dup_dates = list(cursor.fetchall())
+    for r in dup_dates:
+      keep = int(r["keep_id"])
+      ids = [int(x) for x in str(r["all_ids"]).split(",") if x]
+      drop = [i for i in ids if i != keep]
+      if drop:
+        placeholder = ",".join("?" for _ in drop)
+        conn.execute(f"DELETE FROM daily_analysis WHERE run_id IN ({placeholder})", drop)
+        conn.execute(f"DELETE FROM model_runs WHERE id IN ({placeholder})", drop)
+    if dup_dates:
+      conn.commit()
+
+    # 2) TTL prune for high-velocity polymarket arbitrage_opportunities.
+    #    Keep latest 60 days; older rows are pure history bloat.
+    conn.execute(
+      """
+      DELETE FROM arbitrage_opportunities
+      WHERE discovered_at IS NOT NULL
+        AND discovered_at < datetime('now', '-60 days')
+      """
+    )
+    # 3) TTL prune for token usage telemetry (kept 90 days).
+    conn.execute(
+      """
+      DELETE FROM monitor_token_usage
+      WHERE logged_at IS NOT NULL
+        AND logged_at < datetime('now', '-90 days')
+      """
+    )
+    conn.commit()
+  except Exception:
+    # Cleanup is best-effort; never block server startup.
+    pass
   conn.close()
 
 
 def create_macro_model_run(as_of_date: str, run_payload: dict):
+  """Create or update the macro_v2_1 run for a given as_of_date.
+
+  Previously this always INSERTed a new row, which caused two model_runs
+  per day (one from fetch-only cron at 08:00, one from report-only cron
+  at 09:00) and downstream produced duplicate daily_analysis rows.
+
+  Now we UPSERT by (run_type='macro_v2_1', as_of_date) so each calendar
+  day has exactly one macro run_id. The latest invocation's payload wins.
+  """
   conn = get_conn()
   try:
     ts = now_iso()
     payload = run_payload if isinstance(run_payload, dict) else {}
+    date_key = str(as_of_date or "").strip()
+    existing = conn.execute(
+      "SELECT id FROM model_runs WHERE run_type='macro_v2_1' AND as_of_date=? ORDER BY id DESC LIMIT 1",
+      (date_key,),
+    ).fetchone()
+    if existing and int(existing["id"] or 0) > 0:
+      run_id = int(existing["id"])
+      conn.execute(
+        """
+        UPDATE model_runs SET
+          run_time=?,
+          model_version='macro-v2.1',
+          train_start=?,
+          train_end=?,
+          status=?,
+          notes=?,
+          total_score=?,
+          score_background=?,
+          normalized_score=?,
+          final_regime=?,
+          regime_confidence=?,
+          overlay_level=?,
+          overlay_override_applied=?,
+          score_cap_applied=?,
+          primary_decision_source=?,
+          topline_message=?,
+          payload_json=?
+        WHERE id=?
+        """,
+        (
+          ts,
+          ts,
+          ts,
+          str(payload.get("status") or "ok"),
+          str(payload.get("notes") or ""),
+          float(payload.get("total_score") or 0),
+          float(payload.get("score_background") or 0),
+          float(payload.get("normalized_score") or 0),
+          str(payload.get("final_regime") or ""),
+          float(payload.get("regime_confidence") or 0),
+          str(payload.get("overlay_level") or ""),
+          1 if payload.get("overlay_override_applied") else 0,
+          payload.get("score_cap_applied"),
+          str(payload.get("primary_decision_source") or ""),
+          str(payload.get("topline_message") or ""),
+          json.dumps(payload.get("payload") or {}, ensure_ascii=False),
+          run_id,
+        ),
+      )
+      conn.commit()
+      return run_id
     cur = conn.execute(
       """
       INSERT INTO model_runs
@@ -1105,7 +1214,7 @@ def create_macro_model_run(as_of_date: str, run_payload: dict):
         str(payload.get("status") or "ok"),
         str(payload.get("notes") or ""),
         "macro_v2_1",
-        str(as_of_date or "").strip(),
+        date_key,
         float(payload.get("total_score") or 0),
         float(payload.get("score_background") or 0),
         float(payload.get("normalized_score") or 0),
