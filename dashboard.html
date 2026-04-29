@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="macro-api-base" content="https://api.nexo.hk" />
-    <title data-i18n="title_dashboard">Macro Risk Monitor | Dashboard</title>
+    <title data-i18n="title_today">Nexo · 今日</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,159 +12,254 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=20260309p" />
-    <link rel="stylesheet" href="styles-v2.css?v=20260428a1" />
+    <link rel="stylesheet" href="styles-v2.css?v=20260429a2" />
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js" defer></script>
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260317b1" defer></script>
+    <script src="app.js?v=20260429a1" defer></script>
     <script src="capital-warning.js?v=20260401v21a" defer></script>
+    <script src="dashboard-v2.js?v=20260429a1" defer></script>
   </head>
   <body data-page="dashboard">
     <div class="bg-layer"></div>
-    <header class="site-header">
-      <a class="brand" href="index.html" data-i18n="brand_name">Macro Risk Monitor</a>
-      <nav>
-        <a class="nav-link active" href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
-        <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
-        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
-        <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
-        <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
-        <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
-        <a class="nav-link" href="portfolio-watchlist.html" data-i18n="nav_portfolio_watchlist">Portfolio Watchlist</a>
-        <a class="nav-link" href="regime-transmission.html" data-i18n="nav_regime_transmission">Regime & Transmission</a>
-        <a class="nav-link" href="stock-prediction.html" data-i18n="nav_stock_prediction">Stock Prediction</a>
-        <a class="nav-link" href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
-        <a class="nav-link" href="polymarket-pnl.html" data-i18n="nav_polymarket_pnl">Polymarket PnL</a>
-        <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
-        <a class="nav-link" href="about.html" data-i18n="nav_intro">About Nexo</a>
-      </nav>
-      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
+
+    <!-- Hidden site-header so auth-guard.js mountAuthSession() can attach
+         logout/email controls without crashing. The visible auth status is
+         rendered by dashboard-v2.js into the sidebar footer instead. -->
+    <header
+      class="site-header"
+      style="visibility:hidden;position:absolute;top:0;left:0;height:0;overflow:hidden;pointer-events:none;"
+      aria-hidden="true"
+    >
+      <a class="brand" href="dashboard.html">Nexo</a>
+      <nav></nav>
+      <button id="lang-toggle-shim" class="btn ghost lang-toggle" type="button" tabindex="-1">中文</button>
     </header>
 
-    <main class="page page-dashboard">
-      <section class="panel hero">
-        <div>
-          <p class="eyebrow" data-i18n="dashboard_eyebrow">Global Macro Crisis Radar</p>
-          <h1 data-i18n="dashboard_title">Institutional 14-Dimension Monitoring Dashboard</h1>
-          <p class="subtle" data-i18n="dashboard_subtitle">
-            Upload your model workbook to refresh total score, dimension contribution, and warning signals.
-          </p>
-          <div class="upload-wrap">
-            <label for="xlsx-input" class="btn" data-i18n="load_model">Load Model (.xlsx)</label>
-            <input id="xlsx-input" type="file" accept=".xlsx" />
-            <span id="file-status" class="subtle" data-i18n="using_sample_data">Using built-in sample data</span>
+    <div class="layout">
+      <aside>
+        <div class="brand">
+          <span class="logo">N</span>
+          <span data-i18n="brand">NEXO</span>
+          <span class="ver">v2.1</span>
+        </div>
+
+        <div class="status-row">
+          <div>
+            <span class="green-dot"></span>
+            <span class="lbl" data-i18n="status_live">实时</span> ·
+            <span class="val">
+              <span data-i18n="status_run">运行</span> #<span id="sb-run-id">--</span>
+            </span>
+          </div>
+          <div>
+            <span class="lbl" data-i18n="status_latency">延迟</span> ·
+            <span class="val" id="sb-latency">--</span>
+          </div>
+          <div>
+            <span class="lbl" data-i18n="status_fresh">新鲜度</span> ·
+            <span class="val">
+              <span id="sb-fresh">--</span> <span data-i18n="status_indicators">指标</span>
+            </span>
           </div>
         </div>
-        <div class="score-card">
-          <p class="score-label" data-i18n="macro_composite_score">Macro Composite Score</p>
-          <div class="score-value" id="total-score">--</div>
-          <p class="score-meta">
-            <span data-i18n="as_of">As of</span> <span id="as-of">--</span> · <strong id="macro-status">--</strong>
-          </p>
+
+        <div class="nav-section">
+          <div class="nav-label" data-i18n="nav_briefing">日报简报</div>
+          <div class="nav">
+            <a class="active" href="dashboard.html">
+              <span data-i18n="nav_today">今日</span>
+              <span class="pill warn" id="sb-pill-today" hidden></span>
+            </a>
+            <a href="regime-transmission.html" data-i18n="nav_markets">市场传导</a>
+            <a href="portfolio-watchlist.html" data-i18n="nav_portfolio">持仓风险</a>
+            <a href="#" data-todo="geo">
+              <span data-i18n="nav_geo">地缘监控</span>
+              <span class="pill warn" id="sb-pill-geo" hidden></span>
+            </a>
+            <a href="daily-report.html" data-i18n="nav_reports">报告归档</a>
+          </div>
         </div>
-      </section>
 
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="latest_report_summary">Latest Report Summary</h2>
-          <div id="latest-report-summary" class="summary-panel"></div>
-        </article>
-
-        <article class="panel">
-          <h2 data-i18n="top_dimension_contributors">Top Dimension Contributors</h2>
-          <div id="dimension-bars" class="bars"></div>
-        </article>
-      </section>
-
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="section_regime_engine">Regime Engine</h2>
-          <div id="regime-engine-card" class="summary-panel"></div>
-        </article>
-        <article class="panel">
-          <h2 data-i18n="section_geopolitical_overlay">Geopolitical Overlay</h2>
-          <div id="geopolitical-overlay-card" class="summary-panel"></div>
-        </article>
-      </section>
-
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="section_action_bias">Action Bias</h2>
-          <div id="action-bias-card" class="summary-panel"></div>
-        </article>
-        <article class="panel">
-          <h2 data-i18n="section_portfolio_macro_risk">Portfolio Macro Risk</h2>
-          <div id="portfolio-macro-risk-card" class="summary-panel"></div>
-        </article>
-      </section>
-
-      <section class="panel">
-        <h2 data-i18n="section_sector_asset_transmission">Sector / Asset Transmission</h2>
-        <div id="transmission-heatmap" class="table-wrap"></div>
-      </section>
-
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="triggered_alerts">Triggered Alerts</h2>
-          <ul id="alert-list" class="alerts"></ul>
-        </article>
-
-        <article class="panel">
-          <h2 data-i18n="daily_watch_items">Daily Watch Items</h2>
-          <div id="daily-watch-items" class="report-links"></div>
-        </article>
-      </section>
-
-      <section class="panel">
-        <h2 data-i18n="primary_drivers">Primary Drivers</h2>
-        <div class="grid three-col" id="drivers"></div>
-      </section>
-
-      <section class="panel">
-        <div class="section-head">
-          <h2 data-i18n="key_indicators_overview">Key Indicators Snapshot</h2>
+        <div class="nav-section">
+          <div class="nav-label" data-i18n="nav_tools">工具集</div>
+          <div class="nav">
+            <a href="indicators.html" data-i18n="nav_indicators">指标库</a>
+            <a href="ai-assistant.html" data-i18n="nav_ai_assistant">AI 助手</a>
+            <a href="stock-prediction.html" data-i18n="nav_stock_prediction">个股预测</a>
+            <a href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
+            <a href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
+          </div>
         </div>
-        <div id="key-indicators-grid" class="grid three-col"></div>
-      </section>
 
-      <section class="panel">
-        <div class="section-head">
-          <h2 data-i18n="dimensions_14_detail">All 14 Dimensions Detail (from Dimensions Sheet)</h2>
-          <p class="subtle" data-i18n="dimensions_14_detail_desc">This section shows complete dimension definitions, tiers, weights, and update frequencies.</p>
+        <div class="footer-mini">
+          <div class="auth-line" id="sb-auth-line" hidden></div>
+          <span data-i18n="footer_subscribe">订阅 · 关于</span><br />
+          <span style="color: var(--text-dim)">
+            <span data-i18n="footer_build">构建版本</span> 2026.04.29
+          </span>
         </div>
-        <div id="dimension-layers" class="model-layers"></div>
-      </section>
+      </aside>
 
-      <section class="panel">
-        <div class="section-head">
-          <h2 data-i18n="model_core_tables">Model Core Tables</h2>
-          <p class="subtle" data-i18n="model_core_tables_desc">Complete structured data from your 14-dimension model.</p>
+      <main>
+        <div class="top-bar">
+          <h1>
+            <span class="live"></span>
+            <span data-i18n="title_today">今日</span>
+          </h1>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div class="meta">
+              <span id="tb-as-of">--</span>
+              <span class="sep">·</span>
+              <span data-i18n="meta_background">背景分</span>
+              <span style="color: var(--text)" id="tb-score">--</span>
+              <span id="tb-delta"></span>
+            </div>
+            <button id="lang-toggle" class="btn ghost lang-toggle" type="button">EN</button>
+          </div>
         </div>
-        <div class="grid two-col">
-          <article>
-            <h3 data-i18n="dimensions">Dimensions</h3>
-            <div id="dimensions-table" class="table-wrap"></div>
-          </article>
-          <article>
-            <h3 data-i18n="inputs_latest">Inputs (Latest)</h3>
-            <div id="inputs-table" class="table-wrap"></div>
-          </article>
-        </div>
-        <div class="grid two-col table-group-gap">
-          <article>
-            <h3 data-i18n="indicators">Indicators</h3>
-            <div id="indicators-table" class="table-wrap tall"></div>
-          </article>
-          <article>
-            <h3 data-i18n="scores">Scores</h3>
-            <div id="scores-table" class="table-wrap tall"></div>
-          </article>
-        </div>
-        <article class="table-block">
-          <h3 data-i18n="alerts">Alerts</h3>
-          <div id="alerts-table" class="table-wrap"></div>
-        </article>
-      </section>
 
-    </main>
+        <div class="hero" id="hero-card">
+          <div class="label" data-i18n="today_brief_label">每日简报</div>
+          <div class="punch" id="hero-punch">
+            <span class="muted" data-i18n="loading">载入中…</span>
+          </div>
+          <div class="chips" id="hero-chips"></div>
+        </div>
+
+        <details open id="why-drawer">
+          <summary>
+            <span data-i18n="why_summary">为什么是这个结论 · 推理痕迹</span>
+            <span class="meta" id="why-meta"></span>
+          </summary>
+          <div class="trace" id="why-trace"></div>
+        </details>
+
+        <div class="section-label">
+          <span class="num">L1</span>
+          <span data-i18n="sec_l1">宏观脉搏 · 14 维度</span>
+        </div>
+        <div class="card hover-glow">
+          <div class="dim-grid" id="dim-grid"></div>
+          <div class="note" id="dim-note"></div>
+        </div>
+
+        <div class="section-label">
+          <span class="num">L2</span>
+          <span data-i18n="sec_l2">市场传导</span>
+        </div>
+        <div class="card hover-glow">
+          <div class="tx-grid" id="tx-grid"></div>
+          <div class="note">
+            <span id="tx-note-text"></span>
+            <a href="regime-transmission.html" class="link" data-i18n="tx_note_link">查看完整传导地图 →</a>
+          </div>
+        </div>
+
+        <div class="section-label">
+          <span class="num">L3</span>
+          <span data-i18n="sec_l3">持仓影响</span>
+        </div>
+        <div class="card hover-glow">
+          <div class="pos-grid">
+            <div class="pos-list">
+              <h4 data-i18n="pos_top_risk">高风险持仓</h4>
+              <div id="pos-risk"></div>
+            </div>
+            <div class="pos-list">
+              <h4 data-i18n="pos_top_benefit">受益持仓</h4>
+              <div id="pos-benefit"></div>
+            </div>
+          </div>
+          <div class="note">
+            <span id="pos-note-text"></span>
+            <a href="portfolio-watchlist.html" class="link" data-i18n="pos_note_link">打开持仓风险视图 →</a>
+          </div>
+        </div>
+
+        <div class="section-label">
+          <span class="num">L4</span>
+          <span data-i18n="sec_l4">动作建议</span>
+        </div>
+        <div class="card hover-glow">
+          <div class="action-stats" id="action-stats"></div>
+          <div class="action-text" id="action-text">--</div>
+        </div>
+
+        <div class="section-label">
+          <span class="num">XO</span>
+          <span data-i18n="sec_xo">地缘叠加层</span>
+        </div>
+        <div class="geo-banner" id="geo-banner">
+          <div class="head">
+            <span class="title">
+              <span class="lvl" id="geo-lvl">--</span>
+              <span id="geo-title"></span>
+            </span>
+            <a href="#" data-todo="geo" data-i18n="geo_banner_link">打开地缘监控 →</a>
+          </div>
+          <div class="geo-row" id="geo-row">
+            <div>
+              <div class="k" data-i18n="geo_conflict">冲突</div>
+              <div class="v" id="geo-conflict">--</div>
+            </div>
+            <div>
+              <div class="k" data-i18n="geo_supply">供给</div>
+              <div class="v" id="geo-supply">--</div>
+            </div>
+            <div>
+              <div class="k" data-i18n="geo_shipping">航运</div>
+              <div class="v" id="geo-shipping">--</div>
+            </div>
+            <div>
+              <div class="k" data-i18n="geo_oil">Brent · WTI</div>
+              <div class="v" id="geo-oil">--</div>
+            </div>
+          </div>
+          <div class="geo-foot" id="geo-foot" data-i18n="geo_foot">// Brent 数据未就绪 · 指标尚未接入。当前以 WTI 作为唯一油价来源。</div>
+        </div>
+
+        <details class="audit" id="audit-drawer">
+          <summary>
+            <span data-i18n="audit_summary">$ 审计 · 事实包 · AI 响应 · 运行元数据</span>
+            <span style="float: right; color: var(--text-3);" id="audit-meta"></span>
+          </summary>
+          <div class="body" id="audit-body">--</div>
+        </details>
+
+        <!--
+          Hidden compatibility shim. The legacy app.js renderDashboard() and
+          capital-warning.js DOMContentLoaded handler write to these IDs.
+          They are intentionally invisible: dashboard-v2.js renders the
+          actual UI into the new layout above. Removing these IDs would
+          force renderDashboard / cwText to throw on a missing element on
+          first load. Future PR: introduce model-explorer.html to own the
+          xlsx upload + raw-table views.
+        -->
+        <div id="legacy-shim" hidden aria-hidden="true">
+          <span id="total-score"></span>
+          <span id="as-of"></span>
+          <span id="macro-status"></span>
+          <input id="xlsx-input" type="file" accept=".xlsx" />
+          <span id="file-status"></span>
+          <div id="latest-report-summary"></div>
+          <div id="dimension-bars"></div>
+          <div id="regime-engine-card"></div>
+          <div id="geopolitical-overlay-card"></div>
+          <div id="action-bias-card"></div>
+          <div id="portfolio-macro-risk-card"></div>
+          <div id="transmission-heatmap"></div>
+          <ul id="alert-list"></ul>
+          <div id="daily-watch-items"></div>
+          <div id="drivers"></div>
+          <div id="key-indicators-grid"></div>
+          <div id="dimension-layers"></div>
+          <div id="dimensions-table"></div>
+          <div id="inputs-table"></div>
+          <div id="indicators-table"></div>
+          <div id="scores-table"></div>
+          <div id="alerts-table"></div>
+        </div>
+      </main>
+    </div>
   </body>
 </html>
