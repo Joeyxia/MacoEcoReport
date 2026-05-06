@@ -40,8 +40,14 @@
 
   async function api(path) {
     const t0 = performance.now();
+    // Keep /api/* on same origin so the session cookie is always sent.
+    // Crossing to api.nexo.hk subdomain fails because Flask's
+    // SESSION_COOKIE_DOMAIN is unset (host-only cookie). Mirrors the
+    // cwApi (capital-warning.js:302) and apiFetch (app.js:742) idiom
+    // introduced in commit eaaea53.
+    const url = path.startsWith("/api/") ? path : API + path;
     try {
-      const r = await fetch(API + path, { credentials: "include", cache: "no-store" });
+      const r = await fetch(url, { credentials: "include", cache: "no-store" });
       const dt = Math.round(performance.now() - t0);
       if (!r.ok) {
         console.debug(`[dashboard-v2] fetch ${path} failed ${r.status} in ${dt}ms`);
