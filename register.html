@@ -159,12 +159,11 @@
           location.href = NEXT.charAt(0) === "/" ? NEXT : "/" + NEXT;
         }
 
-        // Auto-redirect already-authenticated visitor (preserves prior register.html behaviour).
-        // Same-origin /api/auth/me so session cookie flows on nexo.hk → matches dashboard's hot-fix idiom.
-        fetch("/api/auth/me", { credentials: "include", cache: "no-store" })
-          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
-          .then(function (x) { if (x.ok && x.d && x.d.authenticated) goNext(); })
-          .catch(function () { /* not signed in — stay on auth page */ });
+        // /register.html is the always-on auth UI: no /api/auth/me probe, no
+        // auto-redirect for already-authenticated visitors. Lets users switch
+        // accounts or recover from a stale session without ping-ponging
+        // through dashboard. NEXT/goNext are still used by login/register
+        // success handlers below to honour ?next= from auth-guard.js.
 
         // i18n: prefer t("error_<code>") from app.js, fall back to raw code so unknown
         // future error codes (e.g. rate_limited) at least surface something readable.
