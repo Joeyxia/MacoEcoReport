@@ -596,7 +596,12 @@
     btn?.addEventListener("click", async () => {
       btn.disabled = true;
       try {
-        await fetch(API + "/api/auth/logout", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" } });
+        // Same-origin so the cookie set by /api/auth/login (also same-origin
+        // since PR #5 hot-fix) is the one that gets cleared. Going through
+        // API + "/api/auth/logout" would hit api.nexo.hk and clear an
+        // unrelated host-only session, leaving nexo.hk's cookie alive.
+        // Mirrors auth-guard.js:61 idiom.
+        await fetch("/api/auth/logout", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" } });
       } catch (_) { /* ignore */ }
       location.replace("/register.html");
     });
