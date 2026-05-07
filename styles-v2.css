@@ -922,3 +922,328 @@ body::before{
 .layout .grid-3{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .layout .grid-4{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .layout .mono{ font-family: var(--mono); }
+
+/* ===========================================================
+   step 2b · auth (register.html) — auth-shell / auth-form /
+   tabs / human-verify / feat cards
+   =========================================================== */
+
+.auth-shell{
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+}
+
+/* ─── 左侧 brand panel ─── */
+.auth-brand{
+  padding: 48px 56px 40px;
+  display: flex; flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid var(--border);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%);
+  position: relative;
+  overflow: hidden;
+}
+.auth-brand::before{
+  content: '';
+  position: absolute;
+  bottom: -120px; left: -80px;
+  width: 480px; height: 480px;
+  background: radial-gradient(circle, var(--accent-glow), transparent 60%);
+  filter: blur(70px);
+  opacity: 0.5;
+}
+.auth-brand .head{
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.auth-brand .head .logo{
+  width: 26px; height: 26px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  display: grid; place-items: center;
+  color: var(--accent);
+  font-size: 13px; font-weight: 600;
+  box-shadow: 0 0 18px var(--accent-glow);
+}
+.auth-brand .head .ver{
+  margin-left: auto;
+  font-size: 10px; color: var(--text-3);
+  font-family: var(--mono); letter-spacing: 0.5px;
+}
+
+.auth-brand .hero{
+  position: relative; z-index: 1;
+  padding: 60px 0;
+}
+.auth-brand .eyebrow{
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent-2);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 18px;
+}
+.auth-brand .eyebrow::before{
+  content: '';
+  width: 28px; height: 1px; background: var(--accent);
+}
+.auth-brand h1{
+  font-size: 36px; font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.6px;
+  margin: 0 0 18px;
+  max-width: 480px;
+}
+.auth-brand h1 .hi{ color: var(--accent-2); }
+.auth-brand .lede{
+  font-size: 15px; line-height: 1.65;
+  color: var(--text-2);
+  max-width: 460px;
+  margin: 0 0 28px;
+}
+
+/* feature pills — scoped under .auth-brand to avoid colliding with any future bare .feat */
+.auth-brand .feat-grid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  max-width: 460px;
+}
+.auth-brand .feat{
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  transition: border-color .15s;
+}
+.auth-brand .feat:hover{ border-color: var(--accent-border); }
+.auth-brand .feat .num{
+  font-family: var(--mono);
+  font-size: 11px; color: var(--accent-2);
+  letter-spacing: 1px;
+}
+.auth-brand .feat .title{
+  font-size: 13px; font-weight: 500;
+  color: var(--text); margin-top: 4px;
+}
+.auth-brand .feat .desc{
+  font-size: 11.5px; color: var(--text-3);
+  margin-top: 4px; line-height: 1.5;
+}
+
+.auth-brand .foot{
+  position: relative; z-index: 1;
+  font-family: var(--mono);
+  font-size: 11px; color: var(--text-3);
+  display: flex; gap: 16px; align-items: center;
+}
+.auth-brand .foot a{ color: var(--text-2); text-decoration: none; }
+.auth-brand .foot a:hover{ color: var(--accent-2); }
+
+/* ─── 右侧 form ─── */
+.auth-form{
+  padding: 48px 56px;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  background: var(--bg);
+  position: relative;
+}
+.auth-form .top-actions{
+  position: absolute;
+  top: 32px; right: 56px;
+  display: flex; gap: 8px;
+}
+.auth-form #lang-toggle{
+  font-family: var(--mono); font-size: 11px;
+  padding: 6px 12px; border-radius: var(--r-md);
+  background: var(--surface-2); color: var(--text-2);
+  border: 1px solid var(--border); cursor: pointer;
+}
+.auth-form #lang-toggle:hover{ color: var(--accent-2); border-color: var(--accent-border); background: var(--accent-faint); }
+
+.auth-form .container{
+  max-width: 380px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.auth-tabs{
+  display: flex; gap: 4px;
+  background: var(--surface-2);
+  padding: 4px;
+  border-radius: var(--r-md);
+  margin-bottom: 28px;
+}
+.auth-tab{
+  flex: 1;
+  padding: 9px 14px;
+  text-align: center;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: all .15s;
+  user-select: none;
+}
+.auth-tab.active{
+  background: var(--surface);
+  color: var(--accent-2);
+  box-shadow: 0 0 12px -4px var(--accent-glow);
+}
+
+.auth-panel{ display: none; }
+.auth-panel.active{ display: block; }
+
+.auth-h2{
+  font-size: 22px; font-weight: 600;
+  letter-spacing: -0.3px;
+  margin: 0 0 8px;
+}
+.auth-sub{
+  font-size: 13px; color: var(--text-2);
+  margin: 0 0 22px;
+  line-height: 1.6;
+}
+
+/* fields — scoped under .auth-form; padding uses !important to override the
+   global input[type="..."] rule above which sets padding 10px 12px !important */
+.auth-form .field{ margin-bottom: 14px; }
+.auth-form .field label{
+  display: block;
+  font-size: 11px; color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  font-family: var(--mono);
+}
+.auth-form .field input{
+  width: 100%;
+  padding: 11px 14px !important;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: var(--sans);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.auth-form .field input:focus{
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-faint);
+}
+.auth-form .field input::placeholder{ color: var(--text-dim); }
+.auth-form .field.mono input{ font-family: var(--mono); letter-spacing: 0.5px; }
+
+/* human verification */
+.human-card{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.human-card .label{
+  font-size: 10px; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 1px;
+  font-family: var(--mono);
+  margin-bottom: 8px;
+}
+.human-q{
+  font-family: var(--mono);
+  font-size: 14px; color: var(--text);
+  margin-bottom: 10px;
+}
+.human-q code{
+  background: var(--accent-faint);
+  color: var(--accent-2);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--accent-border);
+}
+.human-row{ display: flex; gap: 8px; }
+.human-row input{ flex: 1; }
+.human-row .btn-verify{
+  padding: 10px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text-2);
+  font-family: var(--mono); font-size: 12px;
+  cursor: pointer;
+}
+.human-row .btn-verify:hover{
+  color: var(--accent-2);
+  border-color: var(--accent-border);
+  background: var(--accent-faint);
+}
+.human-pass{
+  color: var(--good);
+  font-family: var(--mono);
+  font-size: 11px;
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px;
+}
+.human-pass::before{
+  content: '';
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--good);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+}
+
+/* primary button — scoped under .auth-form so it never bleeds elsewhere */
+.auth-form .btn-primary{
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+  color: #042029;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: var(--sans);
+  cursor: pointer;
+  margin-top: 6px;
+  transition: filter .15s, box-shadow .15s;
+  box-shadow: 0 0 24px -8px var(--accent-glow);
+}
+.auth-form .btn-primary:hover{ filter: brightness(1.08); box-shadow: 0 0 32px -6px var(--accent-glow); }
+.auth-form .btn-primary:disabled{ background: var(--surface-3); color: var(--text-3); border-color: var(--border); cursor: not-allowed; box-shadow: none; }
+
+/* status — scoped under .auth-form. Color variants need !important to win
+   over the legacy `.auth-status{ color: var(--text-2) !important; }` rule
+   defined earlier in this file (around line 368). */
+.auth-form .auth-status{
+  min-height: 18px;
+  margin-top: 12px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text-2);
+}
+.auth-form .auth-status.ok{ color: var(--good) !important; }
+.auth-form .auth-status.err{ color: var(--bad) !important; }
+
+.auth-form .switch-link{
+  text-align: center;
+  margin-top: 22px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.auth-form .switch-link a{ color: var(--link); text-decoration: none; }
+.auth-form .switch-link a:hover{ text-decoration: underline; }
+
+@media (max-width: 880px){
+  .auth-shell{ grid-template-columns: 1fr; }
+  .auth-brand{ padding: 32px 28px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .auth-brand .hero{ padding: 32px 0; }
+  .auth-brand h1{ font-size: 26px; }
+  .auth-form{ padding: 32px 28px; }
+  .auth-form .top-actions{ top: 20px; right: 28px; }
+}
