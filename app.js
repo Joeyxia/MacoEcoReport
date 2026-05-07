@@ -4448,4 +4448,30 @@ Object.assign(i18n.en, {
     loading: "Loading…",
 });
 
+// step 2b: auth error codes (mapped to /api/auth/* error responses by register.html)
+Object.assign(i18n.zh, {
+    error_invite_not_found: "邀请码不存在",
+    error_invalid_email: "邮箱格式不正确",
+    error_weak_password: "密码长度至少 8 位",
+    error_account_exists: "该邮箱已注册，请直接登录",
+    error_invite_inactive: "邀请码已停用",
+    error_invite_expired: "邀请码已过期",
+    error_invite_exhausted: "邀请码已用完",
+    error_invalid_credentials: "邮箱或密码错误",
+    error_missing_invite_code: "请填写邀请码",
+    error_password_mismatch: "密码与确认密码不一致",
+});
+Object.assign(i18n.en, {
+    error_invite_not_found: "Invite code not found",
+    error_invalid_email: "Invalid email format",
+    error_weak_password: "Password must be at least 8 characters",
+    error_account_exists: "Account already exists, please sign in",
+    error_invite_inactive: "Invite code is inactive",
+    error_invite_expired: "Invite code has expired",
+    error_invite_exhausted: "Invite code has been used up",
+    error_invalid_credentials: "Invalid email or password",
+    error_missing_invite_code: "Please enter your invite code",
+    error_password_mismatch: "Password and confirmation do not match",
+});
+
 document.addEventListener("DOMContentLoaded", init);
