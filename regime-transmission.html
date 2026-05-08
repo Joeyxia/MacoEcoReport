@@ -1,84 +1,284 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="macro-api-base" content="https://api.nexo.hk" />
-    <title data-i18n="title_regime_transmission">Macro Risk Monitor | Regime & Transmission</title>
+    <title data-i18n="title_markets">Nexo · Markets</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css?v=20260309p" />
-    <link rel="stylesheet" href="styles-v2.css?v=20260428a1" />
+    <link rel="stylesheet" href="styles-v2.css?v=20260508a1" />
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260317b1" defer></script>
+    <script src="app.js?v=20260508a1" defer></script>
     <script src="capital-warning.js?v=20260401v21a" defer></script>
+    <script src="markets-v2.js?v=20260508a1" defer></script>
   </head>
-  <body data-page="regime-transmission">
+  <body data-page="markets" data-render-state="loading">
     <div class="bg-layer"></div>
-    <header class="site-header">
-      <a class="brand" href="index.html" data-i18n="brand_name">Macro Risk Monitor</a>
-      <nav>
-        <a class="nav-link" href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
-        <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
-        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
-        <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
-        <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
-        <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
-        <a class="nav-link" href="portfolio-watchlist.html" data-i18n="nav_portfolio_watchlist">Portfolio Watchlist</a>
-        <a class="nav-link active" href="regime-transmission.html" data-i18n="nav_regime_transmission">Regime & Transmission</a>
-        <a class="nav-link" href="stock-prediction.html" data-i18n="nav_stock_prediction">Stock Prediction</a>
-        <a class="nav-link" href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
-        <a class="nav-link" href="polymarket-pnl.html" data-i18n="nav_polymarket_pnl">Polymarket PnL</a>
-        <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
-        <a class="nav-link" href="about.html" data-i18n="nav_intro">About Nexo</a>
-      </nav>
-      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
-    </header>
-    <main class="page">
-      <section class="panel hero compact">
-        <div>
-          <p class="eyebrow" data-i18n="rt_eyebrow">Regime & Transmission</p>
-          <h1 data-i18n="rt_page_title">Market Regime / Transmission Console</h1>
-          <p class="subtle" data-i18n="rt_page_desc">View the latest regime, recent regime history, geopolitical overlay, transmission map, and action bias.</p>
+
+    <!-- Legacy-shim: hidden targets that capital-warning.js's
+         initRegimeTransmissionPage() looks up via getElementById. The
+         data-page="markets" value already keeps that dispatch from firing,
+         but these stay as belt-and-suspenders so an accidental retrigger
+         (or a future rerenderCurrentCapitalWarningPage update that adds
+         markets to the dispatch) won't crash. Cleanup tracked separately. -->
+    <div hidden id="rt-investor-brief"></div>
+    <div hidden id="rt-regime-card"></div>
+    <div hidden id="rt-regime-explain"></div>
+    <div hidden id="rt-overlay-card"></div>
+    <div hidden id="rt-overlay-explain"></div>
+    <div hidden id="rt-regime-history"></div>
+    <div hidden id="rt-action-bias"></div>
+    <div hidden id="rt-action-explain"></div>
+    <div hidden id="rt-transmission"></div>
+    <div hidden id="rt-transmission-explain"></div>
+
+    <div class="layout">
+      <aside>
+        <div class="brand">
+          <span class="logo">N</span>
+          <span data-i18n="brand">Nexo</span>
+          <span class="ver">v2.1</span>
         </div>
-      </section>
-      <section class="panel">
-        <h2 data-i18n="rt_investor_brief_title">Daily Investor Brief</h2>
-        <div id="rt-investor-brief" class="summary-panel"></div>
-      </section>
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="rt_current_regime">Current Regime</h2>
-          <div id="rt-regime-card" class="summary-panel"></div>
-          <h3 data-i18n="rt_regime_explain_title">Regime Indicator Explanation</h3>
-          <div id="rt-regime-explain" class="summary-panel"></div>
-        </article>
-        <article class="panel">
-          <h2 data-i18n="section_geopolitical_overlay">Geopolitical Overlay</h2>
-          <div id="rt-overlay-card" class="summary-panel"></div>
-          <h3 data-i18n="rt_overlay_explain_title">Geopolitical Overlay Explanation</h3>
-          <div id="rt-overlay-explain" class="summary-panel"></div>
-        </article>
-      </section>
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="rt_regime_history">30 / 90 Day Regime History</h2>
-          <div id="rt-regime-history" class="table-wrap"></div>
-        </article>
-        <article class="panel">
-          <h2 data-i18n="section_action_bias">Action Bias</h2>
-          <div id="rt-action-bias" class="summary-panel"></div>
-          <h3 data-i18n="rt_action_explain_title">Action Bias Explanation</h3>
-          <div id="rt-action-explain" class="summary-panel"></div>
-        </article>
-      </section>
-      <section class="panel">
-        <h2 data-i18n="rt_transmission_heatmap">Transmission Heatmap</h2>
-        <div id="rt-transmission" class="table-wrap"></div>
-        <h3 data-i18n="rt_transmission_explain_title">Transmission Heatmap Explanation</h3>
-        <div id="rt-transmission-explain" class="summary-panel"></div>
-      </section>
-    </main>
+        <div class="status-row">
+          <div>
+            <span class="green-dot"></span>
+            <span class="lbl" data-i18n="status_live">实时</span> ·
+            <span class="val"><span data-i18n="status_run">运行</span> #<span id="status-run-id">--</span></span>
+          </div>
+          <div>
+            <span class="lbl" data-i18n="status_latency">延迟</span> ·
+            <span class="val" id="status-latency">--</span>
+          </div>
+          <div>
+            <span class="lbl" data-i18n="status_fresh">新鲜度</span> ·
+            <span class="val"><span id="status-fresh">--</span> <span data-i18n="status_indicators">指标</span></span>
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-label" data-i18n="nav_briefing">日报简报</div>
+          <div class="nav">
+            <a href="dashboard.html"><span data-i18n="nav_today">今日</span></a>
+            <a class="active" href="regime-transmission.html" data-i18n="nav_markets">市场传导</a>
+            <a href="portfolio-watchlist.html" data-i18n="nav_portfolio">持仓风险</a>
+            <a href="#" data-i18n="nav_geo">地缘监控</a>
+            <a href="daily-report.html" data-i18n="nav_reports">报告归档</a>
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-label" data-i18n="nav_tools">工具集</div>
+          <div class="nav">
+            <a href="indicators.html" data-i18n="nav_indicators">指标库</a>
+            <a href="ai-assistant.html" data-i18n="nav_ai_assistant">AI 助手</a>
+            <a href="stock-prediction.html" data-i18n="nav_stock_prediction">个股预测</a>
+            <a href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
+            <a href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
+          </div>
+        </div>
+        <div class="footer-mini" data-i18n="footer_subscribe">订阅 · 关于<br><span style="color: var(--text-dim)" data-i18n="footer_build">构建版本 2026.05.08</span></div>
+      </aside>
+
+      <main>
+        <div class="top-bar">
+          <h1><span class="live"></span><span data-i18n="title_markets">市场</span></h1>
+          <div style="display: flex; align-items: center;">
+            <div class="meta">
+              <span id="meta-date">--</span> CST
+              <span class="sep">·</span>
+              <span data-i18n="meta_regime">Regime</span>
+              <span style="color: var(--warn);" id="meta-regime">--</span>
+            </div>
+            <button id="lang-toggle" type="button" style="margin-left: 12px;">EN</button>
+          </div>
+        </div>
+
+        <!-- HERO -->
+        <div class="hero calm">
+          <div class="label" data-i18n="markets_eyebrow">宏观 → 市场传导</div>
+          <div class="punch">
+            <span data-i18n="markets_punch_lead">宏观信号正在路由到</span>
+            <span class="hi-purple" data-i18n="markets_punch_hi1">久期防御</span><span data-i18n="markets_punch_mid1">、</span>
+            <span class="hi-purple" data-i18n="markets_punch_hi2">大宗通胀对冲</span>
+            <span data-i18n="markets_punch_mid2">和</span>
+            <span class="hi-purple" data-i18n="markets_punch_hi3">选择性股票质量</span><span data-i18n="markets_punch_tail">。</span>
+          </div>
+          <div class="chips">
+            <span class="chip purple"><span class="k" data-i18n="chip_stance">立场</span> <span data-i18n="chip_stance_selective">选择性</span></span>
+            <span class="chip purple"><span class="k" data-i18n="chip_size_cap">仓位上限</span> <span id="chip-size-cap-val">--</span></span>
+            <span class="chip muted"><span class="k" data-i18n="chip_style">风格</span> <span data-i18n="chip_style_quality">质量 + 低波动</span></span>
+            <span class="chip muted"><span class="k" data-i18n="chip_avoid">回避</span> <span data-i18n="chip_avoid_smallcap">小盘 beta</span></span>
+          </div>
+        </div>
+
+        <!-- L2 transmission chain -->
+        <div class="section-label"><span class="num">L2</span> <span data-i18n="sec_l2">市场传导</span></div>
+        <div class="chain" id="chain-matrix">
+          <div class="chain-row head">
+            <div data-i18n="chain_macro_signal">宏观信号</div>
+            <div data-i18n="chain_direct_effect">直接影响</div>
+            <div data-i18n="chain_asset_class">资产类别偏好</div>
+            <div data-i18n="chain_sector_tilt">行业倾斜</div>
+          </div>
+
+          <div class="chain-row" data-row="d11">
+            <div class="chain-cell warn"><div class="label">D11 geopolitics</div><div class="v" data-field="score">--</div></div>
+            <div class="chain-cell"><div class="label" data-i18n="chain_d11_eff">油价 ↑ / 风险溢价 ↑</div><div class="v muted" data-field="effect">--</div></div>
+            <div class="chain-cell warn"><div class="label" data-i18n="chain_d11_ac">大宗商品</div><div class="v" data-i18n="chain_d11_ac_v">通胀对冲</div></div>
+            <div class="chain-cell good"><div class="label" data-i18n="chain_d11_st">偏好</div><div class="v" data-i18n="chain_d11_st_v">能源 + 国防</div></div>
+          </div>
+          <div class="chain-arrow-row"><div></div><div class="chain-arrow">→</div><div class="chain-arrow">→</div><div class="chain-arrow">→</div></div>
+
+          <div class="chain-row" data-row="d03">
+            <div class="chain-cell warn"><div class="label">D03 inflation</div><div class="v" data-field="score">--</div></div>
+            <div class="chain-cell"><div class="label">5Y5Y</div><div class="v muted" data-field="effect" data-i18n="chain_d03_eff_v">盈亏平衡上行</div></div>
+            <div class="chain-cell"><div class="label" data-i18n="chain_d03_ac">利率</div><div class="v" data-i18n="chain_d03_ac_v">防御性久期</div></div>
+            <div class="chain-cell"><div class="label" data-i18n="chain_d03_st">混合</div><div class="v" data-i18n="chain_d03_st_v">曲线变平</div></div>
+          </div>
+          <div class="chain-arrow-row"><div></div><div class="chain-arrow">→</div><div class="chain-arrow">→</div><div class="chain-arrow">→</div></div>
+
+          <div class="chain-row" data-row="d09">
+            <div class="chain-cell warn"><div class="label">D09 vol</div><div class="v" data-field="score">--</div></div>
+            <div class="chain-cell"><div class="label">VIX / MOVE</div><div class="v muted" data-field="effect" data-i18n="chain_d09_eff_v">波动率回升</div></div>
+            <div class="chain-cell"><div class="label" data-i18n="chain_d09_ac">股票</div><div class="v" data-i18n="chain_d09_ac_v">选择性</div></div>
+            <div class="chain-cell bad"><div class="label" data-i18n="chain_d09_st">回避</div><div class="v" data-i18n="chain_d09_st_v">小盘、高 beta</div></div>
+          </div>
+          <div class="chain-arrow-row"><div></div><div class="chain-arrow">→</div><div class="chain-arrow">→</div><div class="chain-arrow">→</div></div>
+
+          <div class="chain-row" data-row="d07">
+            <div class="chain-cell"><div class="label">D07 credit</div><div class="v" data-field="score">--</div></div>
+            <div class="chain-cell"><div class="label">HY OAS</div><div class="v muted" data-field="effect" data-i18n="chain_d07_eff_v">利差稳定</div></div>
+            <div class="chain-cell"><div class="label" data-i18n="chain_d07_ac">信用</div><div class="v" data-i18n="chain_d07_ac_v">中性</div></div>
+            <div class="chain-cell"><div class="label" data-i18n="chain_d07_st">观察</div><div class="v" data-i18n="chain_d07_st_v">若 HY > 400，降风险</div></div>
+          </div>
+        </div>
+
+        <!-- Asset class details -->
+        <div class="section-label"><span class="num">L2.1</span> <span data-i18n="sec_l21">资产类别详情</span></div>
+        <div class="ac-grid" id="asset-classes-grid">
+          <div class="ac-card" data-asset="rates">
+            <div class="ac-head">
+              <h4 data-i18n="ac_rates">利率</h4>
+              <span class="bias neutral" data-bias-target>--</span>
+            </div>
+            <div class="ac-rows">
+              <div class="ac-row"><span class="k">10Y - 3M</span><span class="v" data-metric="yc_10y3m">--</span></div>
+              <div class="ac-row"><span class="k">10Y - 2Y</span><span class="v" data-metric="yc_10y2y">--</span></div>
+              <div class="ac-row"><span class="k">5Y5Y forward</span><span class="v" data-metric="fwd_5y5y">--</span></div>
+              <div class="ac-row"><span class="k"><span data-i18n="ac_field_delta_wow">周环比</span></span><span class="v" data-metric="delta_wow">--</span></div>
+            </div>
+          </div>
+          <div class="ac-card" data-asset="equities">
+            <div class="ac-head">
+              <h4 data-i18n="ac_equities">股票</h4>
+              <span class="bias neutral" data-bias-target>--</span>
+            </div>
+            <div class="ac-rows">
+              <div class="ac-row"><span class="k">S&amp;P fwd PE</span><span class="v" data-metric="sp_fwd_pe">--</span></div>
+              <div class="ac-row"><span class="k"><span data-i18n="ac_field_eps_revision">EPS 修正</span></span><span class="v" data-metric="eps_revision">--</span></div>
+              <div class="ac-row"><span class="k">VIX</span><span class="v" data-metric="vix">--</span></div>
+              <div class="ac-row"><span class="k"><span data-i18n="ac_field_delta_wow">周环比</span></span><span class="v" data-metric="delta_wow">--</span></div>
+            </div>
+          </div>
+          <div class="ac-card" data-asset="credit">
+            <div class="ac-head">
+              <h4 data-i18n="ac_credit">信用</h4>
+              <span class="bias neutral" data-bias-target>--</span>
+            </div>
+            <div class="ac-rows">
+              <div class="ac-row"><span class="k">HY OAS</span><span class="v" data-metric="hy_oas">--</span></div>
+              <div class="ac-row"><span class="k">IG OAS</span><span class="v" data-metric="ig_oas">--</span></div>
+              <div class="ac-row"><span class="k"><span data-i18n="ac_field_bank_lending">银行信贷</span></span><span class="v" data-metric="bank_lending">--</span></div>
+              <div class="ac-row"><span class="k"><span data-i18n="ac_field_delta_wow">周环比</span></span><span class="v" data-metric="delta_wow">--</span></div>
+            </div>
+          </div>
+          <div class="ac-card" data-asset="usd">
+            <div class="ac-head">
+              <h4 data-i18n="ac_usd">美元</h4>
+              <span class="bias neutral" data-bias-target>--</span>
+            </div>
+            <div class="ac-rows">
+              <div class="ac-row"><span class="k">DXY</span><span class="v" data-metric="dxy">--</span></div>
+              <div class="ac-row"><span class="k"><span data-i18n="ac_field_real_10y">10Y 实际利率</span></span><span class="v" data-metric="real_10y">--</span></div>
+              <div class="ac-row"><span class="k">NFCI</span><span class="v" data-metric="nfci">--</span></div>
+              <div class="ac-row"><span class="k"><span data-i18n="ac_field_delta_wow">周环比</span></span><span class="v" data-metric="delta_wow">--</span></div>
+            </div>
+          </div>
+          <div class="ac-card" data-asset="commodities">
+            <div class="ac-head">
+              <h4 data-i18n="ac_commodities">大宗商品</h4>
+              <span class="bias neutral" data-bias-target>--</span>
+            </div>
+            <div class="ac-rows">
+              <div class="ac-row"><span class="k">WTI</span><span class="v" data-metric="wti">--</span></div>
+              <div class="ac-row"><span class="k">Brent</span><span class="v muted" data-metric="brent" data-i18n="ac_unavailable">尚未接入</span></div>
+              <div class="ac-row"><span class="k" data-i18n="ac_field_gold">黄金</span><span class="v" data-metric="gold">--</span></div>
+              <div class="ac-row"><span class="k"><span data-i18n="ac_field_delta_wow">周环比</span></span><span class="v" data-metric="delta_wow">--</span></div>
+            </div>
+          </div>
+          <div class="ac-card" data-asset="crypto">
+            <div class="ac-head">
+              <h4 data-i18n="ac_crypto">加密</h4>
+              <span class="bias neutral" data-bias-target>--</span>
+            </div>
+            <div class="ac-rows">
+              <div class="ac-row"><span class="k">BTC</span><span class="v" data-metric="btc">--</span></div>
+              <div class="ac-row"><span class="k">stablecoin mcap</span><span class="v" data-metric="stable_mcap">--</span></div>
+              <div class="ac-row"><span class="k">USDC dom</span><span class="v" data-metric="usdc_dom">--</span></div>
+              <div class="ac-row"><span class="k"><span data-i18n="ac_field_delta_wow">周环比</span></span><span class="v" data-metric="delta_wow">--</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sector heatmap -->
+        <div class="section-label"><span class="num">L2.2</span> <span data-i18n="sec_l22">行业热力 · 偏好 vs 回避</span></div>
+        <div class="card">
+          <div id="sector-heatmap-rows">
+            <!-- markets-v2.js renderHeatmap fills .heat-row entries here.
+                 Contract:
+                  - At least sectors_json.favored.length + avoided.length rows.
+                  - If transmission/latest also fails, render exactly 1
+                    placeholder .heat-row with i18n key "loading_failed" /
+                    "数据未就绪" so the section is never visually empty. -->
+            <div class="heat-row muted">
+              <div class="name"><span data-i18n="loading">载入中…</span></div>
+              <div></div>
+            </div>
+          </div>
+          <div class="note" data-i18n="heat_note">横截面偏好 = 给定当前 regime + 叠加层下，预期前向收益的 z-score。> 1 σ 即明显偏好 / 回避。</div>
+        </div>
+
+        <!-- Style factors -->
+        <div class="section-label"><span class="num">L2.3</span> <span data-i18n="sec_l23">风格因子</span></div>
+        <div class="card">
+          <div class="grid-3" id="style-factors-grid" style="gap: 14px;">
+            <div class="stat" data-style="quality"><div class="k" data-i18n="style_quality">质量</div><div class="v muted" data-style-value>--</div></div>
+            <div class="stat" data-style="low_vol"><div class="k" data-i18n="style_low_vol">低波动</div><div class="v muted" data-style-value>--</div></div>
+            <div class="stat" data-style="value"><div class="k" data-i18n="style_value">价值</div><div class="v muted" data-style-value>--</div></div>
+            <div class="stat" data-style="momentum"><div class="k" data-i18n="style_momentum">动量</div><div class="v muted" data-style-value>--</div></div>
+            <div class="stat" data-style="size"><div class="k" data-i18n="style_size">规模（小盘）</div><div class="v muted" data-style-value>--</div></div>
+            <div class="stat" data-style="growth"><div class="k" data-i18n="style_growth">成长</div><div class="v muted" data-style-value>--</div></div>
+          </div>
+        </div>
+
+        <details class="audit">
+          <summary>
+            <span data-i18n="audit_markets_summary">$ 审计 · 传导规则 · 上次刷新</span>
+            <span style="float: right; color: var(--text-3);"><span data-i18n="audit_markets_meta">由 snapshot 计算 · regime + overlay 输入</span></span>
+          </summary>
+          <div class="body">
+            <span class="prompt">▸</span> <span class="key">source</span>: <span class="val">market_transmission_snapshots</span> · <span class="key">as_of</span>: <span class="val" id="audit-as-of">--</span><br>
+            <span class="prompt">▸</span> <span class="key">rates</span>: <span class="val" id="audit-rates">--</span><br>
+            <span class="prompt">▸</span> <span class="key">commodities</span>: <span class="val" id="audit-commodities">--</span><br>
+            <span class="prompt">▸</span> <span class="key">overlay</span>: <span class="val" id="audit-overlay">--</span> · <span class="key">score_cap</span>: <span class="val" id="audit-score-cap">--</span><br>
+            <span class="prompt">▸</span> <span class="key">run_id</span>: <span class="val" id="audit-run-id">--</span>
+          </div>
+        </details>
+      </main>
+    </div>
   </body>
 </html>

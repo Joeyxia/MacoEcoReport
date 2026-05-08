@@ -1247,3 +1247,169 @@ body::before{
   .auth-form{ padding: 32px 28px; }
   .auth-form .top-actions{ top: 20px; right: 28px; }
 }
+
+/* ===========================================================
+   step 2c · markets (regime-transmission.html) — chain matrix /
+   asset class cards / sector heatmap / style factor stats
+   =========================================================== */
+
+/* ─── L2 transmission chain ─── */
+.chain{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  margin-bottom: 14px;
+}
+.chain-row{
+  display: grid;
+  grid-template-columns: 160px 1fr 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 6px;
+}
+.chain-row.head{
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hairline);
+}
+.chain-row.head > div{
+  font-size: 10px; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 500;
+}
+.chain-cell{
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  position: relative;
+}
+.chain-cell .label{
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-bottom: 4px;
+}
+.chain-cell .v{ font-weight: 500; color: var(--text); }
+.chain-cell.purple{ background: var(--accent-faint); border-color: var(--accent-border); }
+.chain-cell.purple .v{ color: var(--accent-2); }
+.chain-cell.warn{ background: var(--warn-bg); border-color: var(--warn-border); }
+.chain-cell.warn .v{ color: var(--warn); }
+.chain-cell.bad{ background: var(--bad-bg); border-color: var(--bad-border); }
+.chain-cell.bad .v{ color: var(--bad); }
+.chain-cell.good{ background: var(--good-bg); border-color: var(--good-border); }
+.chain-cell.good .v{ color: var(--good); }
+.chain-arrow-row{
+  display: grid; grid-template-columns: 160px 1fr 1fr 1fr;
+  gap: 14px; align-items: center;
+  margin-bottom: 6px; height: 14px;
+}
+.chain-arrow{ text-align: center; color: var(--text-dim); font-size: 11px; font-family: var(--mono); }
+
+/* ─── L2.1 asset class detail cards ─── */
+.ac-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ac-card{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+}
+.ac-card.alert{ border-color: var(--warn-border); box-shadow: 0 0 16px -8px var(--warn-glow); }
+.ac-head{
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--hairline);
+}
+.ac-head h4{ margin: 0; font-size: 14px; font-weight: 500; }
+.ac-head .bias{ font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+.ac-head .bias.neutral{ background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+.ac-head .bias.warn{ background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); }
+.ac-head .bias.good{ background: var(--good-bg); color: var(--good); border: 1px solid var(--good-border); }
+.ac-head .bias.bad{ background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad-border); }
+.ac-rows{ display: grid; gap: 5px; font-size: 12px; }
+.ac-row{
+  display: flex; justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--hairline);
+}
+.ac-row:last-child{ border-bottom: 0; }
+.ac-row .k{ color: var(--text-3); font-family: var(--mono); font-size: 11px; }
+.ac-row .v{ color: var(--text); font-family: var(--mono); }
+
+/* ─── L2.2 sector heatmap rows ─── */
+.heat-row{
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 12.5px;
+}
+.heat-row:last-child{ border-bottom: 0; }
+.heat-row .name{ font-weight: 500; }
+.heat-row .name .sub{ color: var(--text-3); font-size: 11px; font-weight: 400; margin-left: 6px; }
+.heat-bar{
+  height: 24px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  border: 1px solid var(--hairline);
+  position: relative;
+  display: flex; align-items: center;
+  padding: 0 10px;
+}
+.heat-fill{
+  position: absolute; left: 50%; top: 2px; bottom: 2px;
+  border-radius: 3px;
+}
+.heat-fill.pos{ background: var(--good); box-shadow: 0 0 8px rgba(74, 222, 128, 0.25); }
+.heat-fill.neg{ background: var(--bad); box-shadow: 0 0 8px var(--bad-glow); }
+.heat-fill.neu{ background: var(--text-dim); }
+.heat-row .val{ font-family: var(--mono); font-size: 11px; margin-left: auto; }
+.heat-row .val.pos{ color: var(--good); }
+.heat-row .val.neg{ color: var(--bad); }
+
+/* ─── L2.3 style factor stats — scoped under .layout .grid-3 to avoid
+       colliding with .layout .action-stats .stat (Today page Action panel
+       uses subtly different sizing + accent-bar treatment). */
+.layout .grid-3 .stat{
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+}
+.layout .grid-3 .stat .k{
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.layout .grid-3 .stat .v{
+  font-weight: 500;
+  font-size: 14px;
+  margin-top: 4px;
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+/* ─── responsive (<880px): stack chain rows + arrow row, collapse
+       ac-grid to 1 column, shrink heat-row label width. ─── */
+@media (max-width: 880px){
+  .chain-row,
+  .chain-arrow-row{
+    grid-template-columns: 1fr;
+  }
+  .chain-arrow-row{ height: auto; padding: 4px 0; }
+  .chain-arrow{ display: none; }
+  .ac-grid{ grid-template-columns: 1fr; }
+  .heat-row{ grid-template-columns: 100px 1fr; }
+}
