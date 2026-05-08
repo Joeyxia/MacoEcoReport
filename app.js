@@ -4474,4 +4474,8 @@ Object.assign(i18n.en, {
     error_password_mismatch: "Password and confirmation do not match",
 });
 
+// step 2c: shared loading-failed fallback (used by markets-v2.js renderHeatmap, reusable by future page render functions)
+Object.assign(i18n.zh, { loading_failed: "数据未就绪" });
+Object.assign(i18n.en, { loading_failed: "Data unavailable" });
+
 document.addEventListener("DOMContentLoaded", init);
