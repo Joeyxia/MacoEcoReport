@@ -1413,3 +1413,163 @@ body::before{
   .ac-grid{ grid-template-columns: 1fr; }
   .heat-row{ grid-template-columns: 100px 1fr; }
 }
+
+/* ===========================================================
+   step 2d-2 · geo (geo.html) — level meter / conflict timeline /
+   ig-grid metrics / oil curve / action drawer
+   =========================================================== */
+
+/* ─── Card header: h3 title + .small meta on the right.
+       mockup-v2/geo.html uses `.card-head` but doesn't define it in its
+       inline <style> — relied on its parent styles.css. Define here so
+       prod doesn't fall back to default block layout. ─── */
+.card-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+.card-head h3{
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.card-head .small{
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--mono);
+}
+
+/* ─── XO level meter (4 lv cards, one .active) ─── */
+.level-meter{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.lv{
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.lv .num{
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.lv .name{
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 2px;
+  color: var(--text-2);
+}
+.lv .desc{
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 6px;
+  line-height: 1.45;
+}
+.lv.active{
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  box-shadow: 0 0 18px -6px var(--warn-glow);
+}
+.lv.active::before{
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--warn);
+}
+.lv.active .num{ color: var(--warn); }
+.lv.active .name{ color: var(--warn); }
+.lv.active .desc{ color: rgba(245, 158, 11, 0.8); }
+
+/* ─── Conflict event timeline (.te items along a left rail) ─── */
+.timeline{
+  position: relative;
+  padding-left: 18px;
+}
+.timeline::before{
+  content: '';
+  position: absolute;
+  left: 5px; top: 4px; bottom: 4px;
+  width: 1px;
+  background: var(--border);
+}
+.te{
+  position: relative;
+  padding: 8px 0 8px 14px;
+  font-size: 12.5px;
+}
+.te::before{
+  content: '';
+  position: absolute;
+  left: -16px; top: 12px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--warn);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 8px var(--warn-glow);
+}
+.te.bad::before{ background: var(--bad); box-shadow: 0 0 10px var(--bad-glow); }
+.te.good::before{ background: var(--good); }
+.te.muted::before{ background: var(--text-3); box-shadow: none; }
+.te .when{ color: var(--text-3); font-family: var(--mono); font-size: 11px; }
+.te .what{ color: var(--text); }
+.te .src{ color: var(--text-3); font-family: var(--mono); font-size: 10px; margin-left: 6px; }
+
+/* ─── Indicator group rows: .ig-grid is 2-col (or 3 inside .grid-3),
+       each .ig-row has 3 columns: label / value / delta ─── */
+.ig-grid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.ig-row{
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  font-size: 12px;
+}
+.ig-row .k{ color: var(--text-2); font-size: 11px; }
+.ig-row .v{ font-family: var(--mono); color: var(--text); font-weight: 500; }
+.ig-row .d{ font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+.ig-row .d.up{ color: var(--bad); }
+.ig-row .d.down{ color: var(--good); }
+.ig-row.alert{ background: var(--warn-bg); border-color: var(--warn-border); }
+.ig-row.alert .k{ color: var(--warn); }
+.ig-row.alert .v{ color: var(--warn); }
+.ig-row.unavail .v{ color: var(--text-3); font-style: italic; }
+
+/* ─── Oil curve SVG container (decision #1 — static SVG verbatim) ─── */
+.oil-curve{
+  height: 90px;
+  position: relative;
+  padding: 4px 6px;
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  border: 1px solid var(--hairline);
+}
+.oil-curve svg{ width: 100%; height: 100%; }
+
+/* ─── responsive (<880px): collapse level-meter 4→2, ig-grid 2→1, and
+       retroactively fix the shared .grid-2 token (used by dashboard +
+       geo) which was non-responsive prior to step 2d-2. ─── */
+@media (max-width: 880px){
+  .level-meter{ grid-template-columns: 1fr 1fr; }
+  .layout .grid-2{ grid-template-columns: 1fr; }
+  .ig-grid{ grid-template-columns: 1fr; }
+}
