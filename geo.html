@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="macro-api-base" content="https://api.nexo.hk" />
+    <title data-i18n="title_geo">Nexo · Geo watch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=20260309p" />
+    <link rel="stylesheet" href="styles-v2.css?v=20260508a2" />
+    <script src="auth-guard.js?v=20260317a1" defer></script>
+    <script src="app.js?v=20260508a1" defer></script>
+    <script src="capital-warning.js?v=20260401v21a" defer></script>
+    <script src="geo-v2.js?v=20260508a2" defer></script>
+  </head>
+  <body data-page="geo" data-render-state="loading">
+    <div class="bg-layer"></div>
+
+    <!-- No legacy-shim needed: capital-warning.js dispatch (line 1131-1138)
+         has no `if (page === "geo")` branch, so init never fires here. -->
+
+    <div class="layout">
+      <aside>
+        <div class="brand">
+          <span class="logo">N</span>
+          <span data-i18n="brand">Nexo</span>
+          <span class="ver">v2.1</span>
+        </div>
+        <div class="status-row">
+          <div>
+            <span class="green-dot"></span>
+            <span class="lbl" data-i18n="status_live">实时</span> ·
+            <span class="val"><span data-i18n="status_run">运行</span> #<span id="status-run-id">--</span></span>
+          </div>
+          <div>
+            <span class="lbl" data-i18n="status_latency">延迟</span> ·
+            <span class="val" id="status-latency">--</span>
+          </div>
+          <div>
+            <span class="lbl" data-i18n="status_fresh">新鲜度</span> ·
+            <span class="val"><span id="status-fresh">--</span> <span data-i18n="status_indicators">指标</span></span>
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-label" data-i18n="nav_briefing">日报简报</div>
+          <div class="nav">
+            <a href="dashboard.html"><span data-i18n="nav_today">今日</span></a>
+            <a href="regime-transmission.html" data-i18n="nav_markets">市场传导</a>
+            <a href="portfolio-watchlist.html" data-i18n="nav_portfolio">持仓风险</a>
+            <a class="active" href="geo.html" data-i18n="nav_geo">地缘监控</a>
+            <a href="daily-report.html" data-i18n="nav_reports">报告归档</a>
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-label" data-i18n="nav_tools">工具集</div>
+          <div class="nav">
+            <a href="indicators.html" data-i18n="nav_indicators">指标库</a>
+            <a href="ai-assistant.html" data-i18n="nav_ai_assistant">AI 助手</a>
+            <a href="stock-prediction.html" data-i18n="nav_stock_prediction">个股预测</a>
+            <a href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
+            <a href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
+          </div>
+        </div>
+        <div class="footer-mini" data-i18n="footer_subscribe">订阅 · 关于<br><span style="color: var(--text-dim)" data-i18n="footer_build">构建版本 2026.05.09</span></div>
+      </aside>
+
+      <main>
+        <div class="top-bar">
+          <h1><span class="live"></span><span data-i18n="title_geo">地缘监控</span></h1>
+          <div style="display: flex; align-items: center;">
+            <div class="meta">
+              D11 <span data-i18n="audit_pf_user">分数</span>
+              <span style="color: var(--bad);" id="meta-d11-score">--</span>
+              <span class="sep">·</span>
+              <span data-i18n="geo_chip_overlay">叠加层</span>
+              <span style="color: var(--warn);" id="meta-overlay-level">--</span>
+              <span class="sep">·</span>
+              <span id="meta-time">--</span> CST
+            </div>
+            <button id="lang-toggle" type="button" style="margin-left: 12px;">EN</button>
+          </div>
+        </div>
+
+        <!-- HERO -->
+        <div class="hero danger">
+          <div class="label" data-i18n="geo_eyebrow">D11 专项监控</div>
+          <div class="punch">
+            <span data-i18n="geo_punch_lead">局部供给冲击 + 油价压力已将叠加层提至</span>
+            <span class="hi" data-i18n="geo_punch_hi1">二级</span><span data-i18n="geo_punch_mid">。能源市场微观结构尚未完全 price in 冲击 —— 信用与风险资产是非对称观察点。</span>
+          </div>
+          <div class="chips">
+            <span class="chip warn">
+              <span class="dot" style="background: var(--warn);"></span>
+              <span class="k" data-i18n="geo_chip_overlay">叠加层</span>
+              <span id="chip-overlay-level">--</span>
+            </span>
+            <span class="chip warn">
+              <span class="k" data-i18n="geo_chip_conflict">冲突</span>
+              <span id="chip-conflict-level" data-i18n="geo_v_medium">中等</span>
+            </span>
+            <span class="chip warn">
+              <span class="k" data-i18n="geo_chip_supply">供给</span>
+              <span id="chip-supply-level" data-i18n="geo_v_medium">中等</span>
+            </span>
+            <span class="chip warn">
+              <span class="k" data-i18n="geo_chip_shipping">航运</span>
+              <span id="chip-shipping-level" data-i18n="geo_v_medium">中等</span>
+            </span>
+            <span class="chip muted">
+              <span class="k" data-i18n="geo_chip_d11_score">D11 分数</span>
+              <span id="chip-d11-score">--</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- XO Level meter — geo-v2.js renderLevelMeter swaps .active onto
+             the card matching overlay-decision.overlay_level (level_0..3).
+             Initial static .active on third card is the mockup default
+             (level_2) — fail-safe if JS fails. -->
+        <div class="section-label"><span class="num">XO</span> <span data-i18n="geo_overlay_label">叠加层等级</span></div>
+        <div class="level-meter">
+          <div class="lv" data-level="0">
+            <div class="num">L 0</div>
+            <div class="name" data-i18n="geo_lv0_name">正常</div>
+            <div class="desc" data-i18n="geo_lv0_desc">无明显升级，沿用主模型。</div>
+          </div>
+          <div class="lv" data-level="1">
+            <div class="num">L 1</div>
+            <div class="name" data-i18n="geo_lv1_name">情绪冲击</div>
+            <div class="desc" data-i18n="geo_lv1_desc">新闻 + 波动率领先。提升监控频率。</div>
+          </div>
+          <div class="lv active" data-level="2">
+            <div class="num">L 2 · <span data-i18n="geo_lv2_desc_current">（当前）</span></div>
+            <div class="name" data-i18n="geo_lv2_name">局部供给冲击</div>
+            <div class="desc" data-i18n="geo_lv2_desc">航运 / 保险 / 曲线异常。降风险，加防御 + 能源。</div>
+          </div>
+          <div class="lv" data-level="3">
+            <div class="num">L 3</div>
+            <div class="name" data-i18n="geo_lv3_name">系统性能源</div>
+            <div class="desc" data-i18n="geo_lv3_desc">通胀 + 信用共振破裂。强防御，砍高波动 / 信用敏感品种。</div>
+          </div>
+        </div>
+
+        <!-- First .grid-2: conflict timeline + supply ig-grid -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h3 data-i18n="geo_conflict_card_title">冲突事件强度</h3>
+              <span class="small" data-i18n="geo_conflict_card_meta">14 起 · 过去 7 天 · vs 上一周 ▲</span>
+            </div>
+            <div class="timeline" id="timeline-rows">
+              <!-- geo-v2.js renderTimeline owns this. Static placeholder
+                   honors decision #2 (loading_failed) — backend timeline
+                   endpoints are 404 / SSL-timeout (issue #14), so this
+                   placeholder is the rendered final state until the backend
+                   ships. Keep one row so .timeline isn't visually empty. -->
+              <div class="te muted">
+                <div class="when">--</div>
+                <div class="what"><span data-i18n="loading_failed">数据未就绪</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3 data-i18n="geo_supply_card_title">供给中断</h3>
+              <span class="small" data-i18n="geo_supply_card_meta">概率冲击</span>
+            </div>
+            <div class="ig-grid">
+              <div class="ig-row" data-asset="supply" data-metric="iran_export">
+                <span class="k">伊朗出口</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="supply" data-metric="hormuz_status">
+                <span class="k">霍尔木兹状态</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="supply" data-metric="gulf_tankers">
+                <span class="k">海湾油轮数</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="supply" data-metric="opec_spare">
+                <span class="k">OPEC 备用产能</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="supply" data-metric="terminal_availability">
+                <span class="k">终端可用率</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="supply" data-metric="spr_release">
+                <span class="k">SPR 释放</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Second .grid-2: shipping ig-grid + energy ig-grid + oil-curve SVG -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h3 data-i18n="geo_shipping_card_title">航运 &amp; 保险</h3>
+              <span class="small" data-i18n="geo_shipping_card_meta">比库存更早领先</span>
+            </div>
+            <div class="ig-grid">
+              <div class="ig-row" data-asset="shipping" data-metric="tanker_freight">
+                <span class="k">油轮运费</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="shipping" data-metric="war_risk_premium">
+                <span class="k">战争险溢价</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="shipping" data-metric="diversion_pct">
+                <span class="k">绕航比例</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="shipping" data-metric="suez_status">
+                <span class="k">苏伊士流量</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3 data-i18n="geo_micro_card_title">能源市场微观结构</h3>
+              <span class="small" data-i18n="geo_micro_card_meta">市场是否已 price in？</span>
+            </div>
+            <div class="ig-grid">
+              <div class="ig-row" data-asset="energy" data-metric="wti">
+                <span class="k">WTI</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row unavail" data-asset="energy" data-metric="brent">
+                <span class="k">Brent</span>
+                <span class="v" data-i18n="ac_unavailable">尚未接入</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="energy" data-metric="brent_wti_spread">
+                <span class="k">Brent-WTI</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="energy" data-metric="m1_m3_spread">
+                <span class="k">M1-M3 价差</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="energy" data-metric="crack_321">
+                <span class="k">3-2-1 裂解价差</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+              <div class="ig-row" data-asset="energy" data-metric="ovx">
+                <span class="k">OVX（油价波动）</span>
+                <span class="v">--</span>
+                <span class="d">--</span>
+              </div>
+            </div>
+            <!-- Static WTI fwd-curve placeholder per decision #1 — verbatim
+                 mockup polyline. Swap to dynamic SVG when backend issue
+                 #15 lands /api/markets/oil-microstructure with .fwd_curve. -->
+            <div class="oil-curve" style="margin-top: 10px;">
+              <svg viewBox="0 0 360 80" preserveAspectRatio="none">
+                <line x1="0" y1="40" x2="360" y2="40" stroke="rgba(190,170,220,0.1)" stroke-width="0.5" />
+                <polyline points="0,55 60,52 120,49 180,46 240,42 300,38 360,30" stroke="#f59e0b" stroke-width="2" fill="none" />
+                <polyline points="0,55 60,52 120,49 180,46 240,42 300,38 360,30" stroke="#f59e0b" stroke-width="6" fill="none" opacity="0.15" />
+                <text x="2" y="14" fill="#9ba6b8" font-size="9" font-family="JetBrains Mono">WTI 现月 + 1m..6m 远期</text>
+                <text x="320" y="74" fill="#5d6878" font-size="8" font-family="JetBrains Mono">+6m</text>
+                <text x="2" y="74" fill="#5d6878" font-size="8" font-family="JetBrains Mono">现月</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- XO.5 Macro transmission confirmation -->
+        <div class="section-label"><span class="num">XO.5</span> <span data-i18n="geo_macro_section">宏观传导 · 冲击是否进入系统？</span></div>
+        <div class="card">
+          <div class="grid-3" style="gap: 10px;">
+            <div class="ig-row" data-asset="macro" data-metric="fwd_5y5y">
+              <span class="k" data-i18n="geo_field_5y5y">5Y5Y 远期</span>
+              <span class="v">--</span>
+              <span class="d">--</span>
+            </div>
+            <div class="ig-row" data-asset="macro" data-metric="breakeven_10y">
+              <span class="k" data-i18n="geo_field_breakeven">10Y 盈亏平衡</span>
+              <span class="v">--</span>
+              <span class="d">--</span>
+            </div>
+            <div class="ig-row" data-asset="macro" data-metric="vix">
+              <span class="k" data-i18n="geo_field_vix">VIX</span>
+              <span class="v">--</span>
+              <span class="d">--</span>
+            </div>
+            <div class="ig-row" data-asset="macro" data-metric="hy_oas">
+              <span class="k" data-i18n="geo_field_hy_oas">HY OAS</span>
+              <span class="v">--</span>
+              <span class="d">--</span>
+            </div>
+            <div class="ig-row" data-asset="macro" data-metric="transport_vs_spx">
+              <span class="k" data-i18n="geo_field_transport">交运股 vs SPX</span>
+              <span class="v">--</span>
+              <span class="d">--</span>
+            </div>
+            <div class="ig-row" data-asset="macro" data-metric="airline_wow">
+              <span class="k" data-i18n="geo_field_airline">航空 wow</span>
+              <span class="v">--</span>
+              <span class="d">--</span>
+            </div>
+          </div>
+          <div class="note">
+            <span data-i18n="geo_macro_note">通胀预期与风险资产传导</span>
+            <span style="color: var(--warn);" data-i18n="geo_macro_note_v">已开始确认</span><span data-i18n="geo_macro_note_tail">，但信用（HY OAS）仍相对受控。下一升级触发点：HY > 350bps。</span>
+          </div>
+        </div>
+
+        <!-- Action menu (default-open per mockup) -->
+        <details open>
+          <summary>
+            <span data-i18n="geo_action_summary">专项结论 · L2 动作菜单</span>
+            <span class="meta" data-i18n="geo_action_meta">5 个动作 · 3 个对冲</span>
+          </summary>
+          <div class="trace">
+            <span class="label" data-i18n="geo_action_reduce">减仓</span>
+            <span><span data-i18n="geo_action_reduce_text">高 beta 周期股、交运、零售、新兴市场敞口。剩余风险仓位</span> <code id="action-size-cap">size cap = --</code><span data-i18n="geo_action_reduce_tail">。</span></span>
+            <span class="label" data-i18n="geo_action_add">加仓</span>
+            <span data-i18n="geo_action_add_text">能源上游（XOM、CVX、OXY）、国防（LMT、NOC）、防御股（UNH、KO）。</span>
+            <span class="label" data-i18n="geo_action_hedge">对冲</span>
+            <span data-i18n="geo_action_hedge_text">SPX 看跌价差 1-3% 名义 · 油价 call spread · 做空 HY ETF（HYG）作为信用保险。</span>
+            <span class="label" data-i18n="geo_action_watch">观察</span>
+            <span><code>HY OAS &gt; 350</code> → escalate to L3. <code>WTI &gt; 105</code> → escalate. <code>Hormuz back to "normal"</code> → de-escalate.</span>
+            <span class="label" data-i18n="geo_action_ai">AI</span>
+            <span class="ai-quote" data-i18n="geo_action_ai_quote">"油轮运费和保险溢价是真实扰动已经在发生的领先指标，油价尚未完全跟上。能源上游和国防是这里的非对称做多机会。降股票 beta，但信用未破之前不要全防御。"</span>
+          </div>
+        </details>
+
+        <details class="audit">
+          <summary>
+            <span data-i18n="audit_geo_summary">$ 审计 · D11 指标来源 · 上次更新</span>
+            <span style="float: right; color: var(--text-3);"><span data-i18n="audit_geo_meta">10 个指标 · 4 个滞后 · Brent 未接入</span></span>
+          </summary>
+          <div class="body">
+            <span class="prompt">▸</span> <span class="key" data-i18n="audit_geo_overlay_id">overlay_id</span>: <span class="val" id="audit-overlay-id">--</span> · <span class="key" data-i18n="audit_geo_level">等级</span>: <span class="val" id="audit-level">--</span><br />
+            <span class="prompt">▸</span> <span class="key" data-i18n="audit_geo_conflict_score">conflict_intensity_score</span>: <span class="val" id="audit-conflict-score">--</span> · <span class="key" data-i18n="audit_geo_supply_score">supply_disruption_score</span>: <span class="val" id="audit-supply-score">--</span><br />
+            <span class="prompt">▸</span> <span class="key" data-i18n="audit_geo_shipping_score">shipping_score</span>: <span class="val" id="audit-shipping-score">--</span> · <span class="key" data-i18n="audit_geo_micro_score">microstructure_score</span>: <span class="val" id="audit-energy-score">--</span> · <span class="key" data-i18n="audit_geo_macro_tx_score">macro_transmission_score</span>: <span class="val" id="audit-macro-score">--</span><br />
+            <span class="prompt">▸</span> <span class="key" data-i18n="audit_geo_data_health">数据健康</span>: <span class="val" id="audit-data-health" style="color: var(--bad);" data-i18n="audit_geo_brent_unavail">brent_price = unavailable</span><br />
+            <span class="prompt">▸</span> <span class="key" data-i18n="audit_geo_run_id">run_id</span>: <span class="val" id="audit-run-id">--</span> · <span class="key" data-i18n="audit_geo_as_of">as_of</span>: <span class="val" id="audit-as-of">--</span><br />
+            <span class="prompt">▸</span> <a href="#" data-i18n="audit_geo_link_events">查看原始事件流</a> · <a href="#" data-i18n="audit_geo_link_thresholds">配置阈值</a> · <a href="#" data-i18n="audit_geo_link_rerun">重跑叠加层</a>
+          </div>
+        </details>
+      </main>
+    </div>
+  </body>
+</html>
