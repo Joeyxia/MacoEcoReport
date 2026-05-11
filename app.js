@@ -3866,7 +3866,7 @@ Object.assign(i18n.zh, {
     // ─── reports page ───
     reports_eyebrow: "日报归档",
     reports_punch: "浏览任意一天的执行摘要、regime 判定与 AI 评论。每份报告都可以用最新数据重跑并重新发送邮件。",
-    reports_total: "62 份",
+    reports_total: "份",
     reports_chip_avg_ai: "AI 平均延迟",
 
     filter_label: "筛选",
@@ -3913,6 +3913,8 @@ Object.assign(i18n.zh, {
     audit_reports_manage: "管理订阅",
     audit_reports_template: "编辑模板",
     audit_reports_resend: "重发选中",
+    // step 2e: graceful empty for issue #19 (/api/email-deliveries 404)
+    audit_email_unavailable: "邮件分发数据不可用",
 
 
     // ─── auth page ───
@@ -4356,7 +4358,7 @@ Object.assign(i18n.en, {
 
     reports_eyebrow: "Daily report archive",
     reports_punch: "Browse the executive summary, regime call and AI commentary for any day. Each report can be re-run with the latest data and re-emailed.",
-    reports_total: "62 reports",
+    reports_total: "reports",
     reports_chip_avg_ai: "avg ai latency",
 
     filter_label: "filter",
@@ -4403,6 +4405,8 @@ Object.assign(i18n.en, {
     audit_reports_manage: "manage subscribers",
     audit_reports_template: "edit template",
     audit_reports_resend: "resend selected",
+    // step 2e: graceful empty for issue #19 (/api/email-deliveries 404)
+    audit_email_unavailable: "email-deliveries unavailable",
 
 
     auth_eyebrow: "Capital warning engine",
