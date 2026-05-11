@@ -1,136 +1,194 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="macro-api-base" content="https://api.nexo.hk" />
-    <title data-i18n="title_daily_report">Macro Risk Monitor | Daily Report</title>
+    <title data-i18n="title_reports">Nexo · Reports</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=20260309p" />
-    <link rel="stylesheet" href="styles-v2.css?v=20260428a1" />
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js" defer></script>
+    <link rel="stylesheet" href="styles-v2.css?v=20260511a1" />
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260317b1" defer></script>
+    <script src="app.js?v=20260511a1" defer></script>
     <script src="capital-warning.js?v=20260401v21a" defer></script>
+    <script src="reports-v2.js?v=20260511a1" defer></script>
   </head>
-  <body data-page="daily-report">
+  <body data-page="daily-report" data-render-state="loading">
     <div class="bg-layer"></div>
-    <header class="site-header">
-      <a class="brand" href="index.html" data-i18n="brand_name">Macro Risk Monitor</a>
-      <nav>
-        <a class="nav-link" href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
-        <a class="nav-link active" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
-        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
-        <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
-        <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
-        <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
-        <a class="nav-link" href="portfolio-watchlist.html" data-i18n="nav_portfolio_watchlist">Portfolio Watchlist</a>
-        <a class="nav-link" href="regime-transmission.html" data-i18n="nav_regime_transmission">Regime & Transmission</a>
-        <a class="nav-link" href="stock-prediction.html" data-i18n="nav_stock_prediction">Stock Prediction</a>
-        <a class="nav-link" href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
-        <a class="nav-link" href="polymarket-pnl.html" data-i18n="nav_polymarket_pnl">Polymarket PnL</a>
-        <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
-        <a class="nav-link" href="about.html" data-i18n="nav_intro">About Nexo</a>
-      </nav>
-      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
-    </header>
 
-    <main class="page page-report">
-      <section class="panel hero compact">
-        <div>
-          <p class="eyebrow" data-i18n="daily_note">Daily Intelligence Note</p>
-          <h1 data-i18n="daily_report_title">Macro Monitoring Daily Report</h1>
-          <p class="subtle" data-i18n="daily_report_desc">Auto-drafted from the latest dashboard snapshot. Edit as needed, then save.</p>
-          <p class="subtle"><span id="data-generated-at">--</span></p>
+    <!-- Legacy-shim for capital-warning.js renderDailyCapitalWarning (lines
+         813-849): 6 hidden divs preserve the cwText(getElementById(...))
+         writes without surfacing them in the mockup-v2 layout. Same approach
+         as step 2A dashboard. Once that legacy path is retired, drop these. -->
+    <div hidden id="report-regime-block"></div>
+    <div hidden id="report-transmission-block"></div>
+    <div hidden id="report-portfolio-impact-block"></div>
+    <div hidden id="report-action-bias-block"></div>
+    <div hidden id="report-overlay-block"></div>
+    <div hidden id="report-watchlist-block"></div>
+
+    <div class="layout">
+      <aside>
+        <div class="brand">
+          <span class="logo">N</span>
+          <span data-i18n="brand">Nexo</span>
+          <span class="ver">v2.1</span>
         </div>
-        <div class="score-card small">
-          <p class="score-label" data-i18n="snapshot">Snapshot</p>
-          <div class="score-value" id="report-score">--</div>
-          <p class="score-meta"><span id="report-date">--</span> · <span id="report-status">--</span></p>
+        <div class="status-row">
+          <div>
+            <span class="green-dot"></span>
+            <span class="lbl" data-i18n="status_live">实时</span> ·
+            <span class="val"><span data-i18n="status_run">运行</span> #<span id="status-run-id">--</span></span>
+          </div>
+          <div>
+            <span class="lbl" data-i18n="status_latency">延迟</span> ·
+            <span class="val" id="status-latency">--</span>
+          </div>
+          <div>
+            <span class="lbl" data-i18n="status_fresh">新鲜度</span> ·
+            <span class="val"><span id="status-fresh">--</span> <span data-i18n="status_indicators">指标</span></span>
+          </div>
         </div>
-      </section>
-
-      <section class="panel">
-        <h2 data-i18n="report_preview">Report Preview (Reference Format)</h2>
-        <div id="report-preview" class="report-preview"></div>
-      </section>
-
-      <section class="panel">
-        <h2 data-i18n="section_capital_warning_blocks">Capital Market Warning Blocks</h2>
-        <div class="grid two-col">
-          <article class="panel nested-panel">
-            <h3 data-i18n="report_regime_block_title">Macro Regime</h3>
-            <div id="report-regime-block" class="summary-panel"></div>
-          </article>
-          <article class="panel nested-panel">
-            <h3 data-i18n="report_transmission_block_title">Market Transmission</h3>
-            <div id="report-transmission-block" class="summary-panel"></div>
-          </article>
+        <div class="nav-section">
+          <div class="nav-label" data-i18n="nav_briefing">日报简报</div>
+          <div class="nav">
+            <a href="dashboard.html" data-i18n="nav_today">今日</a>
+            <a href="regime-transmission.html" data-i18n="nav_markets">市场传导</a>
+            <a href="portfolio-watchlist.html" data-i18n="nav_portfolio">持仓风险</a>
+            <a href="geo.html" data-i18n="nav_geo">地缘监控</a>
+            <a class="active" href="daily-report.html" data-i18n="nav_reports">报告归档</a>
+          </div>
         </div>
-        <div class="grid two-col">
-          <article class="panel nested-panel">
-            <h3 data-i18n="report_portfolio_impact_block_title">Portfolio Impact</h3>
-            <div id="report-portfolio-impact-block" class="summary-panel"></div>
-          </article>
-          <article class="panel nested-panel">
-            <h3 data-i18n="report_action_bias_block_title">Action Bias</h3>
-            <div id="report-action-bias-block" class="summary-panel"></div>
-          </article>
+        <div class="nav-section">
+          <div class="nav-label" data-i18n="nav_tools">工具集</div>
+          <div class="nav">
+            <a href="indicators.html" data-i18n="nav_indicators">指标库</a>
+            <a href="ai-assistant.html" data-i18n="nav_ai_assistant">AI 助手</a>
+            <a href="stock-prediction.html" data-i18n="nav_stock_prediction">个股预测</a>
+            <a href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
+            <a href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
+          </div>
         </div>
-        <div class="grid two-col">
-          <article class="panel nested-panel">
-            <h3 data-i18n="report_overlay_block_title">Geopolitical / Energy Shock</h3>
-            <div id="report-overlay-block" class="summary-panel"></div>
-          </article>
-          <article class="panel nested-panel">
-            <h3 data-i18n="report_watchlist_block_title">Watchlist Summary</h3>
-            <div id="report-watchlist-block" class="summary-panel"></div>
-          </article>
+        <div class="footer-mini" data-i18n="footer_subscribe">订阅 · 关于<br><span style="color: var(--text-dim)" data-i18n="footer_build">构建版本 2026.05.11</span></div>
+      </aside>
+
+      <main>
+        <div class="top-bar">
+          <h1><span class="live"></span><span data-i18n="title_reports">报告归档</span></h1>
+          <div style="display: flex; align-items: center;">
+            <div class="meta">
+              <span id="meta-reports-total">--</span> <span data-i18n="reports_total">份</span>
+              <span class="sep">·</span>
+              <span data-i18n="meta_daily_since">每日更新自</span> <span id="meta-reports-since">--</span>
+            </div>
+            <button id="lang-toggle" type="button">EN</button>
+          </div>
         </div>
-      </section>
 
-      <section class="panel" style="display:none">
-        <div class="report-actions">
-          <button id="generate-report" class="btn" data-i18n="regenerate_draft" style="display:none">Regenerate Draft</button>
-          <button id="finalize-report" class="btn" data-i18n="generate_final_report">Generate Final Report</button>
-          <button id="save-report" class="btn ghost" data-i18n="save">Save</button>
-          <button id="download-report" class="btn ghost" data-i18n="download_txt">Download .txt</button>
-          <label class="subtle check-row" for="run-online-check">
-            <input id="run-online-check" type="checkbox" checked />
-            <span data-i18n="run_online_check">Run online data check before final report</span>
-          </label>
-          <span id="save-status" class="subtle"></span>
+        <!-- HERO ─────────────────────────────────────────────── -->
+        <div class="hero calm">
+          <div class="label" data-i18n="reports_eyebrow">日报归档</div>
+          <div class="punch" data-i18n="reports_punch">浏览任意一天的执行摘要、regime 判定与 AI 评论。每份报告都可以用最新数据重跑并重新发送邮件。</div>
+          <div class="chips">
+            <span class="chip purple"><span class="k" data-i18n="chip_today">今日</span> <span id="chip-reports-today">--</span></span>
+            <span class="chip muted"><span class="k" data-i18n="chip_total">累计</span> <span id="chip-reports-total">--</span> <span data-i18n="reports_total">份</span></span>
+            <span class="chip muted"><span class="k" data-i18n="chip_subscribers">订阅人</span> <span id="chip-subscribers">--</span></span>
+            <span class="chip muted"><span class="k" data-i18n="chip_avg_ai">AI 平均延迟</span> <span id="chip-avg-ai">--</span></span>
+          </div>
         </div>
-        <textarea id="report-editor" class="report-editor" spellcheck="false"></textarea>
-      </section>
 
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="daily_report_archive">Daily Report Archive</h2>
-          <p class="subtle" data-i18n="daily_report_archive_desc">Each saved day has a direct link.</p>
-          <div id="report-links" class="report-links report-list"></div>
-        </article>
+        <!-- FILTER ───────────────────────────────────────────── -->
+        <div class="filter-row">
+          <span class="lbl" data-i18n="filter_label">筛选</span>
+          <input class="filter-input" id="filter-search" type="text" data-i18n-placeholder="filter_search_placeholder" placeholder="搜索标题、驱动因子..." />
+          <span class="filter-chip active" data-status="all" data-i18n="filter_all">全部</span>
+          <span class="filter-chip" data-status="orange" data-i18n="filter_orange">橙色</span>
+          <span class="filter-chip" data-status="yellow" data-i18n="filter_yellow">黄色</span>
+          <span class="filter-chip" data-status="green" data-i18n="filter_green">绿色</span>
+          <span class="filter-chip" data-status="red" data-i18n="filter_red">红色</span>
+          <span class="spacer"></span>
+          <span class="lbl" data-i18n="filter_range">区间</span>
+          <input class="filter-input" id="filter-date-from" type="date" />
+          <span style="color: var(--text-3)">→</span>
+          <input class="filter-input" id="filter-date-to" type="date" />
+          <button class="btn-ghost btn" id="filter-export-btn" type="button" data-i18n="filter_export">导出 csv</button>
+        </div>
 
-        <article class="panel" style="display:none">
-          <h2 data-i18n="online_check_results">Online Data Check Results</h2>
-          <div id="online-check-table" class="table-wrap"></div>
-        </article>
-      </section>
+        <!-- LIST + DETAIL ────────────────────────────────────── -->
+        <div class="reports-grid">
+          <div class="reports-list">
+            <div class="rl-head" data-i18n="rl_head">最近 · 28 天</div>
+            <!-- reports-v2.js clones this template per row. Filled fields:
+                 .rl-row[data-date|data-status] / .when / .pill (color class) /
+                 .regime-text / .score -->
+            <template id="rl-row-template">
+              <div class="rl-row" data-date="" data-status="">
+                <span class="when">--</span>
+                <span class="what">
+                  <span class="pill muted">--</span>
+                  <span class="regime-text">--</span><br>
+                  <span class="score">--</span>
+                </span>
+              </div>
+            </template>
+            <div id="reports-list"></div>
+          </div>
 
-      <section class="panel">
-        <h2 data-i18n="detailed_indicator_scores">Detailed Indicators Score</h2>
-        <div id="daily-scores-table" class="table-wrap explorer"></div>
-      </section>
+          <!-- reports-v2.js fills #report-detail innerHTML with:
+                 .rd-head (h2 + 3 btns) + .rd-headline + .rd-meta (4 items) +
+                 .rd-summary (3 paragraphs) + 3× .rd-section (drivers / alerts /
+                 stance). Inserted markup includes data-i18n keys so applyI18n
+                 re-scan picks them up after each render. -->
+          <div id="report-detail" class="rd"></div>
+        </div>
 
-      <section class="panel" style="display:none">
-        <h2 data-i18n="indicator_verification_status">Indicator Verification Status</h2>
-        <div id="indicator-verification-table" class="table-wrap explorer"></div>
-      </section>
-    </main>
+        <!-- EMAIL SUBSCRIBE ──────────────────────────────────── -->
+        <div class="section-label"><span class="num">EM</span> <span data-i18n="em_section">邮件订阅</span></div>
+        <div class="email-wrap">
+          <div class="text">
+            <span data-i18n="em_text">每天 09:05 北京时间收到日报简报 —— 标题 + regime 判定 + 关键动作。可随时退订。</span>
+          </div>
+          <input id="email-input" type="email" placeholder="you@example.com" />
+          <button id="email-subscribe-btn" class="btn" type="button" data-i18n="em_btn_subscribe">订阅</button>
+        </div>
+
+        <!-- AUDIT ────────────────────────────────────────────── -->
+        <!-- Defaults rendered statically so the page is meaningful even if
+             reports-v2.js fetch fails: 5 muted placeholders + a warn line for
+             email-deliveries unavailability (issue #19). On a successful
+             /api/email-deliveries response, reports-v2.js hides the warn line
+             and replaces #audit-dispatch-log children. -->
+        <details class="audit">
+          <summary>
+            <span data-i18n="audit_reports_summary">$ 审计 · 邮件分发 · 最近 5 次</span>
+            <span style="float: right; color: var(--text-3);">
+              <span id="audit-reports-meta" data-i18n="audit_reports_meta">6 个有效订阅 · 今日 0 失败</span>
+            </span>
+          </summary>
+          <div class="body">
+            <div id="audit-email-warn">
+              <span class="prompt">▸</span>
+              <span class="val warn" data-i18n="audit_email_unavailable">邮件分发数据不可用</span><br>
+            </div>
+            <div id="audit-dispatch-log">
+              <span class="prompt">▸</span> <span class="key">--</span> · <span class="val muted">暂无分发记录</span><br>
+              <span class="prompt">▸</span> <span class="key">--</span> · <span class="val muted">暂无分发记录</span><br>
+              <span class="prompt">▸</span> <span class="key">--</span> · <span class="val muted">暂无分发记录</span><br>
+              <span class="prompt">▸</span> <span class="key">--</span> · <span class="val muted">暂无分发记录</span><br>
+              <span class="prompt">▸</span> <span class="key">--</span> · <span class="val muted">暂无分发记录</span><br>
+            </div>
+            <span class="prompt">▸</span>
+            <a href="#" data-i18n="audit_reports_manage">管理订阅</a> ·
+            <a href="#" data-i18n="audit_reports_template">编辑模板</a> ·
+            <a href="#" data-i18n="audit_reports_resend">重发选中</a>
+          </div>
+        </details>
+      </main>
+    </div>
   </body>
 </html>
