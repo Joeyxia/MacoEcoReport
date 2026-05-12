@@ -1,73 +1,268 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="macro-api-base" content="https://api.nexo.hk" />
-    <title data-i18n="title_portfolio_watchlist">Macro Risk Monitor | Portfolio Watchlist</title>
+    <title data-i18n="title_portfolio">Nexo · Portfolio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css?v=20260309p" />
-    <link rel="stylesheet" href="styles-v2.css?v=20260428a1" />
+    <link rel="stylesheet" href="styles-v2.css?v=20260512a1" />
     <script src="auth-guard.js?v=20260317a1" defer></script>
-    <script src="app.js?v=20260317b1" defer></script>
+    <script src="app.js?v=20260512a1" defer></script>
     <script src="capital-warning.js?v=20260401v21a" defer></script>
+    <script src="portfolio-v2.js?v=20260512a1" defer></script>
   </head>
-  <body data-page="portfolio-watchlist">
+  <body data-page="portfolio-watchlist" data-render-state="loading">
     <div class="bg-layer"></div>
-    <header class="site-header">
-      <a class="brand" href="index.html" data-i18n="brand_name">Macro Risk Monitor</a>
-      <nav>
-        <a class="nav-link" href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
-        <a class="nav-link" href="daily-report.html" data-i18n="nav_daily_report">Daily Report</a>
-        <a class="nav-link" href="indicators.html" data-i18n="nav_indicators">Indicators</a>
-        <a class="nav-link" href="glossary.html" data-i18n="nav_glossary">Glossary</a>
-        <a class="nav-link" href="subscribe.html" data-i18n="nav_subscribe">Subscribe</a>
-        <a class="nav-link" href="ai-assistant.html" data-i18n="nav_ai_assistant">AI Assistant</a>
-        <a class="nav-link active" href="portfolio-watchlist.html" data-i18n="nav_portfolio_watchlist">Portfolio Watchlist</a>
-        <a class="nav-link" href="regime-transmission.html" data-i18n="nav_regime_transmission">Regime & Transmission</a>
-        <a class="nav-link" href="stock-prediction.html" data-i18n="nav_stock_prediction">Stock Prediction</a>
-        <a class="nav-link" href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
-        <a class="nav-link" href="polymarket-pnl.html" data-i18n="nav_polymarket_pnl">Polymarket PnL</a>
-        <a class="nav-link" href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
-        <a class="nav-link" href="about.html" data-i18n="nav_intro">About Nexo</a>
-      </nav>
-      <button id="lang-toggle" class="btn ghost lang-toggle" type="button">中文</button>
-    </header>
-    <main class="page">
-      <section class="panel hero compact">
-        <div>
-          <p class="eyebrow" data-i18n="pw_eyebrow">Portfolio Watchlist</p>
-          <h1 data-i18n="pw_page_title">Watchlist / Position Risk Mapping</h1>
-          <p class="subtle" data-i18n="pw_page_desc">Create watchlists, add stocks, and read macro exposure, action bias, and vulnerable positions.</p>
+
+    <!-- Legacy-shim for capital-warning.js initPortfolioWatchlistPage
+         (capital-warning.js:877-1053): 11 hidden elements preserve the
+         getElementById writes + addEventListener bindings without surfacing
+         them in the mockup-v2 layout. Same shim approach as step 2A
+         dashboard + step 2E reports. Once that legacy path is retired,
+         drop this whole block. -->
+    <div hidden id="capital-warning-shim">
+      <div id="watchlist-list"></div>
+      <div id="watchlist-positions"></div>
+      <div id="portfolio-risk-summary"></div>
+      <input id="watchlist-email" />
+      <div id="watchlist-user-email"></div>
+      <input id="watchlist-name" />
+      <input id="position-ticker" list="ticker-suggestions" />
+      <datalist id="ticker-suggestions"></datalist>
+      <input id="position-qty" />
+      <button id="watchlist-create" type="button"></button>
+      <button id="position-add" type="button"></button>
+    </div>
+
+    <div class="layout">
+      <aside>
+        <div class="brand">
+          <span class="logo">N</span>
+          <span data-i18n="brand">Nexo</span>
+          <span class="ver">v2.1</span>
         </div>
-      </section>
-      <section class="panel">
-        <div class="report-actions">
-          <input id="watchlist-email" class="report-link" style="min-width:260px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;display:none;" data-i18n-placeholder="pw_email_placeholder" placeholder="email" />
-          <div id="watchlist-user-email" class="subtle"></div>
-          <input id="watchlist-name" class="report-link" style="min-width:220px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" data-i18n-placeholder="pw_name_placeholder" placeholder="watchlist name" />
-          <button id="watchlist-create" class="btn" data-i18n="pw_create">Create Watchlist</button>
-        </div>
-        <div id="watchlist-list" class="report-links"></div>
-      </section>
-      <section class="grid two-col">
-        <article class="panel">
-          <h2 data-i18n="pw_positions">Positions</h2>
-          <div class="report-actions">
-            <input id="position-ticker" list="ticker-suggestions" class="report-link" style="min-width:180px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" data-i18n-placeholder="pw_ticker_placeholder" placeholder="ticker" />
-            <datalist id="ticker-suggestions"></datalist>
-            <input id="position-qty" class="report-link" style="min-width:120px;padding:12px;border:1px solid rgba(18,53,61,.15);border-radius:12px;" data-i18n-placeholder="pw_qty_placeholder" placeholder="quantity" />
-            <button id="position-add" class="btn" data-i18n="pw_add_position">Add Position</button>
+        <div class="status-row">
+          <div>
+            <span class="green-dot"></span>
+            <span class="lbl" data-i18n="status_live">实时</span> ·
+            <span class="val"><span data-i18n="status_run">运行</span> #<span id="status-run-id">--</span></span>
           </div>
-          <div id="watchlist-positions" class="table-wrap"></div>
-        </article>
-        <article class="panel">
-          <h2 data-i18n="pw_risk_summary">Portfolio Risk Summary</h2>
-          <div id="portfolio-risk-summary" class="summary-panel"></div>
-        </article>
-      </section>
-    </main>
+          <div>
+            <span class="lbl" data-i18n="status_latency">延迟</span> ·
+            <span class="val" id="status-latency">--</span>
+          </div>
+          <div>
+            <span class="lbl" data-i18n="status_fresh">新鲜度</span> ·
+            <span class="val"><span id="status-fresh">--</span> <span data-i18n="status_indicators">指标</span></span>
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-label" data-i18n="nav_briefing">日报简报</div>
+          <div class="nav">
+            <a href="dashboard.html" data-i18n="nav_today">今日</a>
+            <a href="regime-transmission.html" data-i18n="nav_markets">市场传导</a>
+            <a class="active" href="portfolio-watchlist.html" data-i18n="nav_portfolio">持仓风险</a>
+            <a href="geo.html" data-i18n="nav_geo">地缘监控</a>
+            <a href="daily-report.html" data-i18n="nav_reports">报告归档</a>
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-label" data-i18n="nav_tools">工具集</div>
+          <div class="nav">
+            <a href="indicators.html" data-i18n="nav_indicators">指标库</a>
+            <a href="ai-assistant.html" data-i18n="nav_ai_assistant">AI 助手</a>
+            <a href="stock-prediction.html" data-i18n="nav_stock_prediction">个股预测</a>
+            <a href="polymarket.html" data-i18n="nav_polymarket">Polymarket</a>
+            <a href="openrouter.html" data-i18n="nav_openrouter">OpenRouter</a>
+          </div>
+        </div>
+        <div class="footer-mini" data-i18n="footer_subscribe">订阅 · 关于<br><span style="color: var(--text-dim)" data-i18n="footer_build">构建版本 2026.05.12</span></div>
+      </aside>
+
+      <main>
+        <div class="top-bar">
+          <h1><span class="live"></span><span data-i18n="title_portfolio">持仓</span></h1>
+          <div style="display: flex; align-items: center;">
+            <div class="meta">
+              <span id="meta-positions-count">--</span> <span data-i18n="meta_positions">持仓数</span>
+              <span class="sep">·</span>
+              <span data-i18n="meta_avg_risk">平均风险</span> <span id="meta-avg-risk" style="color: var(--warn)">--</span>
+              <span class="sep">·</span>
+              <span data-i18n="meta_dominant_action">主导动作</span> <span id="meta-action" style="color: var(--warn)">--</span>
+            </div>
+            <button id="lang-toggle" type="button">EN</button>
+          </div>
+        </div>
+
+        <!-- HERO ─────────────────────────────────────────────── -->
+        <div class="hero">
+          <div class="label" data-i18n="pf_eyebrow">组合宏观风险</div>
+          <div class="punch">
+            <span data-i18n="pf_punch_lead">组合宏观-个股复合风险分为</span>
+            <span class="hi" id="hero-risk-score">--</span><span data-i18n="pf_punch_mid1">。两只高风险（PDD、NIO），两只受益（XOM、UNH）。建议在 PDD / NIO / META 削减集中度，并在 D11 回落后逐步加仓能源和医疗。</span>
+          </div>
+          <div class="chips">
+            <span class="chip warn"><span class="k" data-i18n="chip_stance">立场</span> <span id="chip-stance">--</span></span>
+            <span class="chip warn"><span class="k" data-i18n="chip_size_cap">仓位上限</span> <span id="chip-size-cap">--</span></span>
+            <span class="chip muted"><span class="k" data-i18n="meta_positions">持仓数</span> <span id="chip-positions">--</span></span>
+            <span class="chip muted"><span class="k" data-i18n="meta_total">总计</span> <span id="chip-total-value">--</span></span>
+          </div>
+        </div>
+
+        <!-- WATCHLIST TABS ───────────────────────────────────── -->
+        <!-- #wl-tabs uses display:contents so portfolio-v2.js's cloned
+             .wl-tab nodes participate directly in .wl-row's flex layout
+             alongside the spacer + 2 buttons. -->
+        <div class="wl-row">
+          <div id="wl-tabs" style="display: contents;"></div>
+          <span class="spacer"></span>
+          <button id="wl-create-btn" class="btn-ghost btn" type="button" data-i18n="pf_btn_new">+ 新建 watchlist</button>
+          <button id="wl-add-position-btn" class="btn" type="button" data-i18n="pf_btn_add_pos">+ 添加持仓</button>
+        </div>
+        <template id="wl-tab-template">
+          <div class="wl-tab" data-wid="">
+            <span class="name">--</span> <span class="ct">--</span>
+          </div>
+        </template>
+
+        <!-- PF STATS 4 cards ─────────────────────────────────── -->
+        <div class="pf-stats">
+          <div class="pf-stat warn" id="stat-avg-risk">
+            <div class="k" data-i18n="pf_avg_risk_label">平均宏观风险</div>
+            <div class="v">--</div>
+            <div class="sub"><span data-i18n="pf_avg_risk_sub">上周为</span> --</div>
+          </div>
+          <div class="pf-stat bad" id="stat-high-risk">
+            <div class="k" data-i18n="pf_high_risk_count_label">高风险数</div>
+            <div class="v">--</div>
+            <div class="sub" style="color: var(--bad)">--</div>
+          </div>
+          <div class="pf-stat" id="stat-benefit">
+            <div class="k" data-i18n="pf_benefit_count_label">受益数</div>
+            <div class="v">--</div>
+            <div class="sub" style="color: var(--good)">--</div>
+          </div>
+          <div class="pf-stat" id="stat-diversification">
+            <div class="k" data-i18n="pf_diversification_label">分散度</div>
+            <div class="v">--</div>
+            <div class="sub" data-i18n="pf_diversification_sub">HHI 行业集中度</div>
+          </div>
+        </div>
+
+        <!-- L3.1 EXPOSURE MATRIX ─────────────────────────────── -->
+        <div class="section-label"><span class="num">L3.1</span> <span data-i18n="sec_l31">宏观暴露矩阵</span></div>
+        <div class="card">
+          <table class="matrix">
+            <thead>
+              <tr>
+                <th data-i18n="pf_col_ticker">代码</th>
+                <th data-i18n="pf_col_rate">利率</th>
+                <th data-i18n="pf_col_growth">增长</th>
+                <th data-i18n="pf_col_inflation">通胀</th>
+                <th data-i18n="pf_col_oil">油价</th>
+                <th data-i18n="pf_col_credit">信用</th>
+                <th data-i18n="pf_col_usd">美元</th>
+                <th data-i18n="pf_col_vol">波动</th>
+                <th data-i18n="pf_col_geo">地缘</th>
+                <th style="text-align: right" data-i18n="pf_col_risk">风险</th>
+                <th data-i18n="pf_col_action">动作</th>
+              </tr>
+            </thead>
+            <!-- portfolio-v2.js clones #matrix-row-template per position.
+                 td[data-factor] cells get .heat class swapped + text set;
+                 .risk-cell gets numeric value + color class;
+                 .rec gets action class + label. -->
+            <tbody id="matrix-body"></tbody>
+          </table>
+          <template id="matrix-row-template">
+            <tr data-ticker="" data-status="">
+              <td><span class="tk">--</span><br><span class="qty">--</span></td>
+              <td data-factor="interest_rate"><span class="heat l">--</span></td>
+              <td data-factor="growth"><span class="heat l">--</span></td>
+              <td data-factor="inflation"><span class="heat l">--</span></td>
+              <td data-factor="oil"><span class="heat l">--</span></td>
+              <td data-factor="credit"><span class="heat l">--</span></td>
+              <td data-factor="usd"><span class="heat l">--</span></td>
+              <td data-factor="volatility"><span class="heat l">--</span></td>
+              <td data-factor="geopolitics"><span class="heat l">--</span></td>
+              <td class="risk-cell muted">--</td>
+              <td><span class="rec keep">--</span></td>
+            </tr>
+          </template>
+          <div class="legend">
+            <span class="item"><span class="swatch h"></span><span data-i18n="pf_legend_h">H = 高敏感（惩罚）</span></span>
+            <span class="item"><span class="swatch m"></span><span data-i18n="pf_legend_m">M = 中等</span></span>
+            <span class="item"><span class="swatch l"></span><span data-i18n="pf_legend_l">L = 低</span></span>
+            <span class="item"><span class="swatch g"></span><span data-i18n="pf_legend_g">G = 受益</span></span>
+          </div>
+        </div>
+
+        <!-- L3.2 CONCENTRATION ───────────────────────────────── -->
+        <div class="section-label"><span class="num">L3.2</span> <span data-i18n="sec_l32">集中度</span></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h3 data-i18n="conc_by_sector">按行业</h3>
+              <span class="small">HHI <span id="conc-sector-hhi">--</span></span>
+            </div>
+            <div id="conc-by-sector"></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3 data-i18n="conc_by_factor">按宏观因子</h3>
+              <span class="small">aggregated H exposure</span>
+            </div>
+            <div id="conc-by-factor"></div>
+          </div>
+        </div>
+        <!-- One template serves both #conc-by-sector and #conc-by-factor.
+             data-key holds the sector code or factor field name so v2.js
+             can identify a row for later updates. .conc-fill width %
+             + variant class (.warn/.bad) set per row. -->
+        <template id="conc-row-template">
+          <div class="conc-row" data-key="">
+            <span class="name">--</span>
+            <div class="conc-bar"><div class="conc-fill" style="width: 0%"></div></div>
+            <span class="pct">--</span>
+          </div>
+        </template>
+
+        <!-- WHY DRAWER (top risk + top benefit + AI quote) ───── -->
+        <details>
+          <summary>
+            <span data-i18n="pf_why_summary">为什么这些建议 · 逐持仓推理</span>
+            <span class="meta" data-i18n="pf_why_meta">点击上方任意 ticker 展开其推理</span>
+          </summary>
+          <!-- portfolio-v2.js fills #why-trace innerHTML with span pairs:
+                 <span class="label">TICKER</span><span>...reason...</span>
+               Last pair is the AI quote with class "ai-quote". -->
+          <div class="trace" id="why-trace"></div>
+        </details>
+
+        <!-- AUDIT DRAWER ─────────────────────────────────────── -->
+        <details class="audit">
+          <summary>
+            <span data-i18n="audit_pf_summary">$ 审计 · 持仓 · 暴露数据源 · 上次同步</span>
+            <span style="float: right; color: var(--text-3);">
+              <span id="audit-pf-meta" data-i18n="audit_pf_meta">8 个持仓 · 7 个有模型暴露数据</span>
+            </span>
+          </summary>
+          <div class="body">
+            <span class="prompt">▸</span> <span class="key" data-i18n="audit_pf_user">用户</span>: <span class="val" id="audit-user-email">--</span> · <span class="key" data-i18n="audit_pf_wl_id">watchlist_id</span>: <span class="val" id="audit-watchlist-id">--</span><br>
+            <span class="prompt">▸</span> <span class="key" data-i18n="audit_pf_exposure_src">暴露来源</span>: <span class="val">stock_macro_exposures</span> + <span class="val">portfolio_macro_exposure</span><br>
+            <span class="prompt">▸</span> <span class="key" data-i18n="audit_pf_signal_src">信号来源</span>: <span class="val">stock_macro_signals</span> · <span class="key" data-i18n="audit_pf_computed_at">计算时间</span>: <span class="val" id="audit-computed-at">--</span><br>
+            <span class="prompt">▸</span> <span class="key" data-i18n="audit_pf_missing">缺失暴露</span>: <span class="val" id="audit-missing-exposure">[]</span> · <span class="key" data-i18n="audit_pf_stale">过期信号</span>: <span class="val" id="audit-stale-signals">[]</span><br>
+            <span class="prompt">▸</span> <a href="#" data-i18n="audit_pf_link_rerun">重跑组合风险</a> · <a href="#" data-i18n="audit_pf_link_export">导出 csv</a> · <a href="#" data-i18n="audit_pf_link_customize">自定义暴露</a>
+          </div>
+        </details>
+      </main>
+    </div>
   </body>
 </html>

@@ -1814,3 +1814,199 @@ body::before{
   .email-wrap{ flex-direction: column; align-items: stretch; }
   .email-wrap input{ min-width: 0; width: 100%; }
 }
+
+/* ===========================================================
+   step 2d · portfolio (portfolio-watchlist.html) — pf-stats /
+   watchlist tabs / 8×11 macro exposure matrix / concentration
+   bars / legend. All selectors verbatim from mockup-v2/portfolio.html
+   inline <style> except:
+   - .pf-stat scoped under .layout .pf-stats (vs step 2A
+     .action-stats .stat at line 886 + step 2C .grid-3 .stat at
+     line 1384) to keep specificity disjoint
+   - .wl-tab scoped under .layout (vs step 2B .auth-tab at line 1083)
+   - .matrix .heat.g rule kept even though portfolio-v2.js classifyHeat
+     doesn't emit it yet — anchored for issue #22 (backend direction
+     field). Adding the class enum value will be a 1-line v2.js change.
+   - Responsive (<880px): matrix gains horizontal scroll via :has()
+     on parent .card; see "responsive" block at bottom.
+   =========================================================== */
+
+/* ─── portfolio summary stats (4 cards) ─── */
+.layout .pf-stats{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.layout .pf-stats .pf-stat{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.layout .pf-stats .pf-stat::before{
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--accent);
+}
+.layout .pf-stats .pf-stat.warn::before{ background: var(--warn); }
+.layout .pf-stats .pf-stat.bad::before{ background: var(--bad); }
+.layout .pf-stats .pf-stat .k{
+  font-size: 10px; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.layout .pf-stats .pf-stat .v{
+  font-family: var(--mono); font-size: 22px; font-weight: 500;
+  color: var(--text); line-height: 1;
+}
+.layout .pf-stats .pf-stat .sub{
+  font-size: 11px; color: var(--text-2);
+  margin-top: 6px; font-family: var(--mono);
+}
+
+/* ─── watchlist tabs + add ─── */
+.layout .wl-row{
+  display: flex; gap: 8px; align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.layout .wl-tab{
+  padding: 6px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+}
+.layout .wl-tab.active{
+  background: var(--accent-faint);
+  color: var(--accent-2);
+  border-color: var(--accent-border);
+}
+.layout .wl-tab .ct{ color: var(--text-3); margin-left: 6px; }
+.layout .wl-tab.active .ct{ color: var(--accent); }
+
+/* ─── 8×11 macro exposure matrix ─── */
+.matrix{ width: 100%; border-collapse: collapse; font-size: 12px; }
+.matrix th{
+  text-align: left;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 8px 8px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+.matrix th:first-child{ width: 80px; }
+.matrix td{
+  padding: 8px;
+  border-bottom: 1px solid var(--hairline);
+  font-family: var(--mono);
+}
+.matrix tr:hover td{ background: var(--surface-2); }
+.matrix .tk{
+  color: var(--text); font-weight: 500; font-size: 13px;
+}
+.matrix .qty{ color: var(--text-3); font-size: 10px; }
+.matrix .heat{
+  width: 32px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  border: 1px solid;
+}
+.matrix .heat.h{
+  background: var(--bad-bg); color: var(--bad); border-color: var(--bad-border);
+}
+.matrix .heat.m{
+  background: var(--warn-bg); color: var(--warn); border-color: var(--warn-border);
+}
+.matrix .heat.l{
+  background: var(--surface-2); color: var(--text-3); border-color: var(--hairline);
+}
+.matrix .heat.g{
+  background: var(--good-bg); color: var(--good); border-color: var(--good-border);
+}
+.matrix .risk-cell{
+  font-weight: 500;
+  text-align: right;
+}
+.matrix .risk-cell.red{ color: var(--bad); }
+.matrix .risk-cell.amber{ color: var(--warn); }
+.matrix .risk-cell.green{ color: var(--good); }
+.matrix .risk-cell.muted{ color: var(--text-2); }
+.matrix .rec{
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-family: var(--mono);
+}
+.matrix .rec.reduce{ background: var(--bad-bg); color: var(--bad); }
+.matrix .rec.trim{ background: var(--warn-bg); color: var(--warn); }
+.matrix .rec.keep{ background: var(--surface-2); color: var(--text-2); }
+.matrix .rec.add{ background: var(--good-bg); color: var(--good); }
+
+/* ─── concentration breakdown bars ─── */
+.conc-row{
+  display: grid;
+  grid-template-columns: 100px 1fr 60px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 12px;
+}
+.conc-bar{
+  height: 18px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+}
+.conc-fill{ height: 100%; background: var(--accent); }
+.conc-fill.warn{ background: var(--warn); }
+.conc-fill.bad{ background: var(--bad); }
+.conc-row .pct{ font-family: var(--mono); text-align: right; color: var(--text); }
+.conc-row .name{ color: var(--text); font-weight: 500; }
+.conc-row .name .sub{
+  color: var(--text-3); font-size: 10px;
+  font-weight: 400; margin-left: 4px;
+}
+
+/* ─── legend (matrix card footer 4 swatches) ─── */
+.legend{
+  display: flex; gap: 14px;
+  font-size: 11px; color: var(--text-3);
+  margin-top: 8px; align-items: center;
+}
+.legend .item{ display: flex; align-items: center; gap: 4px; }
+.legend .swatch{
+  width: 12px; height: 12px;
+  border-radius: 2px;
+  border: 1px solid;
+}
+.legend .swatch.h{ background: var(--bad-bg); border-color: var(--bad-border); }
+.legend .swatch.m{ background: var(--warn-bg); border-color: var(--warn-border); }
+.legend .swatch.l{ background: var(--surface-2); border-color: var(--hairline); }
+.legend .swatch.g{ background: var(--good-bg); border-color: var(--good-border); }
+
+/* ─── responsive (<880px): matrix → horizontal-scroll inside .card
+       parent (decision: Option A — preserve mockup's 11-col table
+       design, let user h-scroll; Option B would have required
+       reflowing 8 factors into 5+6 layout which loses the at-a-glance
+       grid pattern). pf-stats 4→2; conc-row tightens; .grid-2 already
+       collapsed by step 2d-2 media query at line 1571. ─── */
+@media (max-width: 880px){
+  .layout .pf-stats{ grid-template-columns: 1fr 1fr; }
+  .card:has(> .matrix){ overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .matrix{ min-width: 720px; }
+  .conc-row{ grid-template-columns: 80px 1fr 56px; }
+  .layout .wl-row{ row-gap: 8px; }
+}

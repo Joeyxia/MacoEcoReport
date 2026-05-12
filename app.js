@@ -3586,6 +3586,9 @@ Object.assign(i18n.zh, {
     action_size_cap_k: "仓位上限",
     action_hedge: "对冲偏好",
     action_v_defensive: "防御",
+    // step 2d: portfolio-v2.js chip-stance + meta-action consume summary.
+    // dominant_action_bias enum (probed value: "avoid_new_adds")
+    action_v_avoid_new_adds: "防御（避免新增）",
     action_v_index_hedge: "优先指数对冲",
     action_text_lead: "减仓",
     action_text_high_lev: "高杠杆周期股",
@@ -4084,6 +4087,9 @@ Object.assign(i18n.en, {
     action_size_cap_k: "Position size cap",
     action_hedge: "Hedge preference",
     action_v_defensive: "defensive",
+    // step 2d: portfolio-v2.js chip-stance + meta-action consume summary.
+    // dominant_action_bias enum (probed value: "avoid_new_adds")
+    action_v_avoid_new_adds: "defensive (avoid new adds)",
     action_v_index_hedge: "index hedge first",
     action_text_lead: "Reduce",
     action_text_high_lev: "high-leverage cyclicals",
