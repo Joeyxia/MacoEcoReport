@@ -1,67 +1,108 @@
 {
-  "updated_count": 0,
-  "failed_count": 45,
-  "updated": [],
+  "updated_count": 8,
+  "failed_count": 37,
+  "updated": [
+    {
+      "code": "VIX",
+      "value": 15.19,
+      "date": "2026-08-17"
+    },
+    {
+      "code": "MOVE",
+      "value": 75.630203,
+      "date": "2026-08-17"
+    },
+    {
+      "code": "SPX_DD_3M",
+      "value": -4.504592,
+      "date": "2026-08-17"
+    },
+    {
+      "code": "DXY",
+      "value": 99.560997,
+      "date": "2026-08-18"
+    },
+    {
+      "code": "WTI",
+      "value": 84.739998,
+      "date": "2026-08-18"
+    },
+    {
+      "code": "BTC",
+      "value": 64269.0,
+      "date": "2026-08-18"
+    },
+    {
+      "code": "USDC_MCAP",
+      "value": 71.861105,
+      "date": "2026-08-18"
+    },
+    {
+      "code": "STABLECOIN_DOM",
+      "value": 307.968139,
+      "date": "2026-08-17"
+    }
+  ],
   "failed": [
     {
       "code": "YC_10Y3M",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "SOFR",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "FED_ASSETS",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "NET_LIQ_PROXY",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "GDP_QOQ_SAAR",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "PMI_MAN",
-      "error": "manual/proprietary source required"
+      "error": "The read operation timed out"
     },
     {
       "code": "CLAIMS_4WMA",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "LEI",
-      "error": "manual/proprietary source required"
+      "error": "The read operation timed out"
     },
     {
       "code": "CORE_CPI_YOY",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "CORE_PCE_YOY",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "BREAKEVEN_5Y5Y",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "UNRATE",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "WAGE_GROWTH",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "CC_DELINQ",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "REAL_DISP_INC",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "SPX_FWD_PE",
@@ -73,39 +114,23 @@
     },
     {
       "code": "HY_OAS",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "MORTGAGE_30Y",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "EXIST_HOME_SALES",
-      "error": "manual/proprietary source required"
+      "error": "The read operation timed out"
     },
     {
       "code": "HOUSING_STARTS",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
-    },
-    {
-      "code": "VIX",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
-    },
-    {
-      "code": "MOVE",
-      "error": "manual/proprietary source required"
-    },
-    {
-      "code": "SPX_DD_3M",
-      "error": "manual/proprietary source required"
-    },
-    {
-      "code": "DXY",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "US_JP_10Y_SPREAD",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "CAPITAL_FLOWS",
@@ -117,7 +142,7 @@
     },
     {
       "code": "DEBT_GDP",
-      "error": "manual/proprietary source required"
+      "error": "The read operation timed out"
     },
     {
       "code": "INT_REV",
@@ -125,23 +150,19 @@
     },
     {
       "code": "FCI",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "BANK_LENDING",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "TED_SPREAD",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
-    },
-    {
-      "code": "WTI",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "error": "The read operation timed out"
     },
     {
       "code": "CRB",
-      "error": "manual/proprietary source required"
+      "error": "The read operation timed out"
     },
     {
       "code": "GPR",
@@ -149,7 +170,7 @@
     },
     {
       "code": "CB_CONS_CONF",
-      "error": "manual/proprietary source required"
+      "error": "The read operation timed out"
     },
     {
       "code": "CEO_CONF",
@@ -157,7 +178,7 @@
     },
     {
       "code": "EPU",
-      "error": "manual/proprietary source required"
+      "error": "The read operation timed out"
     },
     {
       "code": "CLOUD_AI_GROWTH",
@@ -169,18 +190,6 @@
     },
     {
       "code": "SEMI_BOOK_BILL",
-      "error": "manual/proprietary source required"
-    },
-    {
-      "code": "BTC",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
-    },
-    {
-      "code": "USDC_MCAP",
-      "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
-    },
-    {
-      "code": "STABLECOIN_DOM",
       "error": "manual/proprietary source required"
     }
   ]

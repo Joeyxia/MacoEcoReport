@@ -1,8 +1,8 @@
 {
-  "asOf": "2026-03-16",
-  "reportDate": "2026-03-16",
-  "totalScore": 68.49,
-  "status": "温和扩张",
+  "asOf": "2026-08-18",
+  "reportDate": "",
+  "totalScore": 45.0,
+  "status": "stagflation_defensive",
   "alerts": [
     {
       "id": "A01",
@@ -86,14 +86,14 @@
     },
     {
       "name": "风险偏好与跨资产波动",
-      "score": 80.49,
-      "contribution": 4.8296,
+      "score": 90.66,
+      "contribution": 5.4398,
       "id": "D07"
     },
     {
       "name": "外部部门与美元条件",
-      "score": 57.58,
-      "contribution": 4.0306,
+      "score": 92.58,
+      "contribution": 6.4806,
       "id": "D08"
     },
     {
@@ -110,8 +110,8 @@
     },
     {
       "name": "大宗商品与能源/地缘风险",
-      "score": 82.79,
-      "contribution": 4.1397,
+      "score": 93.82,
+      "contribution": 4.6912,
       "id": "D11"
     },
     {
@@ -128,15 +128,15 @@
     },
     {
       "name": "加密与稳定币流动性（主题）",
-      "score": 54.56,
-      "contribution": 0.5456,
+      "score": 54.8,
+      "contribution": 0.548,
       "id": "D14"
     }
   ],
   "drivers": [
     {
       "title": "Primary Support",
-      "text": "AI资本开支周期（主题） is the strongest block (92.86)."
+      "text": "大宗商品与能源/地缘风险 is the strongest block (93.82)."
     },
     {
       "title": "Primary Drag",
@@ -154,7 +154,7 @@
     },
     {
       "label": "VIX",
-      "value": 24.23
+      "value": 15.19
     },
     {
       "label": "HY_OAS",
@@ -170,15 +170,15 @@
     },
     {
       "label": "WTI",
-      "value": 94.65
+      "value": 84.74
     },
     {
       "label": "BTC",
-      "value": 71105.0
+      "value": 64269.0
     }
   ],
-  "latestReportSummary": "2026-03-16 总分 68.49（温和扩张），重点关注 通胀与价格压力, 就业与居民部门, 增长与前瞻。",
-  "generatedAt": "2026-03-16T01:43:57Z",
+  "latestReportSummary": "2026-08-18 总分 72.1（温和扩张），重点关注 通胀与价格压力, 就业与居民部门, 增长与前瞻。",
+  "generatedAt": "2026-08-18T00:59:30Z",
   "topDimensionContributors": [
     {
       "name": "通胀与价格压力",
@@ -199,6 +199,12 @@
       "id": "D02"
     },
     {
+      "name": "外部部门与美元条件",
+      "score": 92.58,
+      "contribution": 6.4806,
+      "id": "D08"
+    },
+    {
       "name": "货币政策与流动性",
       "score": 50.32,
       "contribution": 6.0385,
@@ -212,27 +218,21 @@
     },
     {
       "name": "风险偏好与跨资产波动",
-      "score": 80.49,
-      "contribution": 4.8296,
+      "score": 90.66,
+      "contribution": 5.4398,
       "id": "D07"
+    },
+    {
+      "name": "大宗商品与能源/地缘风险",
+      "score": 93.82,
+      "contribution": 4.6912,
+      "id": "D11"
     },
     {
       "name": "企业盈利与信用",
       "score": 57.15,
       "contribution": 4.5719,
       "id": "D05"
-    },
-    {
-      "name": "大宗商品与能源/地缘风险",
-      "score": 82.79,
-      "contribution": 4.1397,
-      "id": "D11"
-    },
-    {
-      "name": "外部部门与美元条件",
-      "score": 57.58,
-      "contribution": 4.0306,
-      "id": "D08"
     },
     {
       "name": "财政政策与债务约束",
@@ -260,8 +260,8 @@
     },
     {
       "name": "加密与稳定币流动性（主题）",
-      "score": 54.56,
-      "contribution": 0.5456,
+      "score": 54.8,
+      "contribution": 0.548,
       "id": "D14"
     }
   ],
@@ -311,17 +311,17 @@
   ],
   "dailyWatchedItems": [
     "YC_10Y3M: 50.0",
-    "VIX: 24.23",
+    "VIX: 15.19",
     "HY_OAS: 309.0",
     "CORE_CPI_YOY: 2.7335",
     "UNRATE: 4.4",
-    "WTI: 94.65",
-    "BTC: 71105.0"
+    "WTI: 84.74",
+    "BTC: 64269.0"
   ],
   "primaryDrivers": [
     {
       "title": "Primary Support",
-      "text": "AI资本开支周期（主题） is the strongest block (92.86)."
+      "text": "大宗商品与能源/地缘风险 is the strongest block (93.82)."
     },
     {
       "title": "Primary Drag",
@@ -342,7 +342,7 @@
     {
       "title": "VIX指数",
       "label": "VIX",
-      "value": 24.23,
+      "value": 15.19,
       "source": "FRED/CBOE"
     },
     {
@@ -366,7 +366,7 @@
     {
       "title": "WTI油价",
       "label": "WTI",
-      "value": 94.65,
+      "value": 84.74,
       "source": "FRED"
     }
   ],
@@ -438,8 +438,8 @@
       "Weight(%)": 6.0,
       "Definition": "VIX/MOVE/信用利差等市场风险映射。",
       "Typical Update": "Daily/Weekly",
-      "DimScore": 80.49,
-      "WeightedContribution": 4.8296
+      "DimScore": 90.66,
+      "WeightedContribution": 5.4398
     },
     {
       "DimensionID": "D08",
@@ -448,8 +448,8 @@
       "Weight(%)": 7.0,
       "Definition": "DXY/利差/资本流动等外部融资条件。",
       "Typical Update": "Daily/Monthly",
-      "DimScore": 57.58,
-      "WeightedContribution": 4.0306
+      "DimScore": 92.58,
+      "WeightedContribution": 6.4806
     },
     {
       "DimensionID": "D09",
@@ -478,8 +478,8 @@
       "Weight(%)": 5.0,
       "Definition": "油价/商品与地缘风险对通胀与增长的冲击。",
       "Typical Update": "Daily/Monthly",
-      "DimScore": 82.79,
-      "WeightedContribution": 4.1397
+      "DimScore": 93.82,
+      "WeightedContribution": 4.6912
     },
     {
       "DimensionID": "D12",
@@ -508,8 +508,8 @@
       "Weight(%)": 1.0,
       "Definition": "稳定币与链上流动性（低权重主题观察）。",
       "Typical Update": "Daily/Weekly",
-      "DimScore": 54.56,
-      "WeightedContribution": 0.5456
+      "DimScore": 54.8,
+      "WeightedContribution": 0.548
     }
   ],
   "indicatorDetails": [
@@ -524,11 +524,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 5,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 160,
       "FreshnessMaxAgeDays": 3,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "SOFR",
@@ -541,11 +541,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 5,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 160,
       "FreshnessMaxAgeDays": 3,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "FED_ASSETS",
@@ -558,11 +558,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 5,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 160,
       "FreshnessMaxAgeDays": 10,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "NET_LIQ_PROXY",
@@ -575,11 +575,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 4,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 159,
       "FreshnessMaxAgeDays": 10,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "GDP_QOQ_SAAR",
@@ -592,11 +592,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 166,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 321,
       "FreshnessMaxAgeDays": 120,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "PMI_MAN",
@@ -609,11 +609,11 @@
       "SourceDate": "2026-03-01",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "CLAIMS_4WMA",
@@ -626,11 +626,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 9,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 164,
       "FreshnessMaxAgeDays": 10,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "LEI",
@@ -643,11 +643,11 @@
       "SourceDate": "2026-03-01",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "CORE_CPI_YOY",
@@ -660,11 +660,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 43,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 198,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "CORE_PCE_YOY",
@@ -677,11 +677,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 105,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 260,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "BREAKEVEN_5Y5Y",
@@ -694,11 +694,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 4,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 159,
       "FreshnessMaxAgeDays": 3,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "UNRATE",
@@ -711,11 +711,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 43,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 198,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "WAGE_GROWTH",
@@ -728,11 +728,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 43,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 198,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "CC_DELINQ",
@@ -745,11 +745,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 166,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 321,
       "FreshnessMaxAgeDays": 120,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "REAL_DISP_INC",
@@ -762,11 +762,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 105,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 260,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "SPX_FWD_PE",
@@ -780,10 +780,10 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 10,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "EPS_REV_BREADTH",
@@ -797,10 +797,10 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 10,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "HY_OAS",
@@ -813,11 +813,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 5,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 160,
       "FreshnessMaxAgeDays": 3,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "MORTGAGE_30Y",
@@ -830,11 +830,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 4,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 159,
       "FreshnessMaxAgeDays": 10,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "EXIST_HOME_SALES",
@@ -847,11 +847,11 @@
       "SourceDate": "2026-03-01",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "HOUSING_STARTS",
@@ -864,11 +864,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 74,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 229,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "VIX",
@@ -876,16 +876,16 @@
       "DimensionID": "D07",
       "Source": "CBOE/FRED",
       "Series/Code": "VIXCLS",
-      "LatestValue": 24.23,
-      "ValueDate": "2026-03-11",
-      "SourceDate": "2026-03-13",
-      "VerifiedOnline": false,
-      "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 5,
+      "LatestValue": 15.19,
+      "ValueDate": "2026-08-17",
+      "SourceDate": "2026-08-18",
+      "VerifiedOnline": true,
+      "VerificationStatus": "Verified Online",
+      "VerificationError": "",
+      "FreshnessAgeDays": 1,
       "FreshnessMaxAgeDays": 3,
-      "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "FreshnessPassed": true,
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "MOVE",
@@ -893,16 +893,16 @@
       "DimensionID": "D07",
       "Source": "ICE",
       "Series/Code": "MOVE",
-      "LatestValue": 73.38,
-      "ValueDate": "2026-03-01",
-      "SourceDate": "2026-03-01",
-      "VerifiedOnline": false,
-      "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "LatestValue": 75.6302,
+      "ValueDate": "2026-08-17",
+      "SourceDate": "2026-08-18",
+      "VerifiedOnline": true,
+      "VerificationStatus": "Verified Online",
+      "VerificationError": "",
+      "FreshnessAgeDays": 1,
       "FreshnessMaxAgeDays": 3,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "SPX_DD_3M",
@@ -910,16 +910,16 @@
       "DimensionID": "D07",
       "Source": "User Calc",
       "Series/Code": "N/A",
-      "LatestValue": -4.5,
-      "ValueDate": "2026-03-01",
-      "SourceDate": "2026-03-01",
-      "VerifiedOnline": false,
-      "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "LatestValue": -4.5046,
+      "ValueDate": "2026-08-17",
+      "SourceDate": "2026-08-18",
+      "VerifiedOnline": true,
+      "VerificationStatus": "Verified Online",
+      "VerificationError": "",
+      "FreshnessAgeDays": 1,
       "FreshnessMaxAgeDays": 3,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "DXY",
@@ -927,16 +927,16 @@
       "DimensionID": "D08",
       "Source": "ICE/公开行情",
       "Series/Code": "DXY",
-      "LatestValue": 119.491,
-      "ValueDate": "2026-03-06",
-      "SourceDate": "2026-03-13",
-      "VerifiedOnline": false,
-      "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 10,
+      "LatestValue": 99.561,
+      "ValueDate": "2026-08-18",
+      "SourceDate": "2026-08-18",
+      "VerifiedOnline": true,
+      "VerificationStatus": "Verified Online",
+      "VerificationError": "",
+      "FreshnessAgeDays": 0,
       "FreshnessMaxAgeDays": 3,
-      "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "FreshnessPassed": true,
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "US_JP_10Y_SPREAD",
@@ -949,11 +949,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 5,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 160,
       "FreshnessMaxAgeDays": 3,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "CAPITAL_FLOWS",
@@ -967,10 +967,10 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "DEFICIT_GDP",
@@ -984,10 +984,10 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 120,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "DEBT_GDP",
@@ -1000,11 +1000,11 @@
       "SourceDate": "2026-03-01",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 400,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "INT_REV",
@@ -1018,10 +1018,10 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 400,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "FCI",
@@ -1034,11 +1034,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 10,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 165,
       "FreshnessMaxAgeDays": 10,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "BANK_LENDING",
@@ -1051,11 +1051,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 19,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 174,
       "FreshnessMaxAgeDays": 10,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "TED_SPREAD",
@@ -1068,11 +1068,11 @@
       "SourceDate": "2026-03-13",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 1515,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 1670,
       "FreshnessMaxAgeDays": 3,
       "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "WTI",
@@ -1080,16 +1080,16 @@
       "DimensionID": "D11",
       "Source": "NYMEX/公开行情",
       "Series/Code": "WTI",
-      "LatestValue": 94.65,
-      "ValueDate": "2026-03-09",
-      "SourceDate": "2026-03-13",
-      "VerifiedOnline": false,
-      "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 7,
+      "LatestValue": 84.74,
+      "ValueDate": "2026-08-18",
+      "SourceDate": "2026-08-18",
+      "VerifiedOnline": true,
+      "VerificationStatus": "Verified Online",
+      "VerificationError": "",
+      "FreshnessAgeDays": 0,
       "FreshnessMaxAgeDays": 3,
-      "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "FreshnessPassed": true,
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "CRB",
@@ -1102,11 +1102,11 @@
       "SourceDate": "2026-03-01",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 10,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "GPR",
@@ -1120,10 +1120,10 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "CB_CONS_CONF",
@@ -1136,11 +1136,11 @@
       "SourceDate": "2026-03-01",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "CEO_CONF",
@@ -1154,10 +1154,10 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 120,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "EPU",
@@ -1170,11 +1170,11 @@
       "SourceDate": "2026-03-01",
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "VerificationError": "The read operation timed out",
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "CLOUD_AI_GROWTH",
@@ -1188,10 +1188,10 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 120,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "AI_CAPEX_GUIDE",
@@ -1205,10 +1205,10 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 120,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "SEMI_BOOK_BILL",
@@ -1222,10 +1222,10 @@
       "VerifiedOnline": false,
       "VerificationStatus": "Fallback (latest available in model inputs)",
       "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "FreshnessAgeDays": 170,
       "FreshnessMaxAgeDays": 45,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "BTC",
@@ -1233,16 +1233,16 @@
       "DimensionID": "D14",
       "Source": "CoinMarketCap",
       "Series/Code": "BTC",
-      "LatestValue": 71105.0,
-      "ValueDate": "2026-03-14",
-      "SourceDate": "2026-03-14",
-      "VerifiedOnline": false,
-      "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 2,
+      "LatestValue": 64269.0,
+      "ValueDate": "2026-08-18",
+      "SourceDate": "2026-08-18",
+      "VerifiedOnline": true,
+      "VerificationStatus": "Verified Online",
+      "VerificationError": "",
+      "FreshnessAgeDays": 0,
       "FreshnessMaxAgeDays": 3,
-      "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "FreshnessPassed": true,
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "USDC_MCAP",
@@ -1250,16 +1250,16 @@
       "DimensionID": "D14",
       "Source": "CoinMarketCap",
       "Series/Code": "USDC",
-      "LatestValue": 79.2117,
-      "ValueDate": "2026-03-14",
-      "SourceDate": "2026-03-14",
-      "VerifiedOnline": false,
-      "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
-      "FreshnessAgeDays": 2,
+      "LatestValue": 71.8611,
+      "ValueDate": "2026-08-18",
+      "SourceDate": "2026-08-18",
+      "VerifiedOnline": true,
+      "VerificationStatus": "Verified Online",
+      "VerificationError": "",
+      "FreshnessAgeDays": 0,
       "FreshnessMaxAgeDays": 3,
-      "FreshnessPassed": false,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "FreshnessPassed": true,
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     },
     {
       "IndicatorCode": "STABLECOIN_DOM",
@@ -1267,16 +1267,16 @@
       "DimensionID": "D14",
       "Source": "CoinMarketCap",
       "Series/Code": "Stablecoins",
-      "LatestValue": 240.0,
-      "ValueDate": "2026-03-01",
-      "SourceDate": "2026-03-01",
-      "VerifiedOnline": false,
-      "VerificationStatus": "Fallback (latest available in model inputs)",
-      "VerificationError": "manual/proprietary source required",
-      "FreshnessAgeDays": 15,
+      "LatestValue": 307.9681,
+      "ValueDate": "2026-08-17",
+      "SourceDate": "2026-08-18",
+      "VerifiedOnline": true,
+      "VerificationStatus": "Verified Online",
+      "VerificationError": "",
+      "FreshnessAgeDays": 1,
       "FreshnessMaxAgeDays": 3,
       "FreshnessPassed": true,
-      "GeneratedAt": "2026-03-16T01:43:57Z"
+      "GeneratedAt": "2026-08-18T00:59:30Z"
     }
   ],
   "tables": {
@@ -2389,191 +2389,191 @@
     "inputs": [
       {
         "AsOf（模型更新日期）": "蓝色单元格为输入。IndicatorCode 建议用下拉选择，避免拼写错误。",
-        "2026-03-16": null
+        "2026-08-18": null
       },
       {
         "AsOf（模型更新日期）": "IndicatorCode",
-        "2026-03-16": "LatestValue"
+        "2026-08-18": "LatestValue"
       },
       {
         "AsOf（模型更新日期）": "YC_10Y3M",
-        "2026-03-16": 50
+        "2026-08-18": 50
       },
       {
         "AsOf（模型更新日期）": "SOFR",
-        "2026-03-16": 3.64
+        "2026-08-18": 3.64
       },
       {
         "AsOf（模型更新日期）": "FED_ASSETS",
-        "2026-03-16": 6.6463
+        "2026-08-18": 6.6463
       },
       {
         "AsOf（模型更新日期）": "NET_LIQ_PROXY",
-        "2026-03-16": -831.5398
+        "2026-08-18": -831.5398
       },
       {
         "AsOf（模型更新日期）": "GDP_QOQ_SAAR",
-        "2026-03-16": 1.4
+        "2026-08-18": 1.4
       },
       {
         "AsOf（模型更新日期）": "PMI_MAN",
-        "2026-03-16": 52.5
+        "2026-08-18": 52.5
       },
       {
         "AsOf（模型更新日期）": "CLAIMS_4WMA",
-        "2026-03-16": 212000
+        "2026-08-18": 212000
       },
       {
         "AsOf（模型更新日期）": "LEI",
-        "2026-03-16": -0.8
+        "2026-08-18": -0.8
       },
       {
         "AsOf（模型更新日期）": "CORE_CPI_YOY",
-        "2026-03-16": 2.7335
+        "2026-08-18": 2.7335
       },
       {
         "AsOf（模型更新日期）": "CORE_PCE_YOY",
-        "2026-03-16": 2.9969
+        "2026-08-18": 2.9969
       },
       {
         "AsOf（模型更新日期）": "BREAKEVEN_5Y5Y",
-        "2026-03-16": 2.13
+        "2026-08-18": 2.13
       },
       {
         "AsOf（模型更新日期）": "UNRATE",
-        "2026-03-16": 4.4
+        "2026-08-18": 4.4
       },
       {
         "AsOf（模型更新日期）": "WAGE_GROWTH",
-        "2026-03-16": 3.8397
+        "2026-08-18": 3.8397
       },
       {
         "AsOf（模型更新日期）": "CC_DELINQ",
-        "2026-03-16": 2.94
+        "2026-08-18": 2.94
       },
       {
         "AsOf（模型更新日期）": "REAL_DISP_INC",
-        "2026-03-16": 0.9195
+        "2026-08-18": 0.9195
       },
       {
         "AsOf（模型更新日期）": "SPX_FWD_PE",
-        "2026-03-16": 22.17
+        "2026-08-18": 22.17
       },
       {
         "AsOf（模型更新日期）": "EPS_REV_BREADTH",
-        "2026-03-16": -8
+        "2026-08-18": -8
       },
       {
         "AsOf（模型更新日期）": "HY_OAS",
-        "2026-03-16": 309
+        "2026-08-18": 309
       },
       {
         "AsOf（模型更新日期）": "MORTGAGE_30Y",
-        "2026-03-16": 6.11
+        "2026-08-18": 6.11
       },
       {
         "AsOf（模型更新日期）": "EXIST_HOME_SALES",
-        "2026-03-16": 3.91
+        "2026-08-18": 3.91
       },
       {
         "AsOf（模型更新日期）": "HOUSING_STARTS",
-        "2026-03-16": 1.487
+        "2026-08-18": 1.487
       },
       {
         "AsOf（模型更新日期）": "VIX",
-        "2026-03-16": 24.23
+        "2026-08-18": 15.19
       },
       {
         "AsOf（模型更新日期）": "MOVE",
-        "2026-03-16": 73.38
+        "2026-08-18": 75.6302
       },
       {
         "AsOf（模型更新日期）": "SPX_DD_3M",
-        "2026-03-16": -4.5
+        "2026-08-18": -4.5046
       },
       {
         "AsOf（模型更新日期）": "DXY",
-        "2026-03-16": 119.491
+        "2026-08-18": 99.561
       },
       {
         "AsOf（模型更新日期）": "US_JP_10Y_SPREAD",
-        "2026-03-16": 197
+        "2026-08-18": 197
       },
       {
         "AsOf（模型更新日期）": "CAPITAL_FLOWS",
-        "2026-03-16": 85
+        "2026-08-18": 85
       },
       {
         "AsOf（模型更新日期）": "DEFICIT_GDP",
-        "2026-03-16": 5.8
+        "2026-08-18": 5.8
       },
       {
         "AsOf（模型更新日期）": "DEBT_GDP",
-        "2026-03-16": 101
+        "2026-08-18": 101
       },
       {
         "AsOf（模型更新日期）": "INT_REV",
-        "2026-03-16": 18
+        "2026-08-18": 18
       },
       {
         "AsOf（模型更新日期）": "FCI",
-        "2026-03-16": -0.5137
+        "2026-08-18": -0.5137
       },
       {
         "AsOf（模型更新日期）": "BANK_LENDING",
-        "2026-03-16": 1.9462
+        "2026-08-18": 1.9462
       },
       {
         "AsOf（模型更新日期）": "TED_SPREAD",
-        "2026-03-16": 0.09
+        "2026-08-18": 0.09
       },
       {
         "AsOf（模型更新日期）": "WTI",
-        "2026-03-16": 94.65
+        "2026-08-18": 84.74
       },
       {
         "AsOf（模型更新日期）": "CRB",
-        "2026-03-16": 3
+        "2026-08-18": 3
       },
       {
         "AsOf（模型更新日期）": "GPR",
-        "2026-03-16": 115
+        "2026-08-18": 115
       },
       {
         "AsOf（模型更新日期）": "CB_CONS_CONF",
-        "2026-03-16": 91.2
+        "2026-08-18": 91.2
       },
       {
         "AsOf（模型更新日期）": "CEO_CONF",
-        "2026-03-16": 59
+        "2026-08-18": 59
       },
       {
         "AsOf（模型更新日期）": "EPU",
-        "2026-03-16": 140
+        "2026-08-18": 140
       },
       {
         "AsOf（模型更新日期）": "CLOUD_AI_GROWTH",
-        "2026-03-16": 30
+        "2026-08-18": 30
       },
       {
         "AsOf（模型更新日期）": "AI_CAPEX_GUIDE",
-        "2026-03-16": 75
+        "2026-08-18": 75
       },
       {
         "AsOf（模型更新日期）": "SEMI_BOOK_BILL",
-        "2026-03-16": 1.08
+        "2026-08-18": 1.08
       },
       {
         "AsOf（模型更新日期）": "BTC",
-        "2026-03-16": 71105
+        "2026-08-18": 64269.0
       },
       {
         "AsOf（模型更新日期）": "USDC_MCAP",
-        "2026-03-16": 79.2117
+        "2026-08-18": 71.8611
       },
       {
         "AsOf（模型更新日期）": "STABLECOIN_DOM",
-        "2026-03-16": 240
+        "2026-08-18": 307.9681
       }
     ],
     "scores": [
@@ -2770,25 +2770,25 @@
         "IndicatorCode": "VIX",
         "DimensionID": "D07",
         "IndicatorName": "VIX",
-        "LatestValue": 24.23,
-        "Score(0-100)": 62.94,
+        "LatestValue": 15.19,
+        "Score(0-100)": 90.33,
         "WeightWithinDim": 0.4,
-        "WeightedScore": 25.1758
+        "WeightedScore": 36.1333
       },
       {
         "IndicatorCode": "MOVE",
         "DimensionID": "D07",
         "IndicatorName": "MOVE",
-        "LatestValue": 73.38,
-        "Score(0-100)": 86.62,
+        "LatestValue": 75.6302,
+        "Score(0-100)": 84.37,
         "WeightWithinDim": 0.35,
-        "WeightedScore": 30.317
+        "WeightedScore": 29.5294
       },
       {
         "IndicatorCode": "SPX_DD_3M",
         "DimensionID": "D07",
         "IndicatorName": "标普500近3个月最大回撤（%）",
-        "LatestValue": -4.5,
+        "LatestValue": -4.5046,
         "Score(0-100)": 100,
         "WeightWithinDim": 0.25,
         "WeightedScore": 25.0
@@ -2797,10 +2797,10 @@
         "IndicatorCode": "DXY",
         "DimensionID": "D08",
         "IndicatorName": "美元指数DXY",
-        "LatestValue": 119.491,
-        "Score(0-100)": 0,
+        "LatestValue": 99.561,
+        "Score(0-100)": 100,
         "WeightWithinDim": 0.35,
-        "WeightedScore": 0.0
+        "WeightedScore": 35.0
       },
       {
         "IndicatorCode": "US_JP_10Y_SPREAD",
@@ -2878,10 +2878,10 @@
         "IndicatorCode": "WTI",
         "DimensionID": "D11",
         "IndicatorName": "WTI原油（$/桶）",
-        "LatestValue": 94.65,
-        "Score(0-100)": 72.43,
+        "LatestValue": 84.74,
+        "Score(0-100)": 100,
         "WeightWithinDim": 0.4,
-        "WeightedScore": 28.9714
+        "WeightedScore": 40.0
       },
       {
         "IndicatorCode": "CRB",
@@ -2959,28 +2959,28 @@
         "IndicatorCode": "BTC",
         "DimensionID": "D14",
         "IndicatorName": "BTC价格（$）",
-        "LatestValue": 71105.0,
-        "Score(0-100)": 51.11,
+        "LatestValue": 64269.0,
+        "Score(0-100)": 44.27,
         "WeightWithinDim": 0.4,
-        "WeightedScore": 20.442
+        "WeightedScore": 17.7076
       },
       {
         "IndicatorCode": "USDC_MCAP",
         "DimensionID": "D14",
         "IndicatorName": "USDC市值（$B）",
-        "LatestValue": 79.2117,
-        "Score(0-100)": 59.21,
+        "LatestValue": 71.8611,
+        "Score(0-100)": 51.86,
         "WeightWithinDim": 0.4,
-        "WeightedScore": 23.6847
+        "WeightedScore": 20.7444
       },
       {
         "IndicatorCode": "STABLECOIN_DOM",
         "DimensionID": "D14",
         "IndicatorName": "稳定币总市值（$B）",
-        "LatestValue": 240.0,
-        "Score(0-100)": 52.17,
+        "LatestValue": 307.9681,
+        "Score(0-100)": 81.73,
         "WeightWithinDim": 0.2,
-        "WeightedScore": 10.4348
+        "WeightedScore": 16.3451
       }
     ],
     "alerts": [
@@ -3029,69 +3029,110 @@
     ]
   },
   "onlineUpdate": {
-    "updated_count": 0,
-    "failed_count": 45,
-    "updated": [],
+    "updated_count": 8,
+    "failed_count": 37,
+    "updated": [
+      {
+        "code": "VIX",
+        "value": 15.19,
+        "date": "2026-08-17"
+      },
+      {
+        "code": "MOVE",
+        "value": 75.630203,
+        "date": "2026-08-17"
+      },
+      {
+        "code": "SPX_DD_3M",
+        "value": -4.504592,
+        "date": "2026-08-17"
+      },
+      {
+        "code": "DXY",
+        "value": 99.560997,
+        "date": "2026-08-18"
+      },
+      {
+        "code": "WTI",
+        "value": 84.739998,
+        "date": "2026-08-18"
+      },
+      {
+        "code": "BTC",
+        "value": 64269.0,
+        "date": "2026-08-18"
+      },
+      {
+        "code": "USDC_MCAP",
+        "value": 71.861105,
+        "date": "2026-08-18"
+      },
+      {
+        "code": "STABLECOIN_DOM",
+        "value": 307.968139,
+        "date": "2026-08-17"
+      }
+    ],
     "failed": [
       {
         "code": "YC_10Y3M",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "SOFR",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "FED_ASSETS",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "NET_LIQ_PROXY",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "GDP_QOQ_SAAR",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "PMI_MAN",
-        "error": "manual/proprietary source required"
+        "error": "The read operation timed out"
       },
       {
         "code": "CLAIMS_4WMA",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "LEI",
-        "error": "manual/proprietary source required"
+        "error": "The read operation timed out"
       },
       {
         "code": "CORE_CPI_YOY",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "CORE_PCE_YOY",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "BREAKEVEN_5Y5Y",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "UNRATE",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "WAGE_GROWTH",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "CC_DELINQ",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "REAL_DISP_INC",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "SPX_FWD_PE",
@@ -3103,39 +3144,23 @@
       },
       {
         "code": "HY_OAS",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "MORTGAGE_30Y",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "EXIST_HOME_SALES",
-        "error": "manual/proprietary source required"
+        "error": "The read operation timed out"
       },
       {
         "code": "HOUSING_STARTS",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
-      },
-      {
-        "code": "VIX",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
-      },
-      {
-        "code": "MOVE",
-        "error": "manual/proprietary source required"
-      },
-      {
-        "code": "SPX_DD_3M",
-        "error": "manual/proprietary source required"
-      },
-      {
-        "code": "DXY",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "US_JP_10Y_SPREAD",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "CAPITAL_FLOWS",
@@ -3147,7 +3172,7 @@
       },
       {
         "code": "DEBT_GDP",
-        "error": "manual/proprietary source required"
+        "error": "The read operation timed out"
       },
       {
         "code": "INT_REV",
@@ -3155,23 +3180,19 @@
       },
       {
         "code": "FCI",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "BANK_LENDING",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "TED_SPREAD",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
-      },
-      {
-        "code": "WTI",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "error": "The read operation timed out"
       },
       {
         "code": "CRB",
-        "error": "manual/proprietary source required"
+        "error": "The read operation timed out"
       },
       {
         "code": "GPR",
@@ -3179,7 +3200,7 @@
       },
       {
         "code": "CB_CONS_CONF",
-        "error": "manual/proprietary source required"
+        "error": "The read operation timed out"
       },
       {
         "code": "CEO_CONF",
@@ -3187,7 +3208,7 @@
       },
       {
         "code": "EPU",
-        "error": "manual/proprietary source required"
+        "error": "The read operation timed out"
       },
       {
         "code": "CLOUD_AI_GROWTH",
@@ -3200,26 +3221,14 @@
       {
         "code": "SEMI_BOOK_BILL",
         "error": "manual/proprietary source required"
-      },
-      {
-        "code": "BTC",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
-      },
-      {
-        "code": "USDC_MCAP",
-        "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
-      },
-      {
-        "code": "STABLECOIN_DOM",
-        "error": "manual/proprietary source required"
       }
     ]
   },
   "freshness": {
     "strict": false,
     "online_fetchable_total": 25,
-    "online_verified_count": 0,
-    "failed_count": 25,
+    "online_verified_count": 8,
+    "failed_count": 20,
     "checks": [
       {
         "IndicatorCode": "YC_10Y3M",
@@ -3227,10 +3236,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-11",
-        "AgeDays": 5,
+        "AgeDays": 160,
         "MaxAllowedAgeDays": 3,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "SOFR",
@@ -3238,10 +3247,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-11",
-        "AgeDays": 5,
+        "AgeDays": 160,
         "MaxAllowedAgeDays": 3,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "FED_ASSETS",
@@ -3249,10 +3258,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-11",
-        "AgeDays": 5,
+        "AgeDays": 160,
         "MaxAllowedAgeDays": 10,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "NET_LIQ_PROXY",
@@ -3260,10 +3269,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-12",
-        "AgeDays": 4,
+        "AgeDays": 159,
         "MaxAllowedAgeDays": 10,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "GDP_QOQ_SAAR",
@@ -3271,10 +3280,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2025-10-01",
-        "AgeDays": 166,
+        "AgeDays": 321,
         "MaxAllowedAgeDays": 120,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "PMI_MAN",
@@ -3282,10 +3291,10 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 45,
         "Passed": true,
-        "Error": "manual/proprietary source required"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "CLAIMS_4WMA",
@@ -3293,10 +3302,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-07",
-        "AgeDays": 9,
+        "AgeDays": 164,
         "MaxAllowedAgeDays": 10,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "LEI",
@@ -3304,10 +3313,10 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 45,
         "Passed": true,
-        "Error": "manual/proprietary source required"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "CORE_CPI_YOY",
@@ -3315,10 +3324,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-02-01",
-        "AgeDays": 43,
+        "AgeDays": 198,
         "MaxAllowedAgeDays": 45,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "CORE_PCE_YOY",
@@ -3326,10 +3335,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2025-12-01",
-        "AgeDays": 105,
+        "AgeDays": 260,
         "MaxAllowedAgeDays": 45,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "BREAKEVEN_5Y5Y",
@@ -3337,10 +3346,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-12",
-        "AgeDays": 4,
+        "AgeDays": 159,
         "MaxAllowedAgeDays": 3,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "UNRATE",
@@ -3348,10 +3357,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-02-01",
-        "AgeDays": 43,
+        "AgeDays": 198,
         "MaxAllowedAgeDays": 45,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "WAGE_GROWTH",
@@ -3359,10 +3368,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-02-01",
-        "AgeDays": 43,
+        "AgeDays": 198,
         "MaxAllowedAgeDays": 45,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "CC_DELINQ",
@@ -3370,10 +3379,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2025-10-01",
-        "AgeDays": 166,
+        "AgeDays": 321,
         "MaxAllowedAgeDays": 120,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "REAL_DISP_INC",
@@ -3381,10 +3390,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2025-12-01",
-        "AgeDays": 105,
+        "AgeDays": 260,
         "MaxAllowedAgeDays": 45,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "SPX_FWD_PE",
@@ -3392,7 +3401,7 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 10,
         "Passed": true,
         "Error": "manual/proprietary source required"
@@ -3403,7 +3412,7 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 10,
         "Passed": true,
         "Error": "manual/proprietary source required"
@@ -3414,10 +3423,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-11",
-        "AgeDays": 5,
+        "AgeDays": 160,
         "MaxAllowedAgeDays": 3,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "MORTGAGE_30Y",
@@ -3425,10 +3434,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-12",
-        "AgeDays": 4,
+        "AgeDays": 159,
         "MaxAllowedAgeDays": 10,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "EXIST_HOME_SALES",
@@ -3436,10 +3445,10 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 45,
         "Passed": true,
-        "Error": "manual/proprietary source required"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "HOUSING_STARTS",
@@ -3447,54 +3456,54 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-01-01",
-        "AgeDays": 74,
+        "AgeDays": 229,
         "MaxAllowedAgeDays": 45,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "VIX",
         "Frequency": "Daily",
         "OnlineFetchable": true,
-        "VerifiedOnline": false,
-        "ValueDate": "2026-03-11",
-        "AgeDays": 5,
+        "VerifiedOnline": true,
+        "ValueDate": "2026-08-17",
+        "AgeDays": 1,
         "MaxAllowedAgeDays": 3,
-        "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Passed": true,
+        "Error": ""
       },
       {
         "IndicatorCode": "MOVE",
         "Frequency": "Daily",
         "OnlineFetchable": false,
-        "VerifiedOnline": false,
-        "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "VerifiedOnline": true,
+        "ValueDate": "2026-08-17",
+        "AgeDays": 1,
         "MaxAllowedAgeDays": 3,
         "Passed": true,
-        "Error": "manual/proprietary source required"
+        "Error": ""
       },
       {
         "IndicatorCode": "SPX_DD_3M",
         "Frequency": "Daily",
         "OnlineFetchable": false,
-        "VerifiedOnline": false,
-        "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "VerifiedOnline": true,
+        "ValueDate": "2026-08-17",
+        "AgeDays": 1,
         "MaxAllowedAgeDays": 3,
         "Passed": true,
-        "Error": "manual/proprietary source required"
+        "Error": ""
       },
       {
         "IndicatorCode": "DXY",
         "Frequency": "Daily",
         "OnlineFetchable": true,
-        "VerifiedOnline": false,
-        "ValueDate": "2026-03-06",
-        "AgeDays": 10,
+        "VerifiedOnline": true,
+        "ValueDate": "2026-08-18",
+        "AgeDays": 0,
         "MaxAllowedAgeDays": 3,
-        "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Passed": true,
+        "Error": ""
       },
       {
         "IndicatorCode": "US_JP_10Y_SPREAD",
@@ -3502,10 +3511,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-11",
-        "AgeDays": 5,
+        "AgeDays": 160,
         "MaxAllowedAgeDays": 3,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "CAPITAL_FLOWS",
@@ -3513,7 +3522,7 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 45,
         "Passed": true,
         "Error": "manual/proprietary source required"
@@ -3524,7 +3533,7 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 120,
         "Passed": true,
         "Error": "manual/proprietary source required"
@@ -3535,10 +3544,10 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 400,
         "Passed": true,
-        "Error": "manual/proprietary source required"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "INT_REV",
@@ -3546,7 +3555,7 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 400,
         "Passed": true,
         "Error": "manual/proprietary source required"
@@ -3557,10 +3566,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-06",
-        "AgeDays": 10,
+        "AgeDays": 165,
         "MaxAllowedAgeDays": 10,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "BANK_LENDING",
@@ -3568,10 +3577,10 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2026-02-25",
-        "AgeDays": 19,
+        "AgeDays": 174,
         "MaxAllowedAgeDays": 10,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "TED_SPREAD",
@@ -3579,21 +3588,21 @@
         "OnlineFetchable": true,
         "VerifiedOnline": false,
         "ValueDate": "2022-01-21",
-        "AgeDays": 1515,
+        "AgeDays": 1670,
         "MaxAllowedAgeDays": 3,
         "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "WTI",
         "Frequency": "Daily",
         "OnlineFetchable": true,
-        "VerifiedOnline": false,
-        "ValueDate": "2026-03-09",
-        "AgeDays": 7,
+        "VerifiedOnline": true,
+        "ValueDate": "2026-08-18",
+        "AgeDays": 0,
         "MaxAllowedAgeDays": 3,
-        "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Passed": true,
+        "Error": ""
       },
       {
         "IndicatorCode": "CRB",
@@ -3601,10 +3610,10 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 10,
         "Passed": true,
-        "Error": "manual/proprietary source required"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "GPR",
@@ -3612,7 +3621,7 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 45,
         "Passed": true,
         "Error": "manual/proprietary source required"
@@ -3623,10 +3632,10 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 45,
         "Passed": true,
-        "Error": "manual/proprietary source required"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "CEO_CONF",
@@ -3634,7 +3643,7 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 120,
         "Passed": true,
         "Error": "manual/proprietary source required"
@@ -3645,10 +3654,10 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 45,
         "Passed": true,
-        "Error": "manual/proprietary source required"
+        "Error": "The read operation timed out"
       },
       {
         "IndicatorCode": "CLOUD_AI_GROWTH",
@@ -3656,7 +3665,7 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 120,
         "Passed": true,
         "Error": "manual/proprietary source required"
@@ -3667,7 +3676,7 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 120,
         "Passed": true,
         "Error": "manual/proprietary source required"
@@ -3678,7 +3687,7 @@
         "OnlineFetchable": false,
         "VerifiedOnline": false,
         "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "AgeDays": 170,
         "MaxAllowedAgeDays": 45,
         "Passed": true,
         "Error": "manual/proprietary source required"
@@ -3687,34 +3696,34 @@
         "IndicatorCode": "BTC",
         "Frequency": "Daily",
         "OnlineFetchable": true,
-        "VerifiedOnline": false,
-        "ValueDate": "2026-03-14",
-        "AgeDays": 2,
+        "VerifiedOnline": true,
+        "ValueDate": "2026-08-18",
+        "AgeDays": 0,
         "MaxAllowedAgeDays": 3,
-        "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Passed": true,
+        "Error": ""
       },
       {
         "IndicatorCode": "USDC_MCAP",
         "Frequency": "Daily",
         "OnlineFetchable": true,
-        "VerifiedOnline": false,
-        "ValueDate": "2026-03-14",
-        "AgeDays": 2,
+        "VerifiedOnline": true,
+        "ValueDate": "2026-08-18",
+        "AgeDays": 0,
         "MaxAllowedAgeDays": 3,
-        "Passed": false,
-        "Error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+        "Passed": true,
+        "Error": ""
       },
       {
         "IndicatorCode": "STABLECOIN_DOM",
         "Frequency": "Daily",
         "OnlineFetchable": false,
-        "VerifiedOnline": false,
-        "ValueDate": "2026-03-01",
-        "AgeDays": 15,
+        "VerifiedOnline": true,
+        "ValueDate": "2026-08-17",
+        "AgeDays": 1,
         "MaxAllowedAgeDays": 3,
         "Passed": true,
-        "Error": "manual/proprietary source required"
+        "Error": ""
       }
     ]
   },
@@ -3722,28 +3731,28 @@
     "regime_code": "growth_slowdown_credit_stable",
     "regime_label": "Growth Slowdown / Credit Stable",
     "confidence": 0.66,
-    "score": 68.49,
+    "score": 72.1,
     "score_delta": 0.0,
     "drivers": [
       "growth slowing but credit not yet broken",
       "watch labor and credit spread path"
     ],
-    "as_of_date": "2026-03-16"
+    "as_of_date": "2026-08-18"
   },
   "alertSnapshots": [
     {
-      "as_of_date": "2026-03-16",
+      "as_of_date": "2026-08-18",
       "dimension_code": "D07",
       "alert_code": "A_VIX_SPIKE",
-      "alert_level": "orange",
+      "alert_level": "green",
       "alert_title": "volatility_spike",
-      "trigger_value": "24.23",
+      "trigger_value": "15.19",
       "threshold_rule": "VIX > 30 red; > 24 orange; > 18 yellow",
-      "commentary": "volatility_spike currently at 24.23",
-      "payload_json": "{\"value\": 24.23}"
+      "commentary": "volatility_spike currently at 15.19",
+      "payload_json": "{\"value\": 15.19}"
     },
     {
-      "as_of_date": "2026-03-16",
+      "as_of_date": "2026-08-18",
       "dimension_code": "D05",
       "alert_code": "A_HY_STRESS",
       "alert_level": "green",
@@ -3754,7 +3763,7 @@
       "payload_json": "{\"value\": 309.0}"
     },
     {
-      "as_of_date": "2026-03-16",
+      "as_of_date": "2026-08-18",
       "dimension_code": "D01",
       "alert_code": "A_CURVE_INVERSION",
       "alert_level": "green",
@@ -3765,18 +3774,18 @@
       "payload_json": "{\"value\": 50.0}"
     },
     {
-      "as_of_date": "2026-03-16",
+      "as_of_date": "2026-08-18",
       "dimension_code": "D11",
       "alert_code": "A_OIL_SHOCK",
-      "alert_level": "orange",
+      "alert_level": "yellow",
       "alert_title": "oil_shock",
-      "trigger_value": "94.65",
+      "trigger_value": "84.74",
       "threshold_rule": "WTI > 100 red; > 90 orange; > 80 yellow",
-      "commentary": "oil_shock currently at 94.65",
-      "payload_json": "{\"value\": 94.65}"
+      "commentary": "oil_shock currently at 84.74",
+      "payload_json": "{\"value\": 84.74}"
     },
     {
-      "as_of_date": "2026-03-16",
+      "as_of_date": "2026-08-18",
       "dimension_code": "D03",
       "alert_code": "A_INFLATION_REACCEL",
       "alert_level": "green",
@@ -3787,7 +3796,7 @@
       "payload_json": "{\"value\": 2.7335}"
     },
     {
-      "as_of_date": "2026-03-16",
+      "as_of_date": "2026-08-18",
       "dimension_code": "D04",
       "alert_code": "A_LABOR_SOFTEN",
       "alert_level": "green",
@@ -3799,28 +3808,28 @@
     }
   ],
   "geopoliticalOverlay": {
-    "conflict_level": "medium",
-    "supply_disruption_level": "medium",
-    "shipping_risk_level": "medium",
-    "oil_shock_scenario": "S2",
-    "inflation_impact": "headline inflation pressure",
-    "risk_asset_impact": "cyclical sectors vulnerable",
-    "credit_impact": "selective widening",
-    "summary": "Local supply disruption and oil pressure need monitoring.",
+    "conflict_level": "high",
+    "supply_disruption_level": "high",
+    "shipping_risk_level": "high",
+    "oil_shock_scenario": "S3",
+    "inflation_impact": "broad upside pressure",
+    "risk_asset_impact": "broad risk-off",
+    "credit_impact": "spread widening likely",
+    "summary": "Systemic energy shock risk is elevated.",
     "payload_json": {
-      "wti": 94.65,
-      "vix": 24.23,
-      "dimension_d11_score": 82.79
+      "wti": 84.74,
+      "vix": 15.19,
+      "dimension_d11_score": 93.82
     },
-    "as_of_date": "2026-03-16"
+    "as_of_date": "2026-08-18"
   },
   "marketTransmission": {
-    "as_of_date": "2026-03-16",
+    "as_of_date": "2026-08-18",
     "rates_bias": "bull_steepening",
     "equities_bias": "selective",
     "credit_bias": "tightening",
     "usd_bias": "stable",
-    "commodities_bias": "inflation_hedge",
+    "commodities_bias": "neutral",
     "crypto_bias": "fragile",
     "sectors": {
       "favored": [
@@ -3836,12 +3845,12 @@
       "equities": "selective",
       "credit": "tightening",
       "usd": "stable",
-      "commodities": "inflation_hedge",
+      "commodities": "neutral",
       "crypto": "fragile"
     }
   },
   "actionBias": {
-    "as_of_date": "2026-03-16",
+    "as_of_date": "2026-08-18",
     "overall_bias": "avoid_new_adds",
     "favored_styles": [
       "energy hedge",
@@ -3862,19 +3871,19 @@
   },
   "stockMacroSignals": [
     {
-      "as_of_date": "2026-03-16",
+      "as_of_date": "2026-08-18",
       "ticker": "PDD",
       "regime_code": "growth_slowdown_credit_stable",
       "macro_risk_score": 63.0,
       "signal": "risk_off",
       "action_bias": "avoid_new_adds",
       "explanation_short": "PDD macro risk score 63.0, regime growth_slowdown_credit_stable, action avoid_new_adds.",
-      "explanation_long": "Ticker PDD is evaluated against the latest regime (growth_slowdown_credit_stable), geopolitical overlay (S2) and stock macro exposure map. Combined with latest equity signal Neutral, the system sets macro risk score to 63.0 and recommends action bias 'avoid_new_adds'.",
+      "explanation_long": "Ticker PDD is evaluated against the latest regime (growth_slowdown_credit_stable), geopolitical overlay (S3) and stock macro exposure map. Combined with latest equity signal Neutral, the system sets macro risk score to 63.0 and recommends action bias 'avoid_new_adds'.",
       "payload_json": {
         "latest_signal": "Neutral",
         "predicted_return": -0.007127877311569775,
         "up_probability": 0.5877575202339734,
-        "overlay": "S2",
+        "overlay": "S3",
         "bias": "avoid_new_adds",
         "exposure": {
           "interest_rate_sensitivity": "medium",
@@ -3888,5 +3897,204 @@
         }
       }
     }
-  ]
+  ],
+  "runId": 4,
+  "v2_1": {
+    "run": {
+      "score_background": 72.1,
+      "normalized_score": 45.0,
+      "total_score": 72.1,
+      "final_regime": "stagflation_defensive",
+      "regime_confidence": 66.0,
+      "overlay_level": "level_3",
+      "overlay_override_applied": true,
+      "score_cap_applied": 45.0,
+      "primary_decision_source": "overlay",
+      "topline_message": "Overlay 已接管最终结论，背景分仅作参考。",
+      "status": "red",
+      "payload": {
+        "decision_priority": "overlay_first",
+        "action_direction": "defensive",
+        "action_size_cap": 0.1,
+        "hedge_preference": "index_hedge_first",
+        "signal_confidence_score": 93,
+        "layer_snapshot": [
+          {
+            "layer": "shock",
+            "layer_score": 81.4,
+            "layer_regime": "energy_shock_risk",
+            "layer_confidence": 87.1,
+            "key_drivers": [
+              "D11 score 93.8"
+            ],
+            "key_risks": [
+              "VIX 15.19",
+              "HY_OAS 309.0"
+            ]
+          },
+          {
+            "layer": "tactical",
+            "layer_score": 80.96,
+            "layer_regime": "inflation_pressure",
+            "layer_confidence": 86.8,
+            "key_drivers": [
+              "D03 score 90.8"
+            ],
+            "key_risks": [
+              "VIX 15.19",
+              "HY_OAS 309.0"
+            ]
+          },
+          {
+            "layer": "cyclical",
+            "layer_score": 61.96,
+            "layer_regime": "mixed",
+            "layer_confidence": 71.6,
+            "key_drivers": [
+              "D01 score 50.3"
+            ],
+            "key_risks": [
+              "VIX 15.19",
+              "HY_OAS 309.0"
+            ]
+          }
+        ]
+      }
+    },
+    "layers": [
+      {
+        "layer": "shock",
+        "layer_score": 81.4,
+        "layer_regime": "energy_shock_risk",
+        "layer_confidence": 87.1,
+        "key_drivers": [
+          "D11 score 93.8"
+        ],
+        "key_risks": [
+          "VIX 15.19",
+          "HY_OAS 309.0"
+        ]
+      },
+      {
+        "layer": "tactical",
+        "layer_score": 80.96,
+        "layer_regime": "inflation_pressure",
+        "layer_confidence": 86.8,
+        "key_drivers": [
+          "D03 score 90.8"
+        ],
+        "key_risks": [
+          "VIX 15.19",
+          "HY_OAS 309.0"
+        ]
+      },
+      {
+        "layer": "cyclical",
+        "layer_score": 61.96,
+        "layer_regime": "mixed",
+        "layer_confidence": 71.6,
+        "key_drivers": [
+          "D01 score 50.3"
+        ],
+        "key_risks": [
+          "VIX 15.19",
+          "HY_OAS 309.0"
+        ]
+      }
+    ],
+    "overlayDecision": {
+      "overlay_type": "geopolitical",
+      "overlay_level": "level_3",
+      "override_applied": true,
+      "score_cap": 45.0,
+      "regime_override": "stagflation_defensive",
+      "alert_override": "red",
+      "rationale": "能源冲击与风险偏好共同触发防御约束。",
+      "triggered_signals": [
+        "D11=93.82",
+        "WTI=84.74",
+        "VIX=15.19",
+        "MOVE=75.63",
+        "INF5Y5Y=2.4",
+        "D03=90.79",
+        "D09=48.54",
+        "D09_VOL_UP=1",
+        "D03_INFEXP_UP=1",
+        "FORCED_STAGFLATION=1"
+      ]
+    },
+    "geopoliticalOverlay": {
+      "conflict_intensity_score": 93.82,
+      "supply_disruption_score": 17.69,
+      "shipping_insurance_score": 90,
+      "energy_microstructure_score": 10.71,
+      "macro_transmission_score": 3.76,
+      "overlay_level": "level_3",
+      "brent_price": null,
+      "brent_source": "unavailable",
+      "wti_price": 84.74,
+      "brent_5d_change_pct": null,
+      "brent_5d_change_pct_source": "unavailable",
+      "hormuz_status": "stressed",
+      "conclusion": "能源与地缘冲击已进入需防御管理阶段。"
+    },
+    "dailyAnalysis": {
+      "score_background": 72.1,
+      "final_regime": "stagflation_defensive",
+      "final_alert_level": "red",
+      "decision_priority": "overlay_first",
+      "signal_confidence_score": 93,
+      "overlay_summary": "能源冲击与风险偏好共同触发防御约束。",
+      "action_size_cap": 0.1,
+      "hedge_preference": "index_hedge_first",
+      "payload": {
+        "decision_priority": "overlay_first",
+        "action_direction": "defensive",
+        "action_size_cap": 0.1,
+        "hedge_preference": "index_hedge_first",
+        "signal_confidence_score": 93,
+        "layer_snapshot": [
+          {
+            "layer": "shock",
+            "layer_score": 81.4,
+            "layer_regime": "energy_shock_risk",
+            "layer_confidence": 87.1,
+            "key_drivers": [
+              "D11 score 93.8"
+            ],
+            "key_risks": [
+              "VIX 15.19",
+              "HY_OAS 309.0"
+            ]
+          },
+          {
+            "layer": "tactical",
+            "layer_score": 80.96,
+            "layer_regime": "inflation_pressure",
+            "layer_confidence": 86.8,
+            "key_drivers": [
+              "D03 score 90.8"
+            ],
+            "key_risks": [
+              "VIX 15.19",
+              "HY_OAS 309.0"
+            ]
+          },
+          {
+            "layer": "cyclical",
+            "layer_score": 61.96,
+            "layer_regime": "mixed",
+            "layer_confidence": 71.6,
+            "key_drivers": [
+              "D01 score 50.3"
+            ],
+            "key_risks": [
+              "VIX 15.19",
+              "HY_OAS 309.0"
+            ]
+          }
+        ]
+      }
+    }
+  }
 }
